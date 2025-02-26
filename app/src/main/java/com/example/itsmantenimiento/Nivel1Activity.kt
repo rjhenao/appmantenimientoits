@@ -8,34 +8,28 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class programacion_diaria : AppCompatActivity() {
-
+class Nivel1Activity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_programacion_diaria)
-
-        val idLocacion = intent.getStringExtra("idLocacion") ?: "-1"
-        val idSistema = intent.getStringExtra("idSistema") ?: "-1"
-        val idSubsistema = intent.getStringExtra("idSubsistema") ?: "-1"
-        val idLocacionInt = idLocacion.toIntOrNull() ?: -1
-        val idSistemaInt = idSistema.toIntOrNull() ?: -1
-        val idSubsistemaInt = idSubsistema.toIntOrNull() ?: -1
+        setContentView(R.layout.activity_nivel1)
 
         // Configurar el Toolbar
-        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        val toolbar: Toolbar = findViewById(R.id.toolbar1)
         setSupportActionBar(toolbar)
 
         // Configurar el RecyclerView
-        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
+        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView1)
         val dbHelper = DatabaseHelper(this)
-        val items = dbHelper.getProgramaciones(idLocacionInt , idSistemaInt , idSubsistemaInt)
+        val items = dbHelper.getNivel1()
 
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = TableAdapter(items)
+        recyclerView.adapter = TableAdapterLv1(items)
     }
 
     // Inflar el menú en el Toolbar
@@ -61,7 +55,8 @@ class programacion_diaria : AppCompatActivity() {
 
     private fun syncData() {
         // Lógica para sincronizar datos
-        Toast.makeText(this, "Sincronizando datos...", Toast.LENGTH_SHORT).show()
+
+        FuncionesGenerales.sincronizarMantenimientos(this)
         // Aquí puedes agregar la lógica para sincronizar con un servidor o base de datos remota
     }
 

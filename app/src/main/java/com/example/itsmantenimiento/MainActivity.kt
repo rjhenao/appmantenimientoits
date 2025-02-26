@@ -45,6 +45,15 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
+        val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
+
+        if (isLoggedIn) {
+            val intent = Intent(this, Nivel1Activity::class.java)
+            startActivity(intent)
+            finish()
+        }
+
         usernameInput = findViewById(R.id.username_input)
         passswordInput = findViewById(R.id.password_input)
         loginbtn = findViewById(R.id.login_btn)
@@ -58,23 +67,30 @@ class MainActivity : AppCompatActivity() {
 
             // Valida las credenciales con la base de datos local
             val dbHelper = DatabaseHelper(this)
-            val isValidUser = dbHelper.validateUser(username, password)
 
-            if (isValidUser) {
-                Toast.makeText(this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show()
-                val intent = Intent(this, programacion_diaria::class.java)
+
+            val userId = dbHelper.obtenerIdUsuario(username, password) // Obtiene el ID del usuario
+
+            Log.i("Test Credenciales2", "Documento: $username y Password: $password y $userId")
+
+
+            if (userId != -1) {
+                val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
+                val editor = sharedPreferences.edit()
+                editor.putBoolean("isLoggedIn", true)
+                editor.putInt("idUser", userId) // Guardamos el ID del usuario en lugar del username
+                editor.apply()
+
+                val intent = Intent(this, Nivel1Activity::class.java)
                 startActivity(intent)
-                // Realizar cualquier acción adicional (por ejemplo, iniciar otra actividad)
+                finish() // Cierra la actividad de login para que no pueda volver atrás
             } else {
                 Toast.makeText(this, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
             }
-            Log.i("Test Credenciales" , "username: $username and Password: $password")
+
+            Log.i("Test Credenciales", "Documento: $username y Password: $password")
+
         }
-
-
-        val api = RetrofitClient.instance
-        val dbHelper = DatabaseHelper(this)
-        val db = dbHelper.writableDatabase
 
         sincronizarbtn.setOnClickListener {
             val progressDialog = AlertDialog.Builder(this)
@@ -91,6 +107,8 @@ class MainActivity : AppCompatActivity() {
 
                 progressDialog.dismiss()
 
+                Log.d("kju" , errorBD.toString())
+
                 if (errorBD > 0) {
                     Toast.makeText(this@MainActivity, "Sincronización con errores", Toast.LENGTH_LONG).show()
                 } else {
@@ -99,6 +117,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+
 
     suspend fun sincronizarDatos(): Int {
         var errorBD = 0

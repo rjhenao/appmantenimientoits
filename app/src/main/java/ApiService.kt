@@ -10,9 +10,26 @@ import com.example.itsmantenimiento.Subsistemas
 import com.example.itsmantenimiento.TipoEquipos
 import com.example.itsmantenimiento.Uf
 import com.example.itsmantenimiento.User
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Call
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
+import retrofit2.http.POST
+import retrofit2.http.Part
+
 interface ApiService {
+
+    data class ApiResponse(
+        val messagedd2: String,
+        val data2: Map<String, Any> ,
+        val afirmativo: Integer
+    )
+
+
+
+
     @GET("/api/programar_mantenimientos")
     fun getProgramarMantenimientos(): Call<List<ProgramarMantenimiento>>
 
@@ -48,5 +65,14 @@ interface ApiService {
 
     @GET("/api/ufs")
     fun getUf(): Call<List<Uf>>
+
+    @Multipart
+    @POST("api/enviarMantenimientosTerminados")
+    fun enviarMantenimientosTerminados(
+        @Part("json") json: RequestBody,
+        @Part imagenes: List<MultipartBody.Part>
+    ): Call<ApiResponse>
+
+
 
 }
