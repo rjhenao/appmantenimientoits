@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
@@ -44,6 +45,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+
+        val updater = AppUpdater(this)
+        val versionName = BuildConfig.VERSION_NAME
+
+        // Mostrar la versión en el TextView
+        val tVersion = findViewById<TextView>(R.id.tVersion)
+        tVersion.text = "Versión: $versionName"
+        updater.checkForUpdate()
 
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)

@@ -10,6 +10,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.text.BoringLayout
 import android.util.Log
 import com.google.gson.Gson
+import kotlinx.coroutines.CompletableDeferred
 import okhttp3.MediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -422,7 +423,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
     fun getEmpleados(): List<Empleado> {
         val empleados = mutableListOf<Empleado>()
         val db = this.readableDatabase
-        val query = "SELECT id, name FROM users WHERE activo = 1" // Ajusta la consulta según tu esquema de base de datos
+        val query = "SELECT id, nombre as name FROM users WHERE activo = 1" // Ajusta la consulta según tu esquema de base de datos
         val cursor = db.rawQuery(query, null)
 
         if (cursor.moveToFirst()) {
@@ -616,6 +617,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                 put("estado", 1)
             }
 
+
+
             // Definir la cláusula WHERE
             val whereClause = "idMantenimiento = ?"
             val whereArgs = arrayOf(idMantenimiento.toString())
@@ -628,8 +631,24 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                 whereArgs // Argumentos para la cláusula WHERE
             )
 
+            val values1 = ContentValues().apply {
+                put("fecha_realizado", ahora)
+            }
+
+            // Definir la cláusula WHERE
+            val whereClause1 = "id = ?"
+            val whereArgs1 = arrayOf(idMantenimiento.toString())
+
+            // Ejecutar el UPDATE
+            val rowsAffected1 = db.update(
+                "programar_mantenimientos", // Nombre de la tabla
+                values1, // Valores a actualizar
+                whereClause1, // Cláusula WHERE
+                whereArgs1 // Argumentos para la cláusula WHERE
+            )
+
             // Verificar si se actualizó al menos una fila
-            if (rowsAffected > 0) {
+            if (rowsAffected > 0 && rowsAffected1 >0) {
                 isSuccess = true // La operación fue exitosa
                 db.setTransactionSuccessful() // Marcar la transacción como exitosa
             } else {
@@ -1100,7 +1119,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                      WHERE date(pm.fecha_programado) <= date('now')
                      AND l.id = ?
                     AND pm.fecha_realizado IS NULL
-                    GROUP BY l.nombre                    
+                    GROUP BY s.nombre                    
                     ORDER BY pm.fecha_programado ASC
                     """
         val cursor = db.rawQuery(query, arrayOf(idLocacion.toString()))
@@ -1149,7 +1168,7 @@ Log.d("jdudud" , "$lista")
                      WHERE date(pm.fecha_programado) <= date('now')
                      AND l.id = ? AND s.id = ?
                     AND pm.fecha_realizado IS NULL
-                    GROUP BY l.nombre                    
+                    GROUP BY s2.nombre                    
                     ORDER BY pm.fecha_programado ASC
                     """
         val cursor = db.rawQuery(query, arrayOf(idLocacion1.toString() , idSistema1.toString()))
@@ -1292,10 +1311,210 @@ Log.d("jdudud" , "$lista")
     }
 
 
-
-    fun sincronizarManteninimientosTerminados() {
+    suspend fun sincronizarManteninimientosTerminados(): Int {
+        val deferredResult = CompletableDeferred<Int>()
         val db = this.readableDatabase
         val dbb = this.writableDatabase
+        var insertOk = 0
+
+        val query = """
+        SELECT id, idMantenimiento 
+        FROM rel_tecnico_mantenimiento
+        WHERE estado = 1 AND sincronizado <> 1              
+    """
+        val cursor = db.rawQuery(query, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val idCodigoMantenimiento = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val idMantenimiento = cursor.getInt(cursor.getColumnIndexOrThrow("idMantenimiento"))
+
+                val tecnicosMantenimiento = cursorToList(db.rawQuery("""
+                SELECT idUser, idMantenimiento, fechaInicial, fechaFinal, estado, sincronizado 
+                FROM rel_tecnico_mantenimiento
+                WHERE (sincronizado <> 1 OR sincronizado IS NULL) AND idMantenimiento = ?       
+            """, arrayOf(idMantenimiento.toString())))
+
+                val actividades = cursorToList(db.rawQuery("""
+                SELECT id_mantenimiento, id_actividad, id_mantenimiento_usuario, path, estado, observacion, sincronizado 
+                FROM rel_mantenimiento_actividad
+                WHERE (sincronizado <> 1 OR sincronizado IS NULL) AND id_mantenimiento_usuario = ?       
+            """, arrayOf(idCodigoMantenimiento.toString())))
+
+                val estados = cursorToList(db.rawQuery("""
+                SELECT id_mantenimiento, descripcion, path, observacion, estado, sincronizado 
+                FROM rel_mantenimiento_estado
+                WHERE (sincronizado <> 1 OR sincronizado IS NULL) AND id_mantenimiento = ?       
+            """, arrayOf(idMantenimiento.toString())))
+
+                val tecnicosActividad = cursorToList(db.rawQuery("""
+                SELECT id_mantenimiento, id_empleado, sincronizado 
+                FROM rel_user_mantenimiento
+                WHERE (sincronizado <> 1 OR sincronizado IS NULL) AND id_mantenimiento = ?       
+            """, arrayOf(idMantenimiento.toString())))
+
+                if (tecnicosMantenimiento.isEmpty()) {
+                    Log.d("ERROR", "No hay datos en tecnicosMantenimiento para idMantenimiento: $idMantenimiento")
+                    continue
+                }
+
+                val data = mapOf(
+                    "actividades" to mapOf("data" to actividades),
+                    "estados" to mapOf("data" to estados),
+                    "tecnicos_actividad" to mapOf("data" to tecnicosActividad),
+                    "tecnicos_mantenimiento" to mapOf("data" to tecnicosMantenimiento)
+                )
+
+                val jsonString = Gson().toJson(data)
+                Log.d("JSON_ENVIADO", jsonString)
+
+                val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), jsonString)
+                val partesImagenes = mutableListOf<MultipartBody.Part>()
+
+                (actividades + estados).forEach { item ->
+                    val path = item["path"] as? String
+                    if (!path.isNullOrEmpty()) {
+                        val imageFile = File(path)
+                        if (imageFile.exists()) {
+                            val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
+
+                            val imagenPart = MultipartBody.Part.createFormData("imagen_actividad[]", imageFile.name, requestFile)
+                            partesImagenes.add(imagenPart)
+                        }
+                    }
+                }
+
+                Log.d("IMAGENES_ENVIADAS", "Total de imágenes enviadas: ${partesImagenes.size}")
+
+                val call = api.enviarMantenimientosTerminados(requestBody, partesImagenes.ifEmpty { emptyList() })
+                call.enqueue(object : Callback<ApiService.ApiResponse> {
+                    override fun onResponse(call: Call<ApiService.ApiResponse>, response: Response<ApiService.ApiResponse>) {
+                        if (response.isSuccessful) {
+                            val apiResponse = response.body()
+                            if (apiResponse?.afirmativo as? Int == 1) {
+                                val values = ContentValues().apply {
+                                    put("sincronizado", 1)
+                                    put("estado", 2)
+                                }
+                                dbb.update("rel_tecnico_mantenimiento", values, "idMantenimiento = ?", arrayOf(idMantenimiento.toString()))
+                                insertOk = 1
+                            }
+                            Log.d("API_RESPONSE", "Mensaje del servidor: ${apiResponse?.messagedd2}")
+                        } else {
+                            Log.d("API_ERROR", "Error al enviar el JSON: ${response.errorBody()?.string()}")
+                        }
+                        deferredResult.complete(insertOk)
+                    }
+                    override fun onFailure(call: Call<ApiService.ApiResponse>, t: Throwable) {
+                        Log.d("API_FAILURE", "Error en la solicitud: ${t.message}")
+                        deferredResult.complete(0)
+                    }
+                })
+            } while (cursor.moveToNext())
+        } else {
+            Log.d("DB_RESULT", "No se encontraron resultados en la consulta.")
+            deferredResult.complete(0)
+        }
+
+        return deferredResult.await()
+    }
+
+
+
+    suspend fun sincronizarManteninimientosTerminados44(): Int {
+        val deferredResult = CompletableDeferred<Int>() // Espera el resultado
+        val db = this.readableDatabase
+        val dbb = this.writableDatabase
+        var insertOk = 0
+
+        val query = """
+        SELECT id, idMantenimiento 
+        FROM rel_tecnico_mantenimiento
+        WHERE estado = 1 AND sincronizado <> 1              
+    """
+
+        val cursor = db.rawQuery(query, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val idCodigoMantenimiento = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val idMantenimiento = cursor.getInt(cursor.getColumnIndexOrThrow("idMantenimiento"))
+
+                val qTecnicoMantenimiento = """
+                SELECT idUser, idMantenimiento, fechaInicial, fechaFinal, estado, sincronizado 
+                FROM rel_tecnico_mantenimiento
+                WHERE (sincronizado <> 1 OR sincronizado IS NULL) AND idMantenimiento = ?       
+            """
+                val cursor4 = db.rawQuery(qTecnicoMantenimiento, arrayOf(idMantenimiento.toString()))
+
+                val tecnicosMantenimiento = cursorToList(cursor4)
+
+                if (tecnicosMantenimiento.isEmpty()) {
+                    Log.d("ERROR", "No hay datos en tecnicosMantenimiento para idMantenimiento: $idMantenimiento")
+                    continue
+                }
+
+                val data = mapOf(
+                    "tecnicos_mantenimiento" to mapOf("data" to tecnicosMantenimiento)
+                )
+
+                val gson = Gson()
+                val jsonString = gson.toJson(data)
+                Log.d("JSON_ENVIADO", jsonString)
+
+                val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), jsonString)
+
+                val call = api.enviarMantenimientosTerminados(requestBody, emptyList())
+
+                call.enqueue(object : Callback<ApiService.ApiResponse> {
+                    override fun onResponse(call: Call<ApiService.ApiResponse>, response: Response<ApiService.ApiResponse>) {
+                        if (response.isSuccessful) {
+                            val apiResponse = response.body()
+                            val validaInsert = apiResponse?.afirmativo as? Int
+
+                            if (validaInsert == 1) {
+                                val values1 = ContentValues().apply {
+                                    put("sincronizado", 1)
+                                    put("estado", 2)
+                                }
+
+                                dbb.update(
+                                    "rel_tecnico_mantenimiento",
+                                    values1,
+                                    "idMantenimiento = ?",
+                                    arrayOf(idMantenimiento.toString())
+                                )
+                                insertOk = 1
+                            }
+                            Log.d("API_RESPONSE", "Mensaje del servidor: ${apiResponse?.messagedd2}")
+                        } else {
+                            Log.d("API_ERROR", "Error al enviar el JSON: ${response.errorBody()?.string()}")
+                        }
+
+                        deferredResult.complete(insertOk) // Completa la espera con el resultado
+                    }
+
+                    override fun onFailure(call: Call<ApiService.ApiResponse>, t: Throwable) {
+                        Log.d("API_FAILURE", "Error en la solicitud: ${t.message}")
+                        deferredResult.complete(0) // Completa con error
+                    }
+                })
+            } while (cursor.moveToNext())
+        } else {
+            Log.d("DB_RESULT", "No se encontraron resultados en la consulta.")
+            deferredResult.complete(0)
+        }
+
+        return deferredResult.await() // Espera la respuesta antes de devolver el resultado
+    }
+
+
+
+    fun sincronizarManteninimientosTerminados2() : Int  {
+        val db = this.readableDatabase
+        val dbb = this.writableDatabase
+
+        var insertOk = 0
 
         val query = """
         SELECT id, idMantenimiento 
@@ -1430,6 +1649,7 @@ Log.d("jdudud" , "$lista")
                             val validaInsert = apiResponse?.afirmativo as? Int
 
                             if (validaInsert == 1) {
+
                                 // Actualizar el campo fecha_realizado en programar_mantenimientos
                                 val values = ContentValues().apply {
                                     put("fecha_realizado", System.currentTimeMillis()) // Guardar fecha actual en formato UNIX timestamp
@@ -1453,7 +1673,7 @@ Log.d("jdudud" , "$lista")
                                     "idMantenimiento = ?",                    // WHERE condición
                                     arrayOf(idMantenimiento.toString())  // Parámetros
                                 )
-
+                                insertOk = 1
                             }
                             Log.d("API_RESPONSE", "Mensaje del servidor: ${apiResponse?.messagedd2}")
                             Log.d("API_RESPONSE", "Datos recibidos: ${apiResponse?.data2}")
@@ -1473,6 +1693,8 @@ Log.d("jdudud" , "$lista")
         } else {
             Log.d("DB_RESULT", "No se encontraron resultados en la consulta.")
         }
+        Log.d("djdjdjd2892d9029d"  , "$insertOk")
+return insertOk
     }
 
 

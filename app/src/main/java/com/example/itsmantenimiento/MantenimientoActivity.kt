@@ -129,6 +129,8 @@ class MantenimientoActivity : AppCompatActivity() {
 
             if (tObservacion.isNotEmpty()) {
                 editObservaciones.setText(tObservacion)
+            } else {
+                editObservaciones.setText("Ok")
             }
 
             var isSuccessPath = dbHelper.getHasPath(actividad.idEstado)
@@ -169,6 +171,13 @@ class MantenimientoActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Debe seleccionar al menos 1 Técnico.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@setOnClickListener
                 }
 
                 // Finalizar el mantenimiento
@@ -180,7 +189,7 @@ class MantenimientoActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
-                    val intent = Intent(this, programacion_diaria::class.java)
+                    val intent = Intent(this, Nivel1Activity::class.java)
                     startActivity(intent)
                     finish()
                     Toast.makeText(
@@ -188,6 +197,7 @@ class MantenimientoActivity : AppCompatActivity() {
                         "Mantenimiento finalizado exitosamente.",
                         Toast.LENGTH_LONG
                     ).show()
+
                 }
             }
 
@@ -257,6 +267,12 @@ class MantenimientoActivity : AppCompatActivity() {
 
             if (tObservacion1.isNotEmpty()) {
                 editObservaciones1.setText(tObservacion1)
+            } else {
+                if (estados.descripcion == "Herramientas Usadas") {
+                    editObservaciones1.setText("Kit de Limpieza y Herramienta de mano")
+                } else {
+                    editObservaciones1.setText("Equipo en Buen Estado")
+                }
             }
 
             when (estados.estado) {

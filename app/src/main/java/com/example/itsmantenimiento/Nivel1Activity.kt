@@ -2,6 +2,7 @@ package com.example.itsmantenimiento
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
@@ -56,7 +57,14 @@ class Nivel1Activity : AppCompatActivity() {
     private fun syncData() {
         // Lógica para sincronizar datos
 
-        FuncionesGenerales.sincronizarMantenimientos(this)
+        FuncionesGenerales.sincronizarMantenimientos(this) { exito ->
+            if (exito) {
+                Log.d("SYNC", "La sincronización se completó correctamente.")
+            } else {
+                Log.d("SYNC", "Hubo un error en la sincronización.")
+            }
+        }
+
         // Aquí puedes agregar la lógica para sincronizar con un servidor o base de datos remota
     }
 

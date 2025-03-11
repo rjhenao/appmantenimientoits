@@ -6,72 +6,84 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/login_background"
+    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:gravity="center"
-        android:orientation="vertical">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <ImageView
-            android:layout_width="160dp"
-            android:layout_height="160dp"
-            android:background="@drawable/rounded_corner_whitebk"
-            android:src="@mipmap/ic_launcher_foreground" />
-
-        <EditText
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/rounded_corner"
-            android:layout_marginTop="32dp"
-            android:hint="Cédula"
-            android:textColor="@color/white"
-            android:textColorHint="@color/white"
-            android:textSize="20sp"
-            android:padding="18dp"
-            android:inputType="number"
-            android:id="@+id/username_input"
-            />
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <EditText
-            android:id="@+id/password_input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/rounded_corner"
-            android:hint="Contraseña"
-            android:inputType="text|textPassword"
-            android:padding="18dp"
-            android:textColor="@color/white"
-            android:textColorHint="@color/white"
-            android:textSize="20sp" />
-        <Button
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Iniciar Sesión"
-            android:backgroundTint="@color/white"
-            android:textColor="#002C58"
-            android:padding="18dp"
-            android:layout_marginTop="32dp"
-            android:textSize="20sp"
-            android:id="@+id/login_btn"
-            />
+            <ImageView
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:background="@drawable/rounded_corner_whitebk"
+                android:src="@mipmap/ic_launcher_foreground" />
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/sincronizar_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end|bottom"
-            android:layout_margin="16dp"
-            app:backgroundTint="@color/black"
-            app:tint="@android:color/white"
-            app:fabSize="normal"
-            app:srcCompat="@drawable/sincronizar_icon" />
+            <EditText
+                android:id="@+id/username_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:background="@drawable/rounded_corner"
+                android:hint="Cédula"
+                android:inputType="number"
+                android:padding="18dp"
+                android:textColor="@color/white"
+                android:textColorHint="@color/white"
+                android:textSize="20sp" />
 
+            <EditText
+                android:id="@+id/password_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/rounded_corner"
+                android:hint="Contraseña"
+                android:inputType="numberPassword"
+                android:padding="18dp"
+                android:textColor="@color/white"
+                android:textColorHint="@color/white"
+                android:textSize="20sp" />
 
-    </LinearLayout>
+            <Button
+                android:id="@+id/login_btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:padding="18dp"
+                android:text="Iniciar Sesión"
+                android:textColor="#002C58"
+                android:textSize="20sp"
+                android:backgroundTint="@color/white" />
 
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/sincronizar_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|bottom"
+                android:layout_margin="16dp"
+                app:backgroundTint="@color/black"
+                app:fabSize="normal"
+                app:srcCompat="@drawable/sincronizar_icon"
+                app:tint="@android:color/white" />
 
+            <TextView
+                android:id="@+id/tVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Versión: 1.0"
+                android:textColor="@color/black"
+                android:textSize="20sp" />
+
+        </LinearLayout>
+    </ScrollView>
 </RelativeLayout>

@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.itsmantenimiento"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -25,6 +25,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+    buildFeatures {
+        buildConfig = true // Correcto en .kts
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
