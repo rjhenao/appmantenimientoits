@@ -107,6 +107,9 @@ class MantenimientoActivity : AppCompatActivity() {
 
         val container = findViewById<LinearLayout>(R.id.actividadesContainer)
 
+        container.removeAllViews()
+
+
         actividades.forEach { actividad ->
             val cardView = layoutInflater.inflate(R.layout.item_actividad, container, false) as CardView
             cardView.findViewById<TextView>(R.id.txtActividad).text = actividad.descripcion
@@ -591,4 +594,15 @@ class MantenimientoActivity : AppCompatActivity() {
             }
         }
     }
+
+    override fun onPause() {
+        super.onPause()
+        finish() // Forzar el cierre
+    }
+
+    override fun onStop() {
+        super.onStop()
+        finish() // También válido
+    }
+
 }
