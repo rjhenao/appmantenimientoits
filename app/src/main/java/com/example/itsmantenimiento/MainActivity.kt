@@ -12,8 +12,6 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,8 +19,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Call
-import retrofit2.Callback  // Asegúrate de importar Callback
-import retrofit2.Response
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -58,11 +54,11 @@ class MainActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
 
-        if (isLoggedIn) {
-            val intent = Intent(this, Nivel1Activity::class.java)
-            startActivity(intent)
-            finish()
-        }
+//        if (isLoggedIn) {
+//            val intent = Intent(this, Nivel1Activity::class.java)
+//            startActivity(intent)
+//            finish()
+//        }
 
         usernameInput = findViewById(R.id.username_input)
         passswordInput = findViewById(R.id.password_input)
@@ -81,6 +77,10 @@ class MainActivity : AppCompatActivity() {
 
             val userId = dbHelper.obtenerIdUsuario(username, password) // Obtiene el ID del usuario
 
+            val idRol = dbHelper.obtenerRolUsuario(username, password)
+
+
+
             Log.i("Test Credenciales2", "Documento: $username y Password: $password y $userId")
 
 
@@ -89,11 +89,16 @@ class MainActivity : AppCompatActivity() {
                 val editor = sharedPreferences.edit()
                 editor.putBoolean("isLoggedIn", true)
                 editor.putInt("idUser", userId) // Guardamos el ID del usuario en lugar del username
+                editor.putInt("idRol", idRol) // Guardamos el ID del usuario en lugar del username
                 editor.apply()
 
-                val intent = Intent(this, Nivel1Activity::class.java)
+            if (idRol == 1 || idRol == 2) {
+                val intent = Intent(this, HomeActivity::class.java)
                 startActivity(intent)
                 finish() // Cierra la actividad de login para que no pueda volver atrás
+
+            }
+
             } else {
                 Toast.makeText(this, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
             }
@@ -145,6 +150,7 @@ class MainActivity : AppCompatActivity() {
                 async { sincronizarTabla("sistemas", api.getSistemas()) },
                 async { sincronizarTabla("subsistemas", api.getSubSistemas()) },
                 async { sincronizarTabla("tipo_equipos", api.getTipoEquipos()) },
+                async { sincronizarTabla("rel_roles_usuarios", api.relRolesUsuarios()) },
                 async { sincronizarTabla("uf", api.getUf()) },
                 async { sincronizarTabla("programar_mantenimientos", api.getProgramarMantenimientos()) }
             )

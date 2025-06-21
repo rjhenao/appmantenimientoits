@@ -597,12 +597,13 @@ class MantenimientoActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        finish() // Forzar el cierre
+        // finish() // NO hagas esto aquí
     }
 
     override fun onStop() {
         super.onStop()
-        finish() // También válido
+        // finish() // Tampoco aquí
     }
+
 
 }

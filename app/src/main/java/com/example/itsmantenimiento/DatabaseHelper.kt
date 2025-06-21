@@ -28,7 +28,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.asRequestBody
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 28) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 29) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -41,6 +41,15 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             )
         """
         db.execSQL(createRelUserMantenimiento)
+
+        val createRelRolesUsuarios = """
+            CREATE TABLE rel_roles_usuarios (
+                id INTEGER PRIMARY KEY,
+                idRol INTEGER,
+                idUsuario INTEGER
+            )
+        """
+        db.execSQL(createRelRolesUsuarios)
 
         val createRelManteninimientoEstado = """
             CREATE TABLE rel_mantenimiento_estado (
@@ -243,7 +252,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_actividad")
         db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_estado")
         db.execSQL("DROP TABLE IF EXISTS rel_user_mantenimiento")
-
+        db.execSQL("DROP TABLE IF EXISTS rel_roles_usuarios")
 
         onCreate(db)
     }
@@ -897,6 +906,43 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             ""
         }
     }
+
+    fun obtenerRolUsuario(documento: String, password: String): Int {
+        val db = this.readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT u.id, u.password, ru.idRol FROM users AS u " +
+                    "JOIN rel_roles_usuarios ru ON ru.idUsuario = u.id " +
+                    "WHERE u.documento = ? AND u.activo = 1",
+            arrayOf(documento)
+        )
+
+        var isValid = false
+        var idRol = -1
+
+        if (cursor.moveToFirst()) {
+            val storedPassword = cursor.getString(cursor.getColumnIndexOrThrow("password"))
+
+            val parts = storedPassword.split("$")
+            if (parts.size == 2) {
+                val storedHash = parts[0]
+                val storedSalt = parts[1]
+
+                val passwordWithSalt = password + storedSalt
+                val hashedPassword = hashSHA256(passwordWithSalt)
+
+                isValid = hashedPassword == storedHash
+
+                if (isValid) {
+                    idRol = cursor.getInt(cursor.getColumnIndexOrThrow("idRol"))
+                }
+            }
+        }
+
+        cursor.close()
+        db.close()
+        return idRol // Retorna el idRol si es válido, o -1 si no
+    }
+
 
     fun obtenerIdUsuario(documento: String, password: String): Int {
 

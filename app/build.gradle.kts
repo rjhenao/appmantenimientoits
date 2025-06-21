@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -55,7 +56,7 @@ dependencies {
     implementation(libs.retrofit.gson)
     implementation("de.svenkubiak:jBCrypt:0.4.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
-
-
-
+    implementation ("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
 }
