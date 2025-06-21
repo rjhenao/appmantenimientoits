@@ -1,0 +1,11 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_its"
+        android:title="ITS" />
+    <item
+        android:id="@+id/nav_preoperacional"
+        android:title="Preoperacional" />
+    <item
+        android:id="@+id/nav_cerrarsesion"
+        android:title="Cerrar Sesión" />
+</menu>

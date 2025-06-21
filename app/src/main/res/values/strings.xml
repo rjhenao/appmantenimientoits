@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">ItsMantenimiento</string>
+    <string name="navigation_drawer_open">Abrir menú</string>
+    <string name="navigation_drawer_close">Cerrar menú</string>
+    <string-array name="opciones_array">
+        <item>Opción 1</item>
+        <item>Opción 2</item>
+        <item>Opción 3</item>
+    </string-array>
+
 </resources>

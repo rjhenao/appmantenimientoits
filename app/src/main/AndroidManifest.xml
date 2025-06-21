@@ -31,6 +31,12 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <activity
+            android:name=".iniciarPreoperacional"
+            android:exported="false" />
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false" />
+        <activity
             android:name=".Nivel2Activity"
             android:exported="false" />
         <activity
@@ -42,10 +48,16 @@
         <activity
             android:name=".MantenimientoActivity"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize"/>
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".programacion_diaria"
             android:exported="false" />
+        <activity android:name=".FormularioActividadActivity" />
+        <activity
+            android:name=".FinalizarPreoperacionalActivity"
+            android:exported="true" />
+
+
 
         <activity
             android:name=".MainActivity"
@@ -59,7 +71,7 @@
         </activity> <!-- FileProvider para compartir archivos -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
+            android:authorities="com.example.itsmantenimiento.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
