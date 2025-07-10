@@ -6,64 +6,73 @@
     android:layout_height="wrap_content"
     android:padding="12dp">
 
+    <!-- Título -->
     <TextView
         android:id="@+id/labelActividad"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Actividad"
         android:textStyle="bold"
-        android:textSize="16sp" />
+        android:textSize="16sp"
+        android:paddingBottom="4dp" />
 
+    <!-- Observaciones -->
     <EditText
         android:id="@+id/inputObservaciones"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Observaciones" />
+        android:hint="Observaciones"
+        android:padding="8dp"
+        android:background="@android:drawable/editbox_background" />
 
+    <!-- Botones -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginTop="8dp"
-        android:gravity="center_horizontal">
+        android:gravity="center"
+        android:weightSum="5">
 
         <Button
             android:id="@+id/btnB"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_weight="1"
-            android:text="B" />
+            android:text="B"
+            android:textSize="12sp" />
 
         <Button
             android:id="@+id/btnNA"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_weight="1"
-            android:text="NA" />
+            android:text="NA"
+            android:textSize="12sp" />
 
         <Button
             android:id="@+id/btnNT"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_weight="1"
-            android:text="NT" />
+            android:text="NT"
+            android:textSize="12sp" />
 
         <Button
             android:id="@+id/btnM"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_weight="1"
-            android:text="M" />
+            android:text="M"
+            android:textSize="12sp" />
 
         <Button
             android:id="@+id/btnCamara"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_weight="1"
             android:text="📷"
-            android:textSize="18sp" />
-
+            android:textSize="14sp" />
     </LinearLayout>
-
 
 </LinearLayout>

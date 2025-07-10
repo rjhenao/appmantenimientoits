@@ -1,35 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:fitsSystemWindows="true"
     android:paddingTop="28dp"
     android:paddingRight="8dp"
     android:paddingLeft="8dp"
     android:background="#F5F5F5"
-    android:id="@+id/main">
-
-    <!-- Botón Finalizar -->
-    <Button
-        android:id="@+id/btnFinalizar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Finalizar Mantenimiento"
-        android:backgroundTint="@android:color/holo_blue_dark"
-        android:textColor="@android:color/white"
-        android:layout_alignParentBottom="true"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp"
-        android:layout_marginBottom="28dp" />
+    >
 
     <!-- Contenido Scrollable -->
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_above="@id/btnFinalizar"
-        android:layout_alignParentTop="true">
+        android:layout_weight="1"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -45,13 +34,11 @@
                 android:layout_marginBottom="10dp"
                 android:padding="10dp">
 
-                <!-- Contenedor principal dentro de CardView -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <!-- Título de actividades -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -276,17 +263,31 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="1dp"/>
+                android:padding="1dp" />
 
             <!-- GridLayout para CheckBox -->
             <GridLayout
                 android:id="@+id/checkboxContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:columnCount="3"
+                android:columnCount="2"
                 android:padding="16dp"
                 android:layout_marginBottom="16dp"
                 android:orientation="horizontal" />
         </LinearLayout>
     </ScrollView>
-</RelativeLayout>
+
+    <!-- Botón Finalizar -->
+    <Button
+        android:id="@+id/btnFinalizar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Finalizar Mantenimiento"
+        android:backgroundTint="@android:color/holo_blue_dark"
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp" />
+
+</LinearLayout>

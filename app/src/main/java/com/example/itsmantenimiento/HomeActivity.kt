@@ -1,7 +1,8 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.animation.AlphaAnimation
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -33,53 +34,64 @@ class HomeActivity : AppCompatActivity() {
         navView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_its -> {
-
                     val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
-                    val idRol = sharedPreferences.getInt("idRol", -1) // -1 es el valor por defecto si no se encuentra
+                    val idRol = sharedPreferences.getInt("idRol", -1)
 
-                    if (idRol == 1 || idRol ==2 ) {
-                        val intent = Intent(this, Nivel1Activity::class.java)
-                        startActivity(intent)
-                        //finish()
+                    if (idRol == 1 || idRol == 2) {
+                        startActivity(Intent(this, Nivel1Activity::class.java))
                     } else {
-                        Toast.makeText(this, "No tiene permisos para acceder como ITS, comuníquese con un administrador.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, "No tiene permisos para acceder como ITS. Comuníquese con un administrador.", Toast.LENGTH_LONG).show()
                     }
+                    true
+                }
 
-                    true
-                }
                 R.id.nav_preoperacional -> {
-                    val intent = Intent(this, iniciarPreoperacional::class.java)
-                    startActivity(intent)
+                    startActivity(Intent(this, iniciarPreoperacional::class.java))
                     true
                 }
+
                 R.id.nav_cerrarsesion -> {
                     logout()
                     true
                 }
+
                 else -> false
             }
         }
 
-        // Mostrar texto en el contenido central
+        // Animación de entrada del texto
         val contentText = findViewById<TextView>(R.id.home_content)
-        contentText.text = "Estás en la pantalla Home"
+        val subtitleText = findViewById<TextView>(R.id.home_subtitle)
+
+        // Recuperar nombre de usuario desde SharedPreferences (si lo tienes guardado)
+        val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
+
+        val nombreUsuario = sharedPreferences.getString("nombre", "Usuario")
+
+
+        contentText.text = "¡Bienvenido, $nombreUsuario!"
+        subtitleText.text = "Selecciona una opción del menú para continuar"
+
+        animateFadeIn(contentText)
+        animateFadeIn(subtitleText)
+    }
+
+    private fun animateFadeIn(view: TextView) {
+        val fadeIn = AlphaAnimation(0f, 1f).apply {
+            duration = 1000
+            fillAfter = true
+        }
+        view.startAnimation(fadeIn)
     }
 
     private fun logout() {
-        // Lógica para cerrar sesión
         Toast.makeText(this, "Cerrando sesión...", Toast.LENGTH_SHORT).show()
 
-        // Limpiar las SharedPreferences
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        editor.clear() // Elimina todos los datos almacenados en las SharedPreferences
-        editor.apply() // Aplica los cambios
+        sharedPreferences.edit().clear().apply()
 
-        // Redirigir a MainActivity
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
-
-        // Cerrar la actividad actual
         finish()
     }
 }

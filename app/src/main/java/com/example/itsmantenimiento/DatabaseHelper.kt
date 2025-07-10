@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 import Actividad
 import ActividadEstado
 import ApiService
@@ -432,7 +432,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
     fun getEmpleados(): List<Empleado> {
         val empleados = mutableListOf<Empleado>()
         val db = this.readableDatabase
-        val query = "SELECT id, nombre as name FROM users WHERE activo = 1" // Ajusta la consulta según tu esquema de base de datos
+        val query = "SELECT u.id, u.nombre as name \n" +
+                "FROM users u\n" +
+                "join rel_roles_usuarios rru on (rru.idUsuario  = u.id)\n" +
+                "WHERE u.activo = 1 and rru.idRol  in (1,2)" // Ajusta la consulta según tu esquema de base de datos
         val cursor = db.rawQuery(query, null)
 
         if (cursor.moveToFirst()) {
@@ -907,6 +910,26 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         }
     }
 
+    fun obtenerNombreUsuario(idUser: Int): String {
+        val db = this.readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT nombre FROM users WHERE id = ?",
+            arrayOf(idUser.toString())
+        )
+
+        var nombreUsuario = ""
+
+        if (cursor.moveToFirst()) {
+            nombreUsuario = cursor.getString(cursor.getColumnIndexOrThrow("nombre"))
+        }
+
+        cursor.close()
+        db.close()
+        return nombreUsuario
+    }
+
+
+
     fun obtenerRolUsuario(documento: String, password: String): Int {
         val db = this.readableDatabase
         val cursor = db.rawQuery(
@@ -948,7 +971,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         val db = this.readableDatabase
         val cursor = db.rawQuery(
-            "SELECT id , password , documento FROM users WHERE documento = ? AND activo = 1",
+            "SELECT id , password , documento , nombre FROM users WHERE documento = ? AND activo = 1",
             arrayOf(documento)
         )
 
@@ -968,15 +991,15 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             }
         }
 
-        return if (cursor.moveToFirst() and isValid) {
+        return if (isValid && cursor.moveToFirst()) { // Asegúrate de que isValid sea verdadero antes de intentar acceder a los datos del cursor
             val idUser = cursor.getInt(0)
             cursor.close()
             db.close()
-            idUser
+            idUser // Retorna el idUser si el usuario es válido y se encontró
         } else {
             cursor.close()
             db.close()
-            -1 // Retorna -1 si no encuentra el usuario
+            -1 // Retorna -1 si no encuentra el usuario o la contraseña no es válida
         }
     }
 

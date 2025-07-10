@@ -1,10 +1,10 @@
-package com.example.itsmantenimiento
+// NO CAMBIADO
+package com.uvrp.itsmantenimientoapp
 
 import ApiService.Vehiculo
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
@@ -13,6 +13,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
@@ -23,9 +24,6 @@ class iniciarPreoperacional : AppCompatActivity() {
     private var idVehiculoSeleccionado: Int? = null
     private var placaa: String? = null
     private var vehiculoSeleccionado: Vehiculo? = null
-    private var valUsu: Int = 0
-    private var valEstadoUsu: Int = 0
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,24 +35,42 @@ class iniciarPreoperacional : AppCompatActivity() {
 
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
         val navView = findViewById<NavigationView>(R.id.nav_view)
-        val spinner: Spinner = findViewById(R.id.spinnerOpciones)
+        val autoComplete = findViewById<AutoCompleteTextView>(R.id.autoCompletePlacas)
         val btnIniciar = findViewById<Button>(R.id.btnIniciarPreoperacional)
 
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("idUser", -1)
 
+        navView.setNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_its -> {
+                    val idRol = sharedPreferences.getInt("idRol", -1)
+                    if (idRol == 1 || idRol == 2) {
+                        startActivity(Intent(this, Nivel1Activity::class.java))
+                    } else {
+                        Toast.makeText(this, "No tiene permisos para acceder como ITS.", Toast.LENGTH_LONG).show()
+                    }
+                    true
+                }
+                R.id.nav_preoperacional -> {
+                    startActivity(Intent(this, iniciarPreoperacional::class.java))
+                    true
+                }
+                R.id.nav_cerrarsesion -> {
+                    logout()
+                    true
+                }
+                else -> false
+            }
+        }
+
         if (idUsuario != -1) {
             RetrofitClient.instance.validarUsuario(idUsuario)
                 .enqueue(object : Callback<UsuarioValidadoResponse> {
-                    override fun onResponse(
-                        call: Call<UsuarioValidadoResponse>,
-                        response: Response<UsuarioValidadoResponse>
-                    ) {
+                    override fun onResponse(call: Call<UsuarioValidadoResponse>, response: Response<UsuarioValidadoResponse>) {
                         if (response.isSuccessful) {
                             val mensaje = response.body()?.success ?: "Desconocido"
-                            val estadoView = findViewById<TextView>(R.id.textEstadoSesion)
-                            estadoView.text = "Estado de sesión: $mensaje"
-
+                            findViewById<TextView>(R.id.textEstadoSesion).text = "Estado de sesión: $mensaje"
                         } else {
                             Log.e("ValidarUsuario", "❌ Error: ${response.code()}")
                         }
@@ -64,50 +80,118 @@ class iniciarPreoperacional : AppCompatActivity() {
                         Log.e("ValidarUsuario", "❌ Fallo de conexión: ${t.message}")
                     }
                 })
-        } else {
-            Log.e("ValidarUsuario", "No se encontró idUser en SharedPreferences")
         }
 
+        lifecycleScope.launch {
+            try {
+                val vehiculos = RetrofitClient.instance.getVehiculos()
+                val placasList = vehiculos.map { it.placa }
+
+                val adapter = object : ArrayAdapter<String>(
+                    this@iniciarPreoperacional,
+                    android.R.layout.simple_dropdown_item_1line,
+                    placasList.toMutableList()
+                ) {
+                    private var fullList: List<String> = placasList
+
+                    override fun getFilter(): Filter {
+                        return object : Filter() {
+                            override fun performFiltering(constraint: CharSequence?): FilterResults {
+                                val filterResults = FilterResults()
+                                if (!constraint.isNullOrEmpty()) {
+                                    val input = constraint.toString().trim().lowercase()
+                                    val suggestions = fullList.filter {
+                                        it.lowercase().contains(input)
+                                    }
+                                    filterResults.values = suggestions
+                                    filterResults.count = suggestions.size
+                                } else {
+                                    filterResults.values = fullList
+                                    filterResults.count = fullList.size
+                                }
+                                return filterResults
+                            }
+
+                            override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+                                clear()
+                                if (results?.values != null) {
+                                    @Suppress("UNCHECKED_CAST")
+                                    addAll(results.values as List<String>)
+                                }
+                                notifyDataSetChanged()
+                            }
+
+                            override fun convertResultToString(resultValue: Any?): CharSequence {
+                                return resultValue?.toString() ?: ""
+                            }
+                        }
+                    }
+                }
+
+                autoComplete.setAdapter(adapter)
+                autoComplete.threshold = 1
+
+                autoComplete.setOnItemClickListener { parent, _, position, _ ->
+                    val placaSeleccionada = parent.getItemAtPosition(position) as String
+                    vehiculoSeleccionado = vehiculos.firstOrNull { it.placa == placaSeleccionada }
+                    placaa = vehiculoSeleccionado?.placa
+                    idVehiculoSeleccionado = vehiculoSeleccionado?.id
+
+                    Log.d("AutoComplete", "Placa seleccionada: $placaa, ID: $idVehiculoSeleccionado")
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(this@iniciarPreoperacional, "Error al cargar vehículos", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         btnIniciar.setOnClickListener {
             if (vehiculoSeleccionado != null) {
-                val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
                 val idUsuario = sharedPreferences.getInt("idUser", -1)
+                if (idUsuario == -1) {
+                    Toast.makeText(this, "No se encontró el ID de usuario", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
 
-                if (idUsuario != -1) {
-                    val call = RetrofitClient.instance.validarVehiculoLicencia(
-                        idUsuario,
-                        vehiculoSeleccionado!!.id
-                    )
+                btnIniciar.isEnabled = false
+                val progressDialog = AlertDialog.Builder(this)
+                    .setView(R.layout.dialog_loading)
+                    .setCancelable(false)
+                    .create()
+                progressDialog.show()
 
-                    call.enqueue(object : Callback<ApiService.ValidarVehiculoResponse> {
-                        override fun onResponse(
-                            call: Call<ApiService.ValidarVehiculoResponse>,
-                            response: Response<ApiService.ValidarVehiculoResponse>
-                        ) {
+                RetrofitClient.instance.validarVehiculoLicencia(idUsuario, vehiculoSeleccionado!!.id)
+                    .enqueue(object : Callback<ApiService.ValidarVehiculoResponse> {
+                        override fun onResponse(call: Call<ApiService.ValidarVehiculoResponse>, response: Response<ApiService.ValidarVehiculoResponse>) {
+                            progressDialog.dismiss()
+                            btnIniciar.isEnabled = true
+
                             if (response.isSuccessful) {
                                 val data = response.body()
                                 val mensajes = mutableListOf<String>()
-
+                                var estadoEncontrado: Int? = null
+                                var esUsuarioActual = false
 
                                 data?.let {
                                     if (it.vehiculo_con_preoperacional_abierto == true) {
                                         it.aVehiculo?.firstOrNull()?.let { v ->
                                             if (v.idUsuario != idUsuario) {
-                                                mensajes.add("El vehículo: ${v.placa} cuenta con preoperacional abierto por: ${v.nombre}")
+                                                mensajes.add("El vehículo: ${v.placa} tiene preoperacional abierto por: ${v.nombre}")
                                             } else {
-                                                valEstadoUsu = v.estado
-                                                valUsu = 1
+                                                estadoEncontrado = v.estado
+                                                esUsuarioActual = true
                                             }
                                         }
                                     }
+
                                     if (it.vehiculo_usuario_con_preoperacional_abierto == true) {
                                         it.aUsuario?.firstOrNull()?.let { u ->
                                             if (u.idVehiculo != vehiculoSeleccionado!!.id) {
-                                                mensajes.add("El usuario: ${u.nombre} tiene un vehículo con preoperacional abierto: ${u.placa}.")
+                                                mensajes.add("El usuario: ${u.nombre} tiene un preoperacional abierto con: ${u.placa}")
                                             } else {
-                                                valEstadoUsu = u.estado
-                                                valUsu = 1
+                                                estadoEncontrado = u.estado
+                                                esUsuarioActual = true
                                             }
                                         }
                                     }
@@ -122,139 +206,46 @@ class iniciarPreoperacional : AppCompatActivity() {
                                     if (it.v_estado == true) mensajes.add("Hay un estado pendiente de revisión.")
                                 }
 
-                                // ✅ Mostrar diálogo si hay advertencias
                                 if (mensajes.isNotEmpty()) {
                                     AlertDialog.Builder(this@iniciarPreoperacional)
                                         .setTitle("Advertencias")
                                         .setMessage(mensajes.joinToString("\n"))
-                                        .setPositiveButton("Cerrar") { dialog, _ -> dialog.dismiss() }
+                                        .setPositiveButton("Cerrar", null)
                                         .show()
-                                    return // Detiene la ejecución aquí
+                                    return
                                 }
 
-                                if (valUsu == 1) {
-                                    when (valEstadoUsu) {
-                                        1 -> {
-                                            val intent = Intent(this@iniciarPreoperacional, FormularioActividadActivity::class.java)
-                                            intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
-                                            intent.putExtra("placaa", placaa!!)
-                                            startActivity(intent)
-                                        }
-                                        2 -> {
-                                            val intent = Intent(this@iniciarPreoperacional,
-                                                FinalizarPreoperacionalActivity::class.java)
-                                            intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
-                                            intent.putExtra("placaa", placaa!!)
-                                            startActivity(intent)
-                                            //Toast.makeText(this@iniciarPreoperacional, "⚠️ Usuario inhabilitado temporalmente.", Toast.LENGTH_SHORT).show()
-                                        }
-                                        else -> {
-
-                                        }
+                                if (esUsuarioActual) {
+                                    when (estadoEncontrado) {
+                                        1 -> startFormulario()
+                                        2 -> startFinalizar()
+                                        else -> abrirPreoperacional(idUsuario)
                                     }
-
                                 } else {
-                                    // Si no hay advertencias, continuar con la apertura del preoperacional
-                                    val request = ApiService.PreoperacionalRequest(
-                                        idVehiculo = idVehiculoSeleccionado!!,
-                                        idUsuario = idUsuario
-                                    )
-
-                                    RetrofitClient.instance.abrirPreoperacional(request).enqueue(object : Callback<Void> {
-                                        override fun onResponse(call: Call<Void>, response: Response<Void>) {
-                                            if (response.isSuccessful) {
-                                                val intent = Intent(this@iniciarPreoperacional, FormularioActividadActivity::class.java)
-                                                intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
-                                                intent.putExtra("placaa", placaa!!)
-                                                startActivity(intent)
-                                            } else {
-                                                AlertDialog.Builder(this@iniciarPreoperacional)
-                                                    .setTitle("Error")
-                                                    .setMessage("No se pudo registrar el preoperacional. Código: ${response.code()}")
-                                                    .setPositiveButton("Cerrar") { dialog, _ -> dialog.dismiss() }
-                                                    .show()
-                                            }
-                                        }
-
-                                        override fun onFailure(call: Call<Void>, t: Throwable) {
-                                            AlertDialog.Builder(this@iniciarPreoperacional)
-                                                .setTitle("Error de red")
-                                                .setMessage("No se pudo conectar con el servidor. Verifica tu conexión.\n${t.localizedMessage}")
-                                                .setPositiveButton("Cerrar") { dialog, _ -> dialog.dismiss() }
-                                                .show()
-                                        }
-                                    })
+                                    abrirPreoperacional(idUsuario)
                                 }
-
 
                             } else {
-                                Log.e("API", "Error en la respuesta: ${response.errorBody()?.string()}")
-                                Toast.makeText(
-                                    this@iniciarPreoperacional,
-                                    "Error en la respuesta del servidor",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                Toast.makeText(this@iniciarPreoperacional, "Error de validación", Toast.LENGTH_SHORT).show()
                             }
                         }
 
-                        override fun onFailure(
-                            call: Call<ApiService.ValidarVehiculoResponse>,
-                            t: Throwable
-                        ) {
-                            Log.e("API", "Error en la llamada: ${t.message}")
-                            Toast.makeText(
-                                this@iniciarPreoperacional,
-                                "Error al conectar con el servidor: ${t.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        override fun onFailure(call: Call<ApiService.ValidarVehiculoResponse>, t: Throwable) {
+                            progressDialog.dismiss()
+                            btnIniciar.isEnabled = true
+
+                            Toast.makeText(this@iniciarPreoperacional, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
+
+                            FirebaseCrashlytics.getInstance().apply {
+                                log("📡 Error en validarVehiculoLicencia")
+                                setCustomKey("UsuarioID", idUsuario)
+                                setCustomKey("VehiculoID", vehiculoSeleccionado?.id ?: -1)
+                                recordException(t)
+                            }
                         }
                     })
-                } else {
-                    Toast.makeText(this, "No se encontró el ID de usuario", Toast.LENGTH_SHORT).show()
-                }
             } else {
                 Toast.makeText(this, "Seleccione un vehículo válido", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        lifecycleScope.launch {
-            try {
-                val vehiculos = RetrofitClient.instance.getVehiculos()
-                val placasList = mutableListOf("Seleccionar vehículo").apply {
-                    addAll(vehiculos.map { it.placa })
-                }
-
-                val adapter = ArrayAdapter(
-                    this@iniciarPreoperacional,
-                    android.R.layout.simple_spinner_item,
-                    placasList
-                )
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                spinner.adapter = adapter
-
-                spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                    override fun onItemSelected(
-                        parent: AdapterView<*>, view: View?, position: Int, id: Long
-                    ) {
-                        if (position == 0) {
-                            vehiculoSeleccionado = null
-                            return
-                        }
-                        vehiculoSeleccionado = vehiculos[position - 1]
-                        idVehiculoSeleccionado = vehiculoSeleccionado?.id
-                        placaa = vehiculoSeleccionado?.placa
-                        Log.d("Spinner", "ID: ${vehiculoSeleccionado?.id}, Placa: ${placaa}")
-                    }
-
-                    override fun onNothingSelected(parent: AdapterView<*>) {}
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(
-                    this@iniciarPreoperacional,
-                    "Error al cargar vehículos",
-                    Toast.LENGTH_SHORT
-                ).show()
             }
         }
 
@@ -265,5 +256,52 @@ class iniciarPreoperacional : AppCompatActivity() {
         )
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
+    }
+
+    private fun startFormulario() {
+        val intent = Intent(this, FormularioActividadActivity::class.java)
+        intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
+        intent.putExtra("placaa", placaa!!)
+        startActivity(intent)
+    }
+
+    private fun startFinalizar() {
+        val intent = Intent(this, FinalizarPreoperacionalActivity::class.java)
+        intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
+        intent.putExtra("placaa", placaa!!)
+        startActivity(intent)
+    }
+
+    private fun abrirPreoperacional(idUsuario: Int) {
+        val request = ApiService.PreoperacionalRequest(idVehiculoSeleccionado!!, idUsuario)
+        RetrofitClient.instance.abrirPreoperacional(request)
+            .enqueue(object : Callback<Void> {
+                override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                    if (response.isSuccessful) {
+                        startFormulario()
+                    } else {
+                        AlertDialog.Builder(this@iniciarPreoperacional)
+                            .setTitle("Error")
+                            .setMessage("No se pudo registrar el preoperacional. Código: ${response.code()}")
+                            .setPositiveButton("Cerrar", null)
+                            .show()
+                    }
+                }
+
+                override fun onFailure(call: Call<Void>, t: Throwable) {
+                    AlertDialog.Builder(this@iniciarPreoperacional)
+                        .setTitle("Error de red")
+                        .setMessage("No se pudo conectar con el servidor.\n${t.localizedMessage}")
+                        .setPositiveButton("Cerrar", null)
+                        .show()
+                }
+            })
+    }
+
+    private fun logout() {
+        Toast.makeText(this, "Cerrando sesión...", Toast.LENGTH_SHORT).show()
+        getSharedPreferences("Sesion", MODE_PRIVATE).edit().clear().apply()
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
     }
 }

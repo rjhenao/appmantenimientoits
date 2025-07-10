@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,6 +17,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import androidx.core.content.FileProvider
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -90,8 +91,10 @@ class FormularioActividadActivity : AppCompatActivity() {
 
         val btnIniciarPreoperacional = findViewById<Button>(R.id.btnIniciarPreoperacional)
         btnIniciarPreoperacional.setOnClickListener {
+
             //mostrarEstadosSeleccionados()
             enviarPreoperacional()
+            // El botón se habilitará en onResponse o onFailure
         }
 
 
@@ -139,11 +142,13 @@ class FormularioActividadActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     response.body()?.let { mostrarActividades(it) }
                 } else {
+                    FirebaseCrashlytics.getInstance().log("Error al cargar actividades: ${response.code()} - ${response.message()}")
                     mostrarError("Error al cargar actividades")
                 }
             }
 
             override fun onFailure(call: Call<List<ActividadFormato>>, t: Throwable) {
+                FirebaseCrashlytics.getInstance().recordException(t)
                 mostrarError("Fallo: ${t.message}")
             }
         })
@@ -282,6 +287,7 @@ class FormularioActividadActivity : AppCompatActivity() {
             photoFile = try {
                 crearArchivoImagen()  // ← Aquí el cambio
             } catch (ex: IOException) {
+                FirebaseCrashlytics.getInstance().recordException(ex)
                 mostrarError("Error creando archivo para imagen")
                 null
             }
@@ -373,6 +379,7 @@ class FormularioActividadActivity : AppCompatActivity() {
             Log.d("Compresión", "✅ Imagen comprimida a ${file.length() / 1024} KB")
 
         } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
             e.printStackTrace()
             mostrarError("Error al comprimir imagen")
         }
@@ -389,6 +396,7 @@ class FormularioActividadActivity : AppCompatActivity() {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 abrirCamara()
             } else {
+                FirebaseCrashlytics.getInstance().log("Permiso de cámara denegado por el usuario.")
                 Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
             }
         }
@@ -630,6 +638,7 @@ class FormularioActividadActivity : AppCompatActivity() {
 
         // 🚀 Enviar solicitud
         service.iniciarPreoperacional(jsonRequestBody, images).enqueue(object : Callback<Void> {
+
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
                 if (response.isSuccessful) {
                     Toast.makeText(
@@ -641,6 +650,8 @@ class FormularioActividadActivity : AppCompatActivity() {
                     getSharedPreferences("estado_actividades", MODE_PRIVATE).edit().clear().apply()
                     getSharedPreferences("observaciones_actividades", MODE_PRIVATE).edit().clear().apply()
                     getSharedPreferences("PreoperacionalPrefs", MODE_PRIVATE).edit().clear().apply()
+                    getSharedPreferences("kilometraje_pref", MODE_PRIVATE).edit().clear().apply()
+
 
                     // 👉 Redirigir a otro activity
                     val intent = Intent(this@FormularioActividadActivity, iniciarPreoperacional::class.java)
@@ -655,26 +666,31 @@ class FormularioActividadActivity : AppCompatActivity() {
                             json.optString("error", "Error desconocido")
                         } ?: "Error desconocido"
                     } catch (e: Exception) {
+                        FirebaseCrashlytics.getInstance().recordException(e)
                         Log.e("PREOPERACIONAL", "❌ Error al parsear mensaje: ${e.localizedMessage}")
                         "Error inesperado"
                     }
 
                     Log.e("PREOPERACIONAL", "❌ Error al enviar: ${response.code()} - $errorMsg")
+                    FirebaseCrashlytics.getInstance().log("Error al enviar preoperacional: ${response.code()} - $errorMsg")
                     Toast.makeText(
                         this@FormularioActividadActivity,
                         "❌ $errorMsg",
                         Toast.LENGTH_LONG
                     ).show()
                 }
+
             }
 
             override fun onFailure(call: Call<Void>, t: Throwable) {
+                FirebaseCrashlytics.getInstance().recordException(t)
                 Log.e("PREOPERACIONAL", "❌ Fallo: ${t.localizedMessage}", t)
                 Toast.makeText(
                     this@FormularioActividadActivity,
                     "❌ Fallo: ${t.localizedMessage}",
                     Toast.LENGTH_SHORT
                 ).show()
+
             }
         })
     }

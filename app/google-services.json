@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "213358897836",
+    "project_id": "itsom-e6caf",
+    "storage_bucket": "itsom-e6caf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:213358897836:android:b3685105855f615feecd09",
+        "android_client_info": {
+          "package_name": "com.uvrp.itsmantenimientoapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEQDpr59oSgaEwOhYUIccVB3psqfbDj5Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

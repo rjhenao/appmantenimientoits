@@ -1,10 +1,11 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import ApiService
 import android.content.ContentValues
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -13,6 +14,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -42,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        FirebaseApp.initializeApp(this)
 
         val updater = AppUpdater(this)
         val versionName = BuildConfig.VERSION_NAME
@@ -54,11 +57,14 @@ class MainActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
 
-//        if (isLoggedIn) {
-//            val intent = Intent(this, Nivel1Activity::class.java)
-//            startActivity(intent)
-//            finish()
-//        }
+        if (isLoggedIn) {
+            // Si ya ha iniciado sesión, redirigir directamente a HomeActivity
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+            finish() // Cierra MainActivity para que no pueda volver atrás
+            return // Salir de onCreate para evitar la configuración de vistas innecesarias
+        }
+
 
         usernameInput = findViewById(R.id.username_input)
         passswordInput = findViewById(R.id.password_input)
@@ -74,31 +80,32 @@ class MainActivity : AppCompatActivity() {
             // Valida las credenciales con la base de datos local
             val dbHelper = DatabaseHelper(this)
 
-
             val userId = dbHelper.obtenerIdUsuario(username, password) // Obtiene el ID del usuario
-
-            val idRol = dbHelper.obtenerRolUsuario(username, password)
-
-
 
             Log.i("Test Credenciales2", "Documento: $username y Password: $password y $userId")
 
+            if (userId != -1) { // Credenciales válidas
+                val nombreUsu = dbHelper.obtenerNombreUsuario(userId)
+                val idRol = dbHelper.obtenerRolUsuario(username, password) // O dbHelper.obtenerRolUsuarioPorId(userId) si tienes esa función
 
-            if (userId != -1) {
-                val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
-                val editor = sharedPreferences.edit()
+                val editor = getSharedPreferences("Sesion", MODE_PRIVATE).edit()
                 editor.putBoolean("isLoggedIn", true)
-                editor.putInt("idUser", userId) // Guardamos el ID del usuario en lugar del username
-                editor.putInt("idRol", idRol) // Guardamos el ID del usuario en lugar del username
+                editor.putInt("idUser", userId)
+                editor.putInt("idRol", idRol)
+                editor.putString("nombre", nombreUsu)
                 editor.apply()
 
-            if (idRol == 1 || idRol == 2) {
-                val intent = Intent(this, HomeActivity::class.java)
-                startActivity(intent)
-                finish() // Cierra la actividad de login para que no pueda volver atrás
-
-            }
-
+                // Redirigir a HomeActivity independientemente del rol (siempre que el rol sea válido para el login)
+                // La lógica de qué mostrar dentro de HomeActivity se puede manejar allí basado en idRol
+                if (idRol in 1..4) { // Asumiendo que los roles 1, 2, 3, 4 son válidos para ingresar
+                    val intent = Intent(this, HomeActivity::class.java)
+                    startActivity(intent)
+                    finish() // Cierra la actividad de login para que no pueda volver atrás
+                } else {
+                    // Opcional: manejar roles no válidos para el login aquí, aunque si userId != -1, el rol debería ser válido.
+                    // Esto podría ser un caso de error en la lógica de obtenerRolUsuario.
+                    Toast.makeText(this, "Rol de usuario no válido para iniciar sesión.", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 Toast.makeText(this, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
             }
@@ -122,7 +129,7 @@ class MainActivity : AppCompatActivity() {
 
                 progressDialog.dismiss()
 
-                Log.d("kju" , errorBD.toString())
+                Log.d("Sincronizacion", "Errores en BD: $errorBD")
 
                 if (errorBD > 0) {
                     Toast.makeText(this@MainActivity, "Sincronización con errores", Toast.LENGTH_LONG).show()

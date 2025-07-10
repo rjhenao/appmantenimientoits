@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:padding="16dp"
     android:background="#F5F5F5"
-    android:id="@+id/main">
+    android:id="@+id/main"
+    android:fitsSystemWindows="true">
 
 
     <!-- Contenido Scrollable -->

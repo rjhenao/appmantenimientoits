@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 import android.os.Parcel
 import android.os.Parcelable
 
