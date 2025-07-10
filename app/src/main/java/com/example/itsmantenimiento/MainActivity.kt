@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import ApiService
 import android.content.ContentValues
@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                 editor.putInt("idRol", idRol) // Guardamos el ID del usuario en lugar del username
                 editor.apply()
 
-            if (idRol == 1 || idRol == 2) {
+            if (idRol == 1 || idRol == 2 || idRol == 3 || idRol == 4) {
                 val intent = Intent(this, HomeActivity::class.java)
                 startActivity(intent)
                 finish() // Cierra la actividad de login para que no pueda volver atrás

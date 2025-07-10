@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import ApiService
 import retrofit2.Retrofit
@@ -8,7 +8,7 @@ object RetrofitClient {
     //producción
     //private const val BASE_URL = "http://10.208.5.53"
     //pruebas
-    private const val BASE_URL = "http://10.208.5.53"
+    private const val BASE_URL = "http://181.225.65.82:8196"
 
     val instance: ApiService by lazy {
         val retrofit = Retrofit.Builder()

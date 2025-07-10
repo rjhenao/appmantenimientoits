@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import android.Manifest
 import android.content.Intent
@@ -19,7 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.itsmantenimiento.iniciarPreoperacional
+import com.uvrp.itsmantenimientoapp.iniciarPreoperacional
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody

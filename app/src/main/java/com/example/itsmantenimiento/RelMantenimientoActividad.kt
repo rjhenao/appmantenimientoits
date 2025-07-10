@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 data class RelMantenimientoActividad(
     val id : Int ,

@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import ApiService.Vehiculo
 import android.content.Intent
@@ -42,6 +42,33 @@ class iniciarPreoperacional : AppCompatActivity() {
 
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("idUser", -1)
+
+        navView.setNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_its -> {
+                    val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
+                    val idRol = sharedPreferences.getInt("idRol", -1)
+                    if (idRol == 1 || idRol == 2) {
+                        val intent = Intent(this, Nivel1Activity::class.java)
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(this, "No tiene permisos para acceder como ITS.", Toast.LENGTH_LONG).show()
+                    }
+                    true
+                }
+                R.id.nav_preoperacional -> {
+                    val intent = Intent(this, iniciarPreoperacional::class.java)
+                    startActivity(intent)
+                    true
+                }
+                R.id.nav_cerrarsesion -> {
+                    logout()
+                    true
+                }
+                else -> false
+            }
+        }
+
 
         if (idUsuario != -1) {
             RetrofitClient.instance.validarUsuario(idUsuario)
@@ -266,4 +293,14 @@ class iniciarPreoperacional : AppCompatActivity() {
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
     }
+
+    private fun logout() {
+        Toast.makeText(this, "Cerrando sesión...", Toast.LENGTH_SHORT).show()
+        val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
+        sharedPreferences.edit().clear().apply()
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
 }

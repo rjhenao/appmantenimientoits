@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 import Actividad
 import ActividadEstado
 import ApiService
@@ -432,7 +432,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
     fun getEmpleados(): List<Empleado> {
         val empleados = mutableListOf<Empleado>()
         val db = this.readableDatabase
-        val query = "SELECT id, nombre as name FROM users WHERE activo = 1" // Ajusta la consulta según tu esquema de base de datos
+        val query = "SELECT u.id, u.nombre as name \n" +
+                "FROM users u\n" +
+                "join rel_roles_usuarios rru on (rru.idUsuario  = u.id)\n" +
+                "WHERE u.activo = 1 and rru.idRol  in (1,2)" // Ajusta la consulta según tu esquema de base de datos
         val cursor = db.rawQuery(query, null)
 
         if (cursor.moveToFirst()) {

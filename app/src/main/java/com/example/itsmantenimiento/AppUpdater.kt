@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import android.app.DownloadManager
 import android.content.Context
@@ -13,7 +13,10 @@ import java.io.IOException
 
 class AppUpdater(private val context: Context) {
 
-    private val serverUrl = "http://10.208.5.53:8080/actualizaciones/version.json"
+    //private val serverUrl = "http://10.208.5.53:8080/actualizaciones/version.json"
+    private val serverUrl = "http://181.225.65.82:8195/actualizaciones/version.json"
+
+
     val versionName = BuildConfig.VERSION_NAME
     private val currentVersion = versionName // Cambia esto por la versión actual de la app
 

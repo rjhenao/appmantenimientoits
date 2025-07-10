@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.itsmantenimiento"
+    namespace = "com.uvrp.itsmantenimientoapp"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.itsmantenimiento"
+        applicationId = "com.uvrp.itsmantenimientoapp"
         minSdk = 24
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.4"
+        versionCode = 4
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
