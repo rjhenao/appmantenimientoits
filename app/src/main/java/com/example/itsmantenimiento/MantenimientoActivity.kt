@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import Actividad
 import ActividadEstado
@@ -19,6 +19,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.TextUtils
 import android.util.Log
 import android.widget.Button
 import android.widget.CheckBox
@@ -358,9 +359,15 @@ class MantenimientoActivity : AppCompatActivity() {
         empleados.forEach { empleado ->
             val checkBox = CheckBox(this)
             checkBox.text = empleado.nombre
+            checkBox.maxLines = 1
+            checkBox.ellipsize = TextUtils.TruncateAt.END
+            checkBox.setHorizontallyScrolling(false)
+            checkBox.textSize = 12f
+
             val params = GridLayout.LayoutParams().apply {
-                rowSpec = GridLayout.spec(GridLayout.UNDEFINED)
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
+                width = 0
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                setMargins(8, 8, 8, 8)
             }
             checkBox.layoutParams = params
             checkboxContainer.addView(checkBox)
@@ -395,7 +402,7 @@ class MantenimientoActivity : AppCompatActivity() {
                 photoFile?.also {
                     val photoURI: Uri = FileProvider.getUriForFile(
                         this,
-                        "${applicationContext.packageName}.fileprovider",
+                        "com.uvrp.itsmantenimientoapp.provider",  // ✅ Este coincide con tu manifest
                         it
                     )
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
@@ -420,7 +427,7 @@ class MantenimientoActivity : AppCompatActivity() {
             photoFile?.also {
                 val photoURI: Uri = FileProvider.getUriForFile(
                     this,
-                    "${packageName}.fileprovider",
+                    "com.uvrp.itsmantenimientoapp.provider",  // ✅ Este coincide con tu manifest
                     it
                 )
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)

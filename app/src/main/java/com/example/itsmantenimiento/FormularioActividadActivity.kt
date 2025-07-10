@@ -1,4 +1,4 @@
-package com.example.itsmantenimiento
+package com.uvrp.itsmantenimientoapp
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -641,6 +641,8 @@ class FormularioActividadActivity : AppCompatActivity() {
                     getSharedPreferences("estado_actividades", MODE_PRIVATE).edit().clear().apply()
                     getSharedPreferences("observaciones_actividades", MODE_PRIVATE).edit().clear().apply()
                     getSharedPreferences("PreoperacionalPrefs", MODE_PRIVATE).edit().clear().apply()
+                    getSharedPreferences("kilometraje_pref", MODE_PRIVATE).edit().clear().apply()
+
 
                     // 👉 Redirigir a otro activity
                     val intent = Intent(this@FormularioActividadActivity, iniciarPreoperacional::class.java)
