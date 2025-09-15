@@ -98,12 +98,12 @@ class MainActivity : AppCompatActivity() {
                 editor.putString("nombre", nombreUsu)
                 editor.apply()
 
+
                 // Redirigir a HomeActivity independientemente del rol (siempre que el rol sea válido para el login)
                 // La lógica de qué mostrar dentro de HomeActivity se puede manejar allí basado en idRol
                 if (idRol in 1..10) { // Asumiendo que los roles 1, 2, 3, 4 son válidos para ingresar
                     //val intent = Intent(this, HomeActivity::class.java)
                     val intent = Intent(this, HomeActivity::class.java)
-
                     startActivity(intent)
                     finish() // Cierra la actividad de login para que no pueda volver atrás
                 } else {

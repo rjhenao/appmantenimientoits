@@ -40,7 +40,9 @@ class iniciarPreoperacional : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("idUser", -1)
 
+
         // ... (todo tu código de Retrofit, listeners del botón, etc., se queda como está)
+
         if (idUsuario != -1) {
             RetrofitClient.instance.validarUsuario(idUsuario)
                 .enqueue(object : Callback<UsuarioValidadoResponse> {
@@ -273,3 +275,4 @@ class iniciarPreoperacional : AppCompatActivity() {
             })
     }
 }
+
