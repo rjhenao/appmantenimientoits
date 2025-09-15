@@ -1,10 +1,19 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/nav_home"
+        android:title="Inicio" />
+    <item
         android:id="@+id/nav_its"
-        android:title="ITS" />
+        android:title="Preventivo ITS" />
+    <item
+        android:id="@+id/nav_correctivo"
+        android:title="Correctivo ITS" />
     <item
         android:id="@+id/nav_preoperacional"
         android:title="Preoperacional" />
+    <item
+        android:id="@+id/nav_bitacoras"
+        android:title="Bitacoras" />
     <item
         android:id="@+id/nav_cerrarsesion"
         android:title="Cerrar Sesión" />

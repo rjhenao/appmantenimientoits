@@ -55,9 +55,28 @@ class Nivel1Activity : AppCompatActivity() {
     }
 
     private fun syncData() {
+        FuncionesGenerales.sincronizarTodosMantenimientos(this) { exito ->
+            if (exito) {
+                Log.d("SYNC", "La sincronización se completó correctamente.")
+            } else {
+                Log.d("SYNC", "No había mantenimientos pendientes o hubo un error en la sincronización.")
+            }
+        }
+    }
+
+
+    private fun syncData2() {
         // Lógica para sincronizar datos
 
-        FuncionesGenerales.sincronizarMantenimientos(this) { exito ->
+       /* FuncionesGenerales.sincronizarMantenimientos(this) { exito ->
+            if (exito) {
+                Log.d("SYNC", "La sincronización se completó correctamente.")
+            } else {
+                Log.d("SYNC", "Hubo un error en la sincronización.")
+            }
+        }*/
+
+        FuncionesGenerales.sincronizarMantenimientosPendientes(this) { exito ->
             if (exito) {
                 Log.d("SYNC", "La sincronización se completó correctamente.")
             } else {

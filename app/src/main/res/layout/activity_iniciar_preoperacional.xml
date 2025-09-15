@@ -5,67 +5,106 @@
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     tools:context=".HomeActivity">
 
-    <!-- Contenedor principal -->
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="@color/fondo_claro">
 
+        <!-- Toolbar -->
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar_home"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
+            android:background="@color/azul_corporativo"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            android:elevation="4dp" />
 
-        <Spinner
-            android:id="@+id/spinnerOpciones"
+
+
+        <!-- Contenedor principal con Card -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="1dp"
-            android:layout_marginTop="16dp"
-            android:spinnerMode="dropdown" />
+            android:layout_margin="16dp"
+            app:cardElevation="6dp"
+            app:cardCornerRadius="12dp"
+            android:backgroundTint="@android:color/white">
 
-
-        <!-- Contenido principal -->
-        <Button
-            android:id="@+id/btnIniciarPreoperacional"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Iniciar Preoperacional"
-            android:textSize="18sp"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:layout_margin="32dp"
-            android:backgroundTint="@color/azul_corporativo"
-            android:textColor="@android:color/white"
-            android:elevation="4dp"
-            android:paddingLeft="24dp"
-            android:paddingRight="24dp"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:drawableTop="@null" />
-
-
-
-            <TextView
-                android:id="@+id/textEstadoSesion"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginHorizontal="16dp"
-                android:padding="8dp"
-                android:text="Estado de sesión: ---"
-                android:background="@drawable/bg_estado_sesion"
-                android:textColor="@android:color/white"
-                android:textStyle="bold"
-                android:gravity="center"/>
+                android:orientation="vertical"
+                android:padding="16dp">
 
+                <TextView
+                    android:id="@+id/textTitulo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Panel de control"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/azul_corporativo"
+                    android:layout_gravity="center_horizontal"
+                    android:paddingBottom="8dp"/>
 
+                <!-- Spinner de opciones -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Seleccione una opción:"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp" />
 
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/spinnerOpcionesLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:hint="Buscar placa">
 
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompletePlacas"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:background="@drawable/bg_spinner"
+                        android:dropDownHeight="300dp"
+                        android:padding="8dp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Botón principal -->
+                <Button
+                    android:id="@+id/btnIniciarPreoperacional"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Iniciar Preoperacional"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="16dp"
+                    android:backgroundTint="@color/azul_corporativo"
+                    android:textColor="@android:color/white"
+                    android:padding="12dp"
+                    android:elevation="2dp" />
+
+                <!-- Estado de sesión -->
+                <TextView
+                    android:id="@+id/textEstadoSesion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:padding="12dp"
+                    android:text="Estado de sesión: Activo"
+                    android:background="@drawable/bg_estado_sesion"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
     <!-- Menú lateral -->
@@ -76,4 +115,5 @@
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
         app:menu="@menu/menu_drawer" />
+
 </androidx.drawerlayout.widget.DrawerLayout>

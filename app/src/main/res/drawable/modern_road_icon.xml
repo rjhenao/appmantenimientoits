@@ -1,0 +1,37 @@
+<!-- drawable/curved_road_icon.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorOnSurface">
+
+    <!-- Carretera curva -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,16C3,16 6,14 12,14C18,14 21,16 21,16L21,20C21,20.55 20.55,21 20,21L4,21C3.45,21 3,20.55 3,20L3,16Z"/>
+
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5,10C5,10 7,8 12,8C17,8 19,10 19,10L19,14C19,14 16,12 12,12C8,12 5,14 5,14L5,10Z"/>
+
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M7,4C7,4 9,3 12,3C15,3 17,4 17,4L17,8C17,8 15,7 12,7C9,7 7,8 7,8L7,4Z"/>
+
+    <!-- Líneas divisorias centrales -->
+    <path
+        android:fillColor="@android:color/black"
+        android:fillAlpha="0.4"
+        android:pathData="M11,17L13,17C13.28,17 13.5,17.22 13.5,17.5C13.5,17.78 13.28,18 13,18L11,18C10.72,18 10.5,17.78 10.5,17.5C10.5,17.22 10.72,17 11,17Z"/>
+
+    <path
+        android:fillColor="@android:color/black"
+        android:fillAlpha="0.4"
+        android:pathData="M11.5,11L12.5,11C12.78,11 13,11.22 13,11.5C13,11.78 12.78,12 12.5,12L11.5,12C11.22,12 11,11.78 11,11.5C11,11.22 11.22,11 11.5,11Z"/>
+
+    <path
+        android:fillColor="@android:color/black"
+        android:fillAlpha="0.4"
+        android:pathData="M11.7,5.5L12.3,5.5C12.58,5.5 12.8,5.72 12.8,6C12.8,6.28 12.58,6.5 12.3,6.5L11.7,6.5C11.42,6.5 11.2,6.28 11.2,6C11.2,5.72 11.42,5.5 11.7,5.5Z"/>
+</vector>

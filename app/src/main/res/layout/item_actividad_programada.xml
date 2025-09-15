@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="12dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="6dp"
+    app:strokeColor="@color/colorPrimary"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/card_gradient_background">
+
+        <!-- Header con título y estado -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="20dp"
+            android:paddingBottom="12dp"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvDescripcion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    android:textSize="20sp"
+                    android:textColor="@color/colorOnSurface"
+                    android:lineSpacingExtra="2dp"
+                    tools:text="Rocerla" />
+
+                <TextView
+                    android:id="@+id/tvCuadrilla"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorSecondary"
+                    tools:text="Cuadrilla: Cuadrilla #2" />
+
+            </LinearLayout>
+
+            <!-- Indicador de estado -->
+            <View
+                android:id="@+id/statusIndicator"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/status_indicator_active"
+                android:layout_marginStart="8dp" />
+
+        </LinearLayout>
+
+        <!-- Separador -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="20dp"
+            android:background="@color/colorDivider"
+            android:alpha="0.3" />
+
+        <!-- Información detallada -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:paddingTop="16dp">
+
+            <!-- Info Grid -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="UF | Sentido | Lado"
+                        android:textSize="11sp"
+                        android:textColor="@color/colorSecondaryText"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.05" />
+
+                    <TextView
+                        android:id="@+id/tvInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="14sp"
+                        android:textColor="@color/colorOnSurface"
+                        tools:text="2 | PACU | Derecha e Izquierda" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingStart="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Cantidad"
+                        android:textSize="11sp"
+                        android:textColor="@color/colorSecondaryText"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.05" />
+
+                    <TextView
+                        android:id="@+id/tvCantidad"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="16sp"
+                        android:textColor="@color/colorPrimary"
+                        android:textStyle="bold"
+                        tools:text="25000" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- PR Information -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Progresivas"
+                    android:textSize="11sp"
+                    android:textColor="@color/colorSecondaryText"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.05" />
+
+                <TextView
+                    android:id="@+id/tvPrs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorOnSurface"
+                    tools:text="PR Inicial: 073+100 | PR Final: 074+200" />
+
+            </LinearLayout>
+
+            <!-- Observación -->
+            <LinearLayout
+                android:id="@+id/observationContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/observation_background"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Observación"
+                    android:textSize="11sp"
+                    android:textColor="@color/colorWarning"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.05"
+                    android:drawableStart="@drawable/ic_warning_small"
+                    android:drawablePadding="6dp" />
+
+                <TextView
+                    android:id="@+id/tvObservacion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorOnWarningContainer"
+                    android:lineSpacingExtra="2dp"
+                    tools:text="Es urgente ya que inventoría lo va a revisar la próxima semana." />
+
+            </LinearLayout>
+
+            <!-- Botón de acción -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRegistrarActividad"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="REGISTRAR ACTIVIDAD"
+                android:textSize="14sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1"
+                android:paddingVertical="14dp"
+                app:cornerRadius="12dp"
+                app:backgroundTint="@color/colorPrimary"
+                app:rippleColor="@color/colorPrimaryVariant"
+                app:icon="@drawable/ic_add_task"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconTint="@color/white" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

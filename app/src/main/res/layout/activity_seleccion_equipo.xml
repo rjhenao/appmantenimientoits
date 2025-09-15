@@ -1,0 +1,159 @@
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:background="?android:attr/colorBackground">
+
+    <!-- Contenido principal -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Include header global -->
+        <include layout="@layout/header_global"/>
+
+        <!-- CONTENIDO DE LA ACTIVIDAD -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="8dp">
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="5dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Título -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Selección de Equipo"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/black"
+                        android:gravity="center"
+                        android:paddingBottom="24dp" />
+
+                    <!-- Locación -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Locación"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:paddingBottom="6dp"
+                        android:textColor="@color/black" />
+                    <Spinner
+                        android:id="@+id/spinnerLocacion"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_spinner"
+                        android:padding="8dp" />
+
+                    <!-- Sistema -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Sistema"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="6dp"
+                        android:textColor="@color/black" />
+                    <Spinner
+                        android:id="@+id/spinnerSistema"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_spinner"
+                        android:padding="8dp" />
+
+                    <!-- Subsistema -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Subsistema"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="6dp"
+                        android:textColor="@color/black" />
+                    <Spinner
+                        android:id="@+id/spinnerSubsistema"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_spinner"
+                        android:padding="8dp" />
+
+                    <!-- Tipo de Equipo -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Tipo de Equipo"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="6dp"
+                        android:textColor="@color/black" />
+                    <Spinner
+                        android:id="@+id/spinnerTipoEquipo"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_spinner"
+                        android:padding="8dp" />
+
+                    <!-- Tag del Equipo -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Tag del Equipo"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="6dp"
+                        android:textColor="@color/black" />
+                    <Spinner
+                        android:id="@+id/spinnerTagEquipo"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_spinner"
+                        android:padding="8dp" />
+
+                    <!-- Botón Aceptar -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAceptar"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Aceptar"
+                        android:textAllCaps="false"
+                        android:layout_marginTop="28dp"
+                        app:cornerRadius="8dp" />
+
+                </LinearLayout>
+            </ScrollView>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+    <!-- Menú lateral -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:headerLayout="@layout/header_global"
+        app:menu="@menu/menu_drawer" />
+
+</androidx.drawerlayout.widget.DrawerLayout>

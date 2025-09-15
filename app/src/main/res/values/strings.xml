@@ -1,11 +1,23 @@
 <resources>
-    <string name="app_name">ItsMantenimiento</string>
+    <string name="app_name">ITSOM</string>
     <string name="navigation_drawer_open">Abrir menú</string>
     <string name="navigation_drawer_close">Cerrar menú</string>
     <string-array name="opciones_array">
         <item>Opción 1</item>
         <item>Opción 2</item>
         <item>Opción 3</item>
+    </string-array>
+    <string-array name="estado_final">
+        <item>Funcionando</item>
+        <item>En reparación</item>
+        <item>Fuera de servicio</item>
+    </string-array>
+
+    <string-array name="prioridad">
+        <item>Baja</item>
+        <item>Media</item>
+        <item>Alta</item>
+        <item>Crítica</item>
     </string-array>
 
 </resources>

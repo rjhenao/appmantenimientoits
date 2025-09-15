@@ -1,10 +1,13 @@
 package com.uvrp.itsmantenimientoapp
 
 import ApiService
+import ApiService.InspeccionUsuario
+import ApiService.RelInspeccionActividad
 import android.content.ContentValues
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -13,6 +16,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -23,6 +27,7 @@ import retrofit2.Call
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import retrofit2.http.GET
 
 
 class MainActivity : AppCompatActivity() {
@@ -42,6 +47,7 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        FirebaseApp.initializeApp(this)
 
         val updater = AppUpdater(this)
         val versionName = BuildConfig.VERSION_NAME
@@ -54,11 +60,14 @@ class MainActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
 
-//        if (isLoggedIn) {
-//            val intent = Intent(this, Nivel1Activity::class.java)
-//            startActivity(intent)
-//            finish()
-//        }
+        if (isLoggedIn) {
+            // Si ya ha iniciado sesión, redirigir directamente a HomeActivity
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+            finish() // Cierra MainActivity para que no pueda volver atrás
+            return // Salir de onCreate para evitar la configuración de vistas innecesarias
+        }
+
 
         usernameInput = findViewById(R.id.username_input)
         passswordInput = findViewById(R.id.password_input)
@@ -74,31 +83,34 @@ class MainActivity : AppCompatActivity() {
             // Valida las credenciales con la base de datos local
             val dbHelper = DatabaseHelper(this)
 
-
             val userId = dbHelper.obtenerIdUsuario(username, password) // Obtiene el ID del usuario
-
-            val idRol = dbHelper.obtenerRolUsuario(username, password)
-
-
 
             Log.i("Test Credenciales2", "Documento: $username y Password: $password y $userId")
 
+            if (userId != -1) { // Credenciales válidas
+                val nombreUsu = dbHelper.obtenerNombreUsuario(userId)
+                val idRol = dbHelper.obtenerRolUsuario(username, password) // O dbHelper.obtenerRolUsuarioPorId(userId) si tienes esa función
 
-            if (userId != -1) {
-                val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
-                val editor = sharedPreferences.edit()
+                val editor = getSharedPreferences("Sesion", MODE_PRIVATE).edit()
                 editor.putBoolean("isLoggedIn", true)
-                editor.putInt("idUser", userId) // Guardamos el ID del usuario en lugar del username
-                editor.putInt("idRol", idRol) // Guardamos el ID del usuario en lugar del username
+                editor.putInt("idUser", userId)
+                editor.putInt("idRol", idRol)
+                editor.putString("nombre", nombreUsu)
                 editor.apply()
 
-            if (idRol == 1 || idRol == 2 || idRol == 3 || idRol == 4) {
-                val intent = Intent(this, HomeActivity::class.java)
-                startActivity(intent)
-                finish() // Cierra la actividad de login para que no pueda volver atrás
 
-            }
-
+                // Redirigir a HomeActivity independientemente del rol (siempre que el rol sea válido para el login)
+                // La lógica de qué mostrar dentro de HomeActivity se puede manejar allí basado en idRol
+                if (idRol in 1..10) { // Asumiendo que los roles 1, 2, 3, 4 son válidos para ingresar
+                    //val intent = Intent(this, HomeActivity::class.java)
+                    val intent = Intent(this, HomeActivity::class.java)
+                    startActivity(intent)
+                    finish() // Cierra la actividad de login para que no pueda volver atrás
+                } else {
+                    // Opcional: manejar roles no válidos para el login aquí, aunque si userId != -1, el rol debería ser válido.
+                    // Esto podría ser un caso de error en la lógica de obtenerRolUsuario.
+                    Toast.makeText(this, "Rol de usuario no válido para iniciar sesión.", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 Toast.makeText(this, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
             }
@@ -122,7 +134,7 @@ class MainActivity : AppCompatActivity() {
 
                 progressDialog.dismiss()
 
-                Log.d("kju" , errorBD.toString())
+                Log.d("Sincronizacion", "Errores en BD: $errorBD")
 
                 if (errorBD > 0) {
                     Toast.makeText(this@MainActivity, "Sincronización con errores", Toast.LENGTH_LONG).show()
@@ -152,7 +164,16 @@ class MainActivity : AppCompatActivity() {
                 async { sincronizarTabla("tipo_equipos", api.getTipoEquipos()) },
                 async { sincronizarTabla("rel_roles_usuarios", api.relRolesUsuarios()) },
                 async { sincronizarTabla("uf", api.getUf()) },
-                async { sincronizarTabla("programar_mantenimientos", api.getProgramarMantenimientos()) }
+                async { sincronizarTabla("programar_mantenimientos", api.getProgramarMantenimientos()) }  ,
+                async { sincronizarTabla("bitacora_mantenimientos", api.getBitacoraMantenimientos()) },
+                async { sincronizarTabla("actividades_bitacoras", api.getActividadesBitacoras()) },
+                async { sincronizarTabla("programar_actividades_bitacora", api.getProgramarActividadesBitacora()) },
+                //async { sincronizarTabla("rel_bitacora_actividades", api.getRelBitacoraActividades()) },
+                //async { sincronizarTabla("rel_fotos_bitacora_actividades", api.getRelFotosBitacoraActividades()) },
+                async { sincronizarTabla("rel_cuadrillas_usuarios", api.getRelCuadrillasUsuarios()) },
+                async { sincronizarTabla("cuadrillas", api.getCuadrillas()) },
+                async { sincronizarTabla("actividades_inspeccion", api.getActividadesInspeccion()) },
+
             )
 
             val results = jobs.awaitAll()
@@ -168,33 +189,62 @@ class MainActivity : AppCompatActivity() {
     suspend fun <T : Any> sincronizarTabla(nombreTabla: String, call: Call<List<T>>): Boolean {
         val dbHelper = DatabaseHelper(this)
         val db = dbHelper.writableDatabase
+        val tag = "API_SYNC_$nombreTabla" // Tag dinámico para filtrar fácil en Logcat
+
         return withContext(Dispatchers.IO) {
             try {
-                mutex.withLock { // Asegura que el acceso a la base de datos sea sincronizado
-                    val response = call.execute()
-                    if (response.isSuccessful) {
-                        val datos = response.body()
-                        datos?.let {
-                            db.execSQL("DELETE FROM $nombreTabla") // Limpia la tabla local
-                            it.forEach { item ->
-                                val values = ContentValues().apply {
-                                    item::class.java.declaredFields.forEach { field ->
-                                        field.isAccessible = true
-                                        put(field.name, field.get(item)?.toString())
+                // 1. Ejecutamos la llamada a la API
+                val response = call.execute()
+
+                // 2. Verificamos si la respuesta del servidor fue exitosa (código 200-299)
+                if (response.isSuccessful) {
+                    val datos = response.body()
+
+                    // 3. LOG CLAVE: Mostramos lo que la API nos entregó.
+                    // Si 'datos' es null o una lista vacía, lo veremos aquí.
+                    Log.d(tag, "Respuesta recibida: $datos")
+
+                    if (datos != null && datos.isNotEmpty()) {
+                        Log.d(tag, "Procesando ${datos.size} registros.")
+                        mutex.withLock {
+                            db.beginTransaction()
+                            try {
+                                db.execSQL("DELETE FROM $nombreTabla") // Limpia la tabla local
+                                datos.forEach { item ->
+                                    val values = ContentValues().apply {
+                                        item::class.java.declaredFields.forEach { field ->
+                                            field.isAccessible = true
+                                            // Corregimos el nombre del campo si es necesario, como en el caso de 'Observacion'
+                                            val fieldName = if (field.name == "observación") "Observacion" else field.name
+                                            put(fieldName, field.get(item)?.toString())
+                                        }
+                                    }
+                                    // 4. Verificamos si la inserción en la BD fue exitosa
+                                    val id = db.insert(nombreTabla, null, values)
+                                    if (id == -1L) {
+                                        Log.e(tag, "¡FALLÓ LA INSERCIÓN! -> Fila: $values")
                                     }
                                 }
-                                db.insert(nombreTabla, null, values)
+                                db.setTransactionSuccessful()
+                            } finally {
+                                db.endTransaction()
                             }
                         }
-                        true
+                        true // La sincronización fue exitosa
                     } else {
-                        Log.d("API Error", "Error al sincronizar $nombreTabla: ${response.errorBody()?.string()}")
-                        false
+                        Log.w(tag, "La respuesta fue exitosa pero no contiene datos (lista nula o vacía).")
+                        true // Técnicamente no es un error, solo no había nada que sincronizar.
                     }
+                } else {
+                    // 5. Si la API devolvió un error (ej. 404, 500), lo mostramos.
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(tag, "Error en la respuesta de la API: ${response.code()} - $errorBody")
+                    false // La sincronización falló
                 }
             } catch (e: Exception) {
-                Log.d("API Error", "Fallo en $nombreTabla: ${e.message}")
-                false
+                // 6. Si hubo un problema de red o de conversión de datos, lo capturamos.
+                Log.e(tag, "Excepción durante la sincronización: ${e.message}", e)
+                false // La sincronización falló
             }
         }
     }

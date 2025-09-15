@@ -1,14 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="azul_corporativo">#1B4F72</color>
+    <color name="verde">#8BC34A</color>
+    <color name="rojo">#F39C12</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="success">#4CAF50</color>
-    <color name="alert">#7E1515</color>
-    <color name="azul_corporativo">#005BAC</color>
+    <color name="primary_text">#212121</color>
+    <color name="secondary_text">#757575</color>
+    <color name="text_secondary">#757575</color>
     <color name="gris">#AAAAAA</color>
-    <color name="azul">#2196F3</color>
-    <color name="verde">#4CAF50</color>
-    <color name="rojo">#FF0000</color>
+
+    <color name="fondo_claro">#F5F5F5</color>
+    <color name="divider_color">#E0E0E0</color>
+    <color name="background_gradient">#F5F5F5</color>
+
+    <color name="success">@color/verde</color>
+    <color name="alert">#C62828</color>
+    <color name="green_success">@color/verde</color>
+    <color name="orange_warning">@color/rojo</color>
+    <color name="red_error">#C62828</color>
+
+    <color name="green_success_light">#E8F5E9</color>
+    <color name="green_success_dark">#2E7D32</color>
+
+    <color name="colorPrimary">@color/azul_corporativo</color>
+    <color name="primary_color">@color/azul_corporativo</color>
+    <color name="azul">@color/azul_corporativo</color>
+
+    <color name="colorAccent">@color/verde</color>
+    <color name="accent_color">@color/verde</color>
+
+    <color name="md_theme_primary">@color/azul_corporativo</color>
+    <color name="md_theme_onPrimary">@color/white</color>
+    <color name="md_theme_primaryContainer">#D1E4F2</color>
+    <color name="md_theme_onPrimaryContainer">#001E30</color>
+    <color name="md_theme_secondary">@color/verde</color>
+    <color name="md_theme_onSecondary">@color/white</color>
+
+    <color name="background_dark">#121212</color>
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="gris_claro">#BDBDBD</color>
+
+
+    <!-- res/values/colors.xml - Agregar estos colores -->
+
+        <!-- Colores principales -->
+        <color name="colorPrimaryVariant">#1565C0</color>
+        <color name="colorSecondary">#757575</color>
+
+        <!-- Colores de superficie -->
+        <color name="colorOnSurface">#212121</color>
+        <color name="colorSecondaryText">#757575</color>
+        <color name="colorDivider">#BDBDBD</color>
+
+        <!-- Gradiente de tarjeta -->
+        <color name="cardGradientStart">#FFFFFF</color>
+        <color name="cardGradientEnd">#FAFAFA</color>
+
+        <!-- Colores de estado -->
+        <color name="colorSuccess">#4CAF50</color>
+        <color name="colorWarning">#FF9800</color>
+        <color name="colorWarningContainer">#FFF3E0</color>
+        <color name="colorOnWarningContainer">#E65100</color>
+
+        <!-- Colores básicos -->
+    <!-- Colores primarios corporativos -->
+    <color name="primary_blue">#1565C0</color>
+    <color name="primary_blue_dark">#0D47A1</color>
+    <color name="primary_blue_light">#E3F2FD</color>
+
+    <!-- Colores de fondo -->
+    <color name="background_primary">#F8F9FA</color>
+    <color name="background_secondary">#FFFFFF</color>
+
+    <!-- Colores de texto -->
+    <color name="text_primary">#212121</color>
+    <color name="text_hint">#BDBDBD</color>
+
+    <!-- Colores de estado -->
+    <color name="success_green">#4CAF50</color>
+    <color name="warning_orange">#FF9800</color>
+    <color name="error_red">#F44336</color>
+
+    <!-- Colores de interfaz -->
+    <color name="stroke_light">#E0E0E0</color>
+    <color name="divider">#EEEEEE</color>
+    <color name="button_secondary_bg">#F3F8FF</color>
+
+    <!-- Colores de navegación -->
+    <color name="nav_item_text">#424242</color>
+    <color name="nav_item_icon">#1565C0</color>
+
+    <!-- Transparencias -->
+    <color name="overlay_dark">#80000000</color>
+    <color name="overlay_light">#1A000000</color>
+
+
+
+    <color name="primary">#1976D2</color>
+    <color name="primary_light">#E3F2FD</color>
+    <color name="background_light">#F5F5F5</color>
+    <color name="warning_primary">#FF9800</color>
+    <color name="warning_background">#FFF8E1</color>
+    <color name="warning_border">#FFE0B2</color>
+    <color name="warning_text">#E65100</color>
+
+
+
+    <!-- Colores específicos del login -->
+    <color name="login_subtitle">#E8F4FD</color>
+    <color name="login_card_background">#FAFAFA</color>
+    <color name="login_version_text">#FFFFFF</color>
+    <color name="fab_background">#FF6B35</color>
+    <color name="loading_background">#FFFFFF</color>
+
+    <!-- Colores adicionales útiles -->
+    <color name="surface_variant">#F5F5F5</color>
+    <color name="on_surface_variant">#757575</color>
 
 
 </resources>

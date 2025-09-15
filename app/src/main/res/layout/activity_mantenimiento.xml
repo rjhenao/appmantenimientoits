@@ -9,7 +9,8 @@
     android:paddingTop="28dp"
     android:paddingRight="8dp"
     android:paddingLeft="8dp"
-    android:background="#F5F5F5">
+    android:background="#F5F5F5"
+    >
 
     <!-- Contenido Scrollable -->
     <ScrollView
