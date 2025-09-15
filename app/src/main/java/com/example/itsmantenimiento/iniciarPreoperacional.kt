@@ -1,4 +1,3 @@
-// NO CAMBIADO
 package com.uvrp.itsmantenimientoapp
 
 import ApiService.Vehiculo
@@ -9,11 +8,11 @@ import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper // Asegúrate de importar tu helper
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
@@ -30,40 +29,18 @@ class iniciarPreoperacional : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_iniciar_preoperacional)
 
-        val toolbar: Toolbar = findViewById(R.id.toolbar_home)
-        setSupportActionBar(toolbar)
-
+        // 1. Llama al HeaderHelper para configurar el menú y la barra de herramientas
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
         val navView = findViewById<NavigationView>(R.id.nav_view)
+        HeaderHelper.setupHeader(this, drawerLayout, navView)
+
+        // El resto de la lógica de tu actividad permanece igual
         val autoComplete = findViewById<AutoCompleteTextView>(R.id.autoCompletePlacas)
         val btnIniciar = findViewById<Button>(R.id.btnIniciarPreoperacional)
-
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("idUser", -1)
 
-        navView.setNavigationItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_its -> {
-                    val idRol = sharedPreferences.getInt("idRol", -1)
-                    if (idRol == 1 || idRol == 2) {
-                        startActivity(Intent(this, Nivel1Activity::class.java))
-                    } else {
-                        Toast.makeText(this, "No tiene permisos para acceder como ITS.", Toast.LENGTH_LONG).show()
-                    }
-                    true
-                }
-                R.id.nav_preoperacional -> {
-                    startActivity(Intent(this, iniciarPreoperacional::class.java))
-                    true
-                }
-                R.id.nav_cerrarsesion -> {
-                    logout()
-                    true
-                }
-                else -> false
-            }
-        }
-
+        // ... (todo tu código de Retrofit, listeners del botón, etc., se queda como está)
         if (idUsuario != -1) {
             RetrofitClient.instance.validarUsuario(idUsuario)
                 .enqueue(object : Callback<UsuarioValidadoResponse> {
@@ -233,9 +210,7 @@ class iniciarPreoperacional : AppCompatActivity() {
                         override fun onFailure(call: Call<ApiService.ValidarVehiculoResponse>, t: Throwable) {
                             progressDialog.dismiss()
                             btnIniciar.isEnabled = true
-
                             Toast.makeText(this@iniciarPreoperacional, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
-
                             FirebaseCrashlytics.getInstance().apply {
                                 log("📡 Error en validarVehiculoLicencia")
                                 setCustomKey("UsuarioID", idUsuario)
@@ -248,14 +223,14 @@ class iniciarPreoperacional : AppCompatActivity() {
                 Toast.makeText(this, "Seleccione un vehículo válido", Toast.LENGTH_SHORT).show()
             }
         }
+    }
 
-        val toggle = androidx.appcompat.app.ActionBarDrawerToggle(
-            this, drawerLayout, toolbar,
-            R.string.navigation_drawer_open,
-            R.string.navigation_drawer_close
-        )
-        drawerLayout.addDrawerListener(toggle)
-        toggle.syncState()
+    // 2. Agrega esta función para que el icono de hamburguesa funcione
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        if (HeaderHelper.onOptionsItemSelected(item)) {
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     private fun startFormulario() {
@@ -296,12 +271,5 @@ class iniciarPreoperacional : AppCompatActivity() {
                         .show()
                 }
             })
-    }
-
-    private fun logout() {
-        Toast.makeText(this, "Cerrando sesión...", Toast.LENGTH_SHORT).show()
-        getSharedPreferences("Sesion", MODE_PRIVATE).edit().clear().apply()
-        startActivity(Intent(this, MainActivity::class.java))
-        finish()
     }
 }

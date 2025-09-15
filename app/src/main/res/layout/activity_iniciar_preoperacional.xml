@@ -73,9 +73,8 @@
                         android:inputType="number"
                         android:background="@drawable/bg_spinner"
                         android:dropDownHeight="300dp"
-                        android:padding="8dp"/>
+                        android:padding="8dp" />
                 </com.google.android.material.textfield.TextInputLayout>
-
 
                 <!-- Botón principal -->
                 <Button
@@ -103,7 +102,7 @@
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
                     android:gravity="center"
-                    android:textSize="14sp"/>
+                    android:textSize="14sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>

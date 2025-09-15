@@ -9,7 +9,14 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.text.BoringLayout
 import android.util.Log
+import com.example.itsmantenimiento.models.ValidationRangesRaw
 import com.google.gson.Gson
+import com.uvrp.itsmantenimientoapp.models.ActividadInfo
+import com.uvrp.itsmantenimientoapp.models.ActividadMantenimiento
+import com.uvrp.itsmantenimientoapp.models.Activity
+import com.uvrp.itsmantenimientoapp.models.BitacoraRecord
+import com.uvrp.itsmantenimientoapp.models.Usuario
+import com.uvrp.itsmantenimientoapp.models.ValidationParams
 import kotlinx.coroutines.CompletableDeferred
 import okhttp3.MediaType
 import okhttp3.MultipartBody
@@ -26,9 +33,11 @@ import java.util.Date
 import java.util.Locale
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.asRequestBody
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 29) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 35) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -232,6 +241,210 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             """
         db.execSQL(createUfTableQuery)
 
+        val createTableRelUsuarios = """
+        CREATE TABLE rel_usuarios_bitacora_actividades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            idRelProgramarActividadesBitacora INTEGER NOT NULL,
+            idUsuario INTEGER NOT NULL,
+            created_at TEXT,
+            updated_at TEXT,
+            sincronizado INTEGER DEFAULT 0
+        )
+    """.trimIndent()
+
+        db?.execSQL(createTableRelUsuarios)
+
+        // Tabla mantenimientos_correctivos
+        val createMantenimientosCorrectivos = """
+    CREATE TABLE mantenimientos_correctivos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        idEquipo INTEGER NOT NULL,
+        estado INTEGER NOT NULL, -- 1. Funcionando | 2. Reparación | 3. Fuera de Servicio
+        diagnostico TEXT NOT NULL,
+        descripcion_falla TEXT NOT NULL,
+        acciones_correctivas TEXT NOT NULL,
+        repuestos TEXT NOT NULL,
+        causa TEXT NOT NULL,
+        observacion_adicional TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        sincronizado INTEGER DEFAULT 0
+    )
+"""
+        db.execSQL(createMantenimientosCorrectivos)
+
+// Tabla fotos_mantenimiento_correctivo
+        val createFotosMantenimientoCorrectivo = """
+    CREATE TABLE fotos_mantenimiento_correctivo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        idMantenimientoCorrectivo INTEGER NOT NULL,
+        url_foto TEXT NOT NULL,
+        created_at TEXT,
+        updated_at TEXT,
+        sincronizado INTEGER DEFAULT 0
+    )
+"""
+        db.execSQL(createFotosMantenimientoCorrectivo)
+// -------------------------------------------------
+// Tabla usuarios_mantenimiento_correctivo
+        val createUsuariosMantenimientoCorrectivo = """
+    CREATE TABLE usuarios_mantenimiento_correctivo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        idMantenimientoCorrectivo INTEGER NOT NULL,
+        idUsuario INTEGER NOT NULL,
+        created_at TEXT,
+        updated_at TEXT,
+        sincronizado INTEGER DEFAULT 0
+    )
+"""
+        db.execSQL(createUsuariosMantenimientoCorrectivo)
+
+        // Tabla para almacenar las bitacoras de mantenimiento
+        val createBitacoraMantenimientos = """
+    CREATE TABLE bitacora_mantenimientos (
+        id INTEGER PRIMARY KEY,
+        FechaInicio TEXT NOT NULL,
+        FechaFin TEXT NOT NULL,
+        idUsuario INTEGER NOT NULL,
+        estado INTEGER NOT NULL DEFAULT 0,
+        Observacion TEXT,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createBitacoraMantenimientos)
+
+// Tabla para el catálogo de actividades de las bitácoras
+        val createActividadesBitacoras = """
+    CREATE TABLE actividades_bitacoras (
+        id INTEGER PRIMARY KEY,
+        Descripcion TEXT NOT NULL,
+        Estado INTEGER NOT NULL DEFAULT 0,
+        TipoUnidad TEXT NOT NULL,
+        Indicador TEXT NOT NULL,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createActividadesBitacoras)
+
+// Tabla para la programación de actividades
+        val createProgramarActividadesBitacora = """
+    CREATE TABLE programar_actividades_bitacora (
+        id INTEGER PRIMARY KEY,
+        idBitacora INTEGER NOT NULL,
+        idActividad INTEGER NOT NULL,
+        PrInicial TEXT NOT NULL,
+        PrFinal TEXT,
+        IdCuadrilla INTEGER NOT NULL,
+        UF INTEGER NOT NULL,
+        Sentido TEXT NOT NULL,
+        Lado TEXT NOT NULL,
+        Cantidad REAL NOT NULL,
+        Estado INTEGER NOT NULL DEFAULT 0,
+        Observacion TEXT,
+        supervisorResponsable INTEGER NOT NULL,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createProgramarActividadesBitacora)
+
+// Tabla intermedia que relaciona la ejecución de una actividad programada
+        val createRelBitacoraActividades = """
+    CREATE TABLE rel_bitacora_actividades (
+        id INTEGER PRIMARY KEY,
+        idRelProgramarActividadesBitacora INTEGER NOT NULL,
+        PrInicial TEXT NOT NULL,
+        PrFinal TEXT NOT NULL,
+        Cantidad REAL NOT NULL,
+        Programada INTEGER NOT NULL DEFAULT 1,
+        ObservacionInterna TEXT,
+        sincronizado INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createRelBitacoraActividades)
+
+// Tabla para almacenar las rutas de las fotos de una actividad
+        val createRelFotosBitacoraActividades = """
+    CREATE TABLE rel_fotos_bitacora_actividades (
+        id INTEGER PRIMARY KEY,
+        idRelProgramarActividadesBitacora INTEGER NOT NULL,
+        ruta TEXT NOT NULL,
+        estado INTEGER NOT NULL DEFAULT 0,
+        sincronizado INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createRelFotosBitacoraActividades)
+
+// Tabla para relacionar usuarios con cuadrillas
+        val createRelCuadrillasUsuarios = """
+    CREATE TABLE rel_cuadrillas_usuarios (
+        id INTEGER PRIMARY KEY,
+        IdCuadrilla INTEGER NOT NULL,
+        IdUsuario INTEGER NOT NULL,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createRelCuadrillasUsuarios)
+
+
+// Tabla para almacenar las cuadrillas
+        val createCuadrillas = """
+    CREATE TABLE cuadrillas (
+        id INTEGER PRIMARY KEY,
+        Nombre TEXT NOT NULL,
+        Descripcion TEXT,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createCuadrillas)
+
+
+        // Tabla para registrar las inspecciones por usuario y fecha
+        val createInspeccionUsuarios = """
+    CREATE TABLE inspeccion_usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        idUsuario INTEGER,
+        fecha TEXT,
+        sincronizado INTEGER,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createInspeccionUsuarios)
+// Tabla para el catálogo de actividades de inspección
+        val createActividadesInspeccion = """
+    CREATE TABLE actividades_inspeccion (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        descripcion TEXT,
+        estado INTEGER,
+        sincronizado INTEGER,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createActividadesInspeccion)
+
+// Tabla de relación para saber qué actividades se completaron en cada inspección
+        val createRelInspeccionActividades = """
+    CREATE TABLE rel_inspeccion_actividades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        idInspeccionUsuarios INTEGER,
+        idActividadInspeccion INTEGER,
+        estado INTEGER,
+        sincronizado INTEGER,
+        created_at TEXT,
+        updated_at TEXT
+    )
+"""
+        db.execSQL(createRelInspeccionActividades)
 
     }
 
@@ -253,6 +466,21 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_estado")
         db.execSQL("DROP TABLE IF EXISTS rel_user_mantenimiento")
         db.execSQL("DROP TABLE IF EXISTS rel_roles_usuarios")
+        db.execSQL("DROP TABLE IF EXISTS mantenimientos_correctivos")
+        db.execSQL("DROP TABLE IF EXISTS fotos_mantenimiento_correctivo")
+        db.execSQL("DROP TABLE IF EXISTS usuarios_mantenimiento_correctivo")
+        //-----
+        db.execSQL("DROP TABLE IF EXISTS bitacora_mantenimientos")
+        db.execSQL("DROP TABLE IF EXISTS actividades_bitacoras")
+        db.execSQL("DROP TABLE IF EXISTS programar_actividades_bitacora")
+        db.execSQL("DROP TABLE IF EXISTS rel_bitacora_actividades")
+        db.execSQL("DROP TABLE IF EXISTS rel_fotos_bitacora_actividades")
+        db.execSQL("DROP TABLE IF EXISTS rel_cuadrillas_usuarios")
+        db.execSQL("DROP TABLE IF EXISTS cuadrillas")
+        db.execSQL("DROP TABLE IF EXISTS inspeccion_usuarios")
+        db.execSQL("DROP TABLE IF EXISTS actividades_inspeccion")
+        db.execSQL("DROP TABLE IF EXISTS rel_inspeccion_actividades")
+        db.execSQL("DROP TABLE IF EXISTS rel_usuarios_bitacora_actividades")
 
         onCreate(db)
     }
@@ -1440,7 +1668,7 @@ Log.d("jdudud" , "$lista")
                 val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), jsonString)
                 val partesImagenes = mutableListOf<MultipartBody.Part>()
 
-                (actividades + estados).forEach { item ->
+               /* (actividades + estados).forEach { item ->
                     val path = item["path"] as? String
                     if (!path.isNullOrEmpty()) {
                         val imageFile = File(path)
@@ -1448,6 +1676,35 @@ Log.d("jdudud" , "$lista")
                             val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
 
                             val imagenPart = MultipartBody.Part.createFormData("imagen_actividad[]", imageFile.name, requestFile)
+                            partesImagenes.add(imagenPart)
+                        }
+                    }
+                } */
+
+                actividades.forEach { item ->
+                    val path = item["path"] as? String
+                    if (!path.isNullOrEmpty()) {
+                        val imageFile = File(path)
+                        if (imageFile.exists()) {
+                            val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
+
+                            // Usar el nombre de campo esperado por el backend para actividades
+                            val imagenPart = MultipartBody.Part.createFormData("imagen_actividad[]", imageFile.name, requestFile)
+                            partesImagenes.add(imagenPart)
+                        }
+                    }
+                }
+
+                // 2. Procesar imágenes de ESTADOS
+                estados.forEach { item ->
+                    val path = item["path"] as? String
+                    if (!path.isNullOrEmpty()) {
+                        val imageFile = File(path)
+                        if (imageFile.exists()) {
+                            val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
+
+                            // Usar el nombre de campo esperado por el backend para estados
+                            val imagenPart = MultipartBody.Part.createFormData("imagen_estado[]", imageFile.name, requestFile)
                             partesImagenes.add(imagenPart)
                         }
                     }
@@ -1838,7 +2095,1033 @@ return insertOk
         return result
     }
 
+    fun getLocaciones(): List<Pair<Int, String>> {
+        return obtenerLista("""
+        SELECT id, nombre
+        FROM locaciones
+        ORDER BY nombre ASC
+    """)
+    }
 
+
+
+    fun getSistemas(locacionId: Int): List<Pair<Int, String>> {
+        return obtenerLista("""
+        SELECT s.id, s.nombre
+        FROM rel_sistema_locacion rsl
+        INNER JOIN sistemas s ON rsl.id_sistema = s.id
+        WHERE rsl.id_locacion = ?
+        ORDER BY s.nombre
+    """, arrayOf(locacionId.toString()))
+    }
+
+    fun getSubsistemas(sistemaId: Int, locacionId: Int): List<Pair<Int, String>> {
+        return obtenerLista("""
+        SELECT ss.id, ss.nombre
+        FROM rel_subsistema_sistema rsb
+        INNER JOIN subsistemas ss ON rsb.id_subsistema = ss.id
+        WHERE rsb.id_locacion = ? AND rsb.id_sistema = ?
+        ORDER BY ss.nombre
+    """, arrayOf(locacionId.toString(), sistemaId.toString()))
+    }
+
+    fun getTiposEquipo(subsistemaId: Int): List<Pair<Int, String>> {
+        return obtenerLista("""
+        SELECT DISTINCT te.id, te.nombre
+        FROM equipos e
+        INNER JOIN tipo_equipos te ON e.id_equipo = te.id
+        WHERE e.id_subsistemas = ?
+        ORDER BY te.nombre
+    """, arrayOf(subsistemaId.toString()))
+    }
+
+    fun getTagsEquipo(locacionId: Int, sistemaId: Int, subsistemaId: Int, tipoEquipoId: Int): List<Pair<Int, String>> {
+        return obtenerLista("""
+        SELECT DISTINCT e.id, e.tag
+        FROM equipos e
+        WHERE e.id_locacion = ? 
+          AND e.id_sistemas = ?
+          AND e.id_subsistemas = ?
+          AND e.id_equipo = ?   -- filtro agregado
+        ORDER BY e.tag
+    """, arrayOf(
+            locacionId.toString(),
+            sistemaId.toString(),
+            subsistemaId.toString(),
+            tipoEquipoId.toString()       // nuevo parámetro en el arreglo
+        ))
+    }
+
+
+    private fun obtenerLista(query: String, args: Array<String>? = null): List<Pair<Int, String>> {
+        val lista = mutableListOf<Pair<Int, String>>()
+        val db = readableDatabase
+        val cursor = db.rawQuery(query, args)
+        while (cursor.moveToNext()) {
+            val id = cursor.getInt(0)
+            val nombre = cursor.getString(1)
+            lista.add(id to nombre)
+        }
+        cursor.close()
+        return lista
+    }
+
+    // Inserta mantenimiento correctivo en BD local
+    fun insertMantenimientoCorrectivo(
+        idEquipo: Int,
+        descripcionFalla: String,
+        diagnostico: String,
+        acciones: String,
+        repuestos: String,
+        estadoFinal: String,
+        causaRaiz: String,
+        observaciones: String
+    ): Long {
+        val db = writableDatabase
+        val values = ContentValues().apply {
+            put("idEquipo", idEquipo)
+            put("descripcion_falla", descripcionFalla)
+            put("diagnostico", diagnostico)
+            put("acciones_correctivas", acciones)
+            put("repuestos", repuestos)
+            put("estado", estadoFinal) // lo guardamos como texto o número según tu spinner
+            put("causa", causaRaiz)
+            put("observacion_adicional", observaciones)
+            put("created_at", System.currentTimeMillis().toString())
+            put("updated_at", System.currentTimeMillis().toString())
+            put("sincronizado", 0) // siempre pendiente
+        }
+        return db.insert("mantenimientos_correctivos", null, values)
+    }
+
+    // Inserta relación usuario-mantenimiento
+    fun insertRelUserMantenimientoBatch(idMantenimiento: Long, usuarios: List<Int>): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        return try {
+            usuarios.forEach { idUsuario ->
+                val values = ContentValues().apply {
+                    put("idMantenimientoCorrectivo", idMantenimiento)
+                    put("idUsuario", idUsuario)
+                    put("created_at", System.currentTimeMillis().toString())
+                    put("updated_at", System.currentTimeMillis().toString())
+                    put("sincronizado", 0)
+                }
+                db.insert("usuarios_mantenimiento_correctivo", null, values)
+            }
+            db.setTransactionSuccessful()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    // Inserta fotos asociadas al mantenimiento
+    fun insertFotosMantenimiento(idMantenimiento: Long, fotos: List<File>): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        return try {
+            fotos.forEach { foto ->
+                val values = ContentValues().apply {
+                    put("idMantenimientoCorrectivo", idMantenimiento)
+                    put("url_foto", foto.absolutePath) // guardamos path local
+                    put("created_at", System.currentTimeMillis().toString())
+                    put("updated_at", System.currentTimeMillis().toString())
+                    put("sincronizado", 0)
+                }
+                db.insert("fotos_mantenimiento_correctivo", null, values)
+            }
+            db.setTransactionSuccessful()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun insertarMantenimientoCompleto(
+        idEquipo: Int,
+        descripcionFalla: String,
+        diagnostico: String,
+        acciones: String,
+        repuestos: String,
+        estadoFinal: String,
+        causa: String,
+        observaciones: String,
+        usuariosIds: List<Int>,
+        fotos: List<File>
+    ): Boolean {
+        val db = writableDatabase
+        var idMantenimiento: Long = -1
+
+        db.beginTransaction()
+        return try {
+            // Insertar mantenimiento correctivo
+            val valuesMantenimiento = ContentValues().apply {
+                put("idEquipo", idEquipo)
+                put("descripcion_falla", descripcionFalla)
+                put("diagnostico", diagnostico)
+                put("acciones_correctivas", acciones)
+                put("repuestos", repuestos)
+                put("estado", estadoFinal)
+                put("causa", causa)
+                put("observacion_adicional", observaciones)
+                put("sincronizado", 0)
+            }
+
+            idMantenimiento = db.insert("mantenimientos_correctivos", null, valuesMantenimiento)
+
+            if (idMantenimiento == -1L) throw Exception("Error insertando mantenimiento")
+
+            // Insertar usuarios relacionados
+            for (idUsuario in usuariosIds) {
+                val valuesRel = ContentValues().apply {
+                    put("idMantenimientoCorrectivo", idMantenimiento)
+                    put("idUsuario", idUsuario)
+                    put("sincronizado", 0)
+                }
+                val res = db.insert("usuarios_mantenimiento_correctivo", null, valuesRel)
+                if (res == -1L) throw Exception("Error insertando usuario en relación")
+            }
+
+            // Insertar fotos
+            for (foto in fotos) {
+                val valuesFoto = ContentValues().apply {
+                    put("idMantenimientoCorrectivo", idMantenimiento)
+                    put("url_foto", foto.absolutePath) // Guarda path local
+                    put("sincronizado", 0)
+                }
+                val res = db.insert("fotos_mantenimiento_correctivo", null, valuesFoto)
+                if (res == -1L) throw Exception("Error insertando foto")
+            }
+
+            db.setTransactionSuccessful()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun getMantenimientosPendientes(): List<String> {
+        val pendientes = mutableListOf<String>()
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            """
+        SELECT e.tag
+        FROM mantenimientos_correctivos mc
+        JOIN equipos e ON mc.idEquipo = e.id
+        WHERE mc.sincronizado = 0
+        """, null
+        )
+        if (cursor.moveToFirst()) {
+            do {
+                pendientes.add(cursor.getString(0))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return pendientes
+    }
+
+
+    fun getMantenimientosPendientesBicatacoras(): List<String> {
+        val pendientes = mutableListOf<String>()
+        val db = readableDatabase
+
+        // Usamos .use para que el cursor se cierre automáticamente, es más seguro.
+        db.rawQuery(
+            """
+        SELECT 
+            CONCAT(
+                SUBSTR(ab.Descripcion, 1, 10), 
+                ' ', 
+                CAST(rba.Cantidad AS TEXT)
+            ) AS tag
+        FROM 
+            rel_bitacora_actividades rba 
+        JOIN 
+            programar_actividades_bitacora pab ON (pab.id = rba.idRelProgramarActividadesBitacora)
+        JOIN 
+            actividades_bitacoras ab ON (ab.id = pab.idActividad)
+        WHERE
+            rba.sincronizado = 0
+        """, null
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                do {
+                    // El índice 0 corresponde a la primera (y única) columna: "tag"
+                    pendientes.add(cursor.getString(0))
+                } while (cursor.moveToNext())
+            }
+        }
+
+        return pendientes
+    }
+
+    fun getMantenimientosPendientesActividad(): List<String> {
+        val pendientes = mutableListOf<String>()
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            """
+        SELECT e.tag
+        FROM rel_tecnico_mantenimiento rma
+        join programar_mantenimientos as pro on (rma.idMantenimiento = pro.id )
+        JOIN equipos e ON (pro.id_equipo = e.id)
+        WHERE rma.sincronizado = 0
+        """, null
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                pendientes.add(cursor.getString(0))
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+        return pendientes
+    }
+
+
+    fun obtenerMantenimientosPendientes(): List<MantenimientoCorrectivo> {
+        val lista = mutableListOf<MantenimientoCorrectivo>()
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT * FROM mantenimientos_correctivos WHERE sincronizado = 0",
+            null
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val idEquipo = cursor.getInt(cursor.getColumnIndexOrThrow("idEquipo"))
+                val descripcionFalla = cursor.getString(cursor.getColumnIndexOrThrow("descripcion_falla"))
+                val diagnostico = cursor.getString(cursor.getColumnIndexOrThrow("diagnostico"))
+                val acciones = cursor.getString(cursor.getColumnIndexOrThrow("acciones_correctivas"))
+                val repuestos = cursor.getString(cursor.getColumnIndexOrThrow("repuestos"))
+                val estado = cursor.getString(cursor.getColumnIndexOrThrow("estado"))
+                val causa = cursor.getString(cursor.getColumnIndexOrThrow("causa"))
+                val observaciones = cursor.getString(cursor.getColumnIndexOrThrow("observacion_adicional"))
+
+                // 🔹 Obtener usuarios y fotos relacionadas
+                val usuarios = obtenerUsuariosDeMantenimiento(id)
+                val fotos = obtenerFotosDeMantenimiento(id)
+
+
+                lista.add(
+                    MantenimientoCorrectivo(
+                        id = id,
+                        idEquipo = idEquipo,
+                        descripcionFalla = descripcionFalla,
+                        diagnostico = diagnostico,
+                        acciones = acciones,
+                        repuestos = repuestos,
+                        estadoFinal = estado,
+                        causaRaiz = causa,
+                        observaciones = observaciones,
+                        usuarios = usuarios,
+                        fotos = fotos
+                    )
+                )
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return lista
+    }
+
+    fun obtenerUsuariosDeMantenimiento(idMantenimiento: Int): List<Int> {
+        val lista = mutableListOf<Int>()
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT idUsuario FROM usuarios_mantenimiento_correctivo WHERE idMantenimientoCorrectivo = ?",
+            arrayOf(idMantenimiento.toString())
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                lista.add(cursor.getInt(cursor.getColumnIndexOrThrow("idUsuario")))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return lista
+    }
+
+    fun obtenerFotosDeMantenimiento(idMantenimiento: Int): List<File> {
+        val lista = mutableListOf<File>()
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT url_foto FROM fotos_mantenimiento_correctivo WHERE idMantenimientoCorrectivo = ?",
+            arrayOf(idMantenimiento.toString())
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                val path = cursor.getString(cursor.getColumnIndexOrThrow("url_foto"))
+                lista.add(File(path))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return lista
+    }
+
+
+    fun marcarMantenimientoSincronizado(idMantenimiento: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("sincronizado", 1) // ✅ 1 = sincronizado, 0 = pendiente
+        }
+
+        db.update(
+            "mantenimientos_correctivos",        // Nombre de la tabla
+            values,                  // Valores a actualizar
+            "id = ?",                // WHERE
+            arrayOf(idMantenimiento.toString()) // Argumentos del WHERE
+        )
+
+        db.close()
+    }
+
+    // Dentro de la clase DatabaseHelper
+    fun getTodasLasBitacoras(): List<Bitacora> {
+        val listaBitacoras = mutableListOf<Bitacora>()
+        val db = this.readableDatabase
+
+        // Consulta SQL para unir bitacoras con usuarios y formatear el estado
+        val query = """
+        SELECT
+            b.id,
+            CASE b.estado
+                WHEN 0 THEN 'Abierta'
+                WHEN 1 THEN 'Programada'
+                WHEN 2 THEN 'Cerrada'
+                WHEN 3 THEN 'Anulada'
+                ELSE 'Desconocido'
+            END AS estado_texto,
+            SUBSTR(u.nombre, 1, 12) AS nombre_responsable,
+            b.FechaInicio,
+            b.FechaFin
+        FROM bitacora_mantenimientos AS b
+        JOIN users AS u ON b.idUsuario = u.id
+        ORDER BY b.FechaInicio DESC
+    """.trimIndent()
+
+        val cursor = db.rawQuery(query, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                // Obtener los datos del cursor
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id")).toString()
+                val estado = cursor.getString(cursor.getColumnIndexOrThrow("estado_texto"))
+                val responsable = cursor.getString(cursor.getColumnIndexOrThrow("nombre_responsable"))
+                val fechaInicioStr = cursor.getString(cursor.getColumnIndexOrThrow("FechaInicio"))
+                val fechaFinStr = cursor.getString(cursor.getColumnIndexOrThrow("FechaFin"))
+
+                // Formatear el rango de fechas
+                val rangoFechas = try {
+                    val formatoEntrada = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale("es", "ES"))
+                    val formatoSalida = SimpleDateFormat("dd MMM", Locale("es", "ES"))
+                    val formatoAnio = SimpleDateFormat("yyyy", Locale("es", "ES"))
+
+                    val fechaInicioDate = formatoEntrada.parse(fechaInicioStr)
+                    val fechaFinDate = formatoEntrada.parse(fechaFinStr)
+
+                    val fechaInicioFormateada = formatoSalida.format(fechaInicioDate)
+                    val fechaFinFormateada = formatoSalida.format(fechaFinDate)
+                    val anio = formatoAnio.format(fechaInicioDate) // Asumimos el año de la fecha de inicio
+
+                    "$fechaInicioFormateada — $fechaFinFormateada $anio"
+                } catch (e: Exception) {
+                    // En caso de error de formato, mostrar las fechas originales
+                    "$fechaInicioStr - $fechaFinStr"
+                }
+
+                // Crear el objeto Bitacora y añadirlo a la lista
+                listaBitacoras.add(Bitacora(id, estado, responsable, rangoFechas))
+
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+        db.close()
+
+        return listaBitacoras
+    }
+
+    fun existeInspeccionHoy(context: Context): Boolean {
+        // 1. Obtener el ID del usuario desde SharedPreferences
+        val prefs = context.getSharedPreferences("Sesion", Context.MODE_PRIVATE)
+        val idUsuario = prefs.getInt("idUser", -1) // Usamos -1 como valor por defecto si no se encuentra
+
+        // Si no hay un usuario logueado, no puede haber registros
+        if (idUsuario == -1) {
+            Log.w("DatabaseHelper", "No se encontró un idUsuario en SharedPreferences.")
+            return false
+        }
+
+        // 2. Obtener la fecha de hoy en formato YYYY-MM-DD
+        val formatoFecha = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val fechaHoy = formatoFecha.format(Date())
+
+        // 3. Realizar la consulta a la base de datos
+        val db = this.readableDatabase
+        var cursor: Cursor? = null
+        var existeRegistro = false
+
+        try {
+            val query = "SELECT COUNT(*) FROM inspeccion_usuarios WHERE idUsuario = ? AND date(fecha) = ?"
+            cursor = db.rawQuery(query, arrayOf(idUsuario.toString(), fechaHoy))
+
+            if (cursor.moveToFirst()) {
+                val count = cursor.getInt(0)
+                if (count > 0) {
+                    existeRegistro = true
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al verificar la inspección de hoy", e)
+        } finally {
+            cursor?.close()
+            // Es buena práctica no cerrar la base de datos aquí si se va a usar
+            // en múltiples lugares de la misma pantalla. La actividad se encargará de cerrarla.
+        }
+
+        return existeRegistro
+    }
+
+    fun getAllActivities(): List<Activity> {
+        val activityList = mutableListOf<Activity>()
+        val db = this.readableDatabase
+        val cursor = db.rawQuery("SELECT id, descripcion FROM actividades_inspeccion WHERE estado = 1", null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val activity = Activity(
+                    id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                    description = cursor.getString(cursor.getColumnIndexOrThrow("descripcion"))
+                )
+                activityList.add(activity)
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return activityList
+    }
+
+    /**
+     * Inserta una nueva cabecera de inspección y devuelve su ID.
+     */
+    fun addInspection(userId: Int): Long {
+        val db = this.writableDatabase
+        val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+        val values = ContentValues().apply {
+            put("idUsuario", userId)
+            put("fecha", currentDate)
+            put("sincronizado", 0) // 0 = no sincronizado
+            put("created_at", currentDate)
+            put("updated_at", currentDate)
+        }
+
+        Log.d("dddddfffgggbb", "ccc: $values")
+
+        val id = db.insert("inspeccion_usuarios", null, values)
+        db.close()
+        return id
+    }
+
+    /**
+     * Inserta el detalle de las actividades (marcadas y no marcadas) para una inspección.
+     */
+    fun addInspectionActivities(inspectionId: Long, activities: List<Activity>) {
+        val db = this.writableDatabase
+        val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+        // Usamos una transacción para asegurar que todas las inserciones se completen o ninguna.
+        db.beginTransaction()
+        try {
+            for (activity in activities) {
+                val values = ContentValues().apply {
+                    put("idInspeccionUsuarios", inspectionId)
+                    put("idActividadInspeccion", activity.id)
+                    put("estado", if (activity.isChecked) 1 else 0) // 1 = completado, 0 = no
+                    put("sincronizado", 0)
+                    put("created_at", currentDate)
+                    put("updated_at", currentDate)
+                }
+                Log.d("gghhhhhgtgfew", "ffdd: $values")
+
+                db.insert("rel_inspeccion_actividades", null, values)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
+    /**
+     * (Opcional) Método para añadir datos de prueba.
+     */
+    fun addSampleActivities() {
+        val db = this.writableDatabase
+        val countCursor = db.rawQuery("SELECT COUNT(*) FROM actividades_inspeccion", null)
+        countCursor.moveToFirst()
+        val count = countCursor.getInt(0)
+        countCursor.close()
+
+        if (count == 0) {
+            val activities = listOf(
+                "Revisar nivel de aceite", "Verificar presión de neumáticos", "Comprobar luces delanteras",
+                "Inspeccionar frenos", "Revisar líquido limpiaparabrisas", "Verificar estado de espejos",
+                "Comprobar claxon", "Inspeccionar cinturones de seguridad", "Verificar extintor",
+                "Revisar documentación del vehículo"
+            )
+            activities.forEach { desc ->
+                val values = ContentValues().apply {
+                    put("descripcion", desc)
+                    put("estado", 1) // 1 = activo
+                    put("sincronizado", 0)
+                }
+                db.insert("actividades_inspeccion", null, values)
+            }
+        }
+        db.close()
+    }
+
+    private fun formatCantidad(cantidad: Double): String {
+        val symbols = DecimalFormatSymbols(Locale.getDefault()).apply {
+            groupingSeparator = '.'
+            decimalSeparator = ','
+        }
+
+        if (cantidad % 1.0 == 0.0) {
+            return DecimalFormat("#,###", symbols).format(cantidad)
+        } else {
+            return DecimalFormat("#,##0.##", symbols).format(cantidad)
+        }
+    }
+
+    fun getActividadesPorBitacora(bitacoraId: Int , idUser:Int): List<ActividadMantenimiento> {
+        val actividadesList = mutableListOf<ActividadMantenimiento>()
+        val db = this.readableDatabase
+
+        val query = """
+        SELECT
+            pab.id,
+            ab.Descripcion,
+            c.Nombre,
+            pab.UF,
+            pab.Sentido,
+            pab.Lado,
+            pab.PrInicial,
+            pab.PrFinal,
+            pab.Cantidad,
+            ab.TipoUnidad,
+            pab.Observacion
+        FROM programar_actividades_bitacora pab
+        JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
+        JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
+        JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
+        LEFT JOIN rel_cuadrillas_usuarios rcu on (rcu.IdCuadrilla  = c.id)        
+        WHERE bm.id = ? AND rcu.IdUsuario = ?
+        GROUP BY pab.id
+    """.trimIndent()
+
+        val cursor = db.rawQuery(query, arrayOf(bitacoraId.toString(), idUser.toString()))
+
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val idIndex = it.getColumnIndexOrThrow("id")
+                val descripcionIndex = it.getColumnIndexOrThrow("Descripcion")
+                val cuadrillaIndex = it.getColumnIndexOrThrow("Nombre")
+                val ufIndex = it.getColumnIndexOrThrow("UF")
+                val sentidoIndex = it.getColumnIndexOrThrow("Sentido")
+                val ladoIndex = it.getColumnIndexOrThrow("Lado")
+                val prInicialIndex = it.getColumnIndexOrThrow("PrInicial")
+                val prFinalIndex = it.getColumnIndexOrThrow("PrFinal")
+                val cantidadIndex = it.getColumnIndexOrThrow("Cantidad")
+                val tipoUnidadIndex = it.getColumnIndexOrThrow("TipoUnidad")
+                val observacionIndex = it.getColumnIndexOrThrow("Observacion")
+
+                do {
+                    val rawCantidad = it.getDouble(cantidadIndex)
+                    val tipoUnidad = it.getString(tipoUnidadIndex)
+                    val formattedCantidad = formatCantidad(rawCantidad)
+                    val cantidadYUnidad = "$formattedCantidad $tipoUnidad"
+
+                    val actividad = ActividadMantenimiento(
+                        id = it.getInt(idIndex),
+                        descripcion = it.getString(descripcionIndex),
+                        cuadrillaNombre = it.getString(cuadrillaIndex),
+                        uf = it.getString(ufIndex),
+                        sentido = it.getString(sentidoIndex),
+                        lado = it.getString(ladoIndex),
+                        prInicial = it.getString(prInicialIndex),
+                        prFinal = it.getString(prFinalIndex),
+                        cantidad = cantidadYUnidad,
+                        tipoUnidad = tipoUnidad,
+                        observacion = it.getString(observacionIndex)
+                    )
+                    actividadesList.add(actividad)
+                } while (it.moveToNext())
+            }
+        }
+
+        // Verifica si la lista quedó vacía después de procesar el cursor
+
+            val noProgramada = ActividadMantenimiento(
+                id = -1,
+                descripcion = "No programada",
+                cuadrillaNombre = "No programada",
+                uf = "No programada",
+                sentido = "No programada",
+                lado = "No programada",
+                prInicial = "No programada",
+                prFinal = "No programada",
+                cantidad = "0 kms",
+                tipoUnidad = "kms",
+                observacion = "No programada"
+            )
+            actividadesList.add(noProgramada)
+
+
+        return actividadesList
+    }
+
+    /**
+     * Obtiene la información detallada de una actividad de bitácora específica.
+     * @param idActividad El ID de la actividad programada (de la tabla programar_actividades_bitacora).
+     * @return Un objeto ActividadInfo si se encuentra, o null si no existe.
+     */
+    fun getActividadInfo(idActividad: Int): ActividadInfo? {
+        val db = this.readableDatabase
+        var actividadInfo: ActividadInfo? = null
+
+        val query = """
+            SELECT pab.id, ab.Descripcion, ab.TipoUnidad, pab.IdCuadrilla
+            FROM programar_actividades_bitacora pab
+            JOIN actividades_bitacoras ab ON ab.id = pab.idActividad
+            WHERE pab.id = ?
+        """.trimIndent()
+
+        // El bloque .use se encarga de cerrar el cursor automáticamente
+        db.rawQuery(query, arrayOf(idActividad.toString())).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val descripcion = cursor.getString(cursor.getColumnIndexOrThrow("Descripcion"))
+                val tipoUnidad = cursor.getString(cursor.getColumnIndexOrThrow("TipoUnidad"))
+                val idCuadrilla = cursor.getInt(cursor.getColumnIndexOrThrow("IdCuadrilla"))
+
+                actividadInfo = ActividadInfo(id, descripcion, tipoUnidad, idCuadrilla)
+            }
+        }
+        return actividadInfo
+    }
+
+    /**
+     * Obtiene la lista de usuarios (empleados) asignados a una actividad a través de su cuadrilla.
+     * @param idActividad El ID de la actividad programada.
+     * @return Una lista de objetos Usuario.
+     */
+    fun getUsuariosPorActividad(idActividad: Int): List<Usuario> {
+        val db = this.readableDatabase
+        val listaUsuarios = mutableListOf<Usuario>()
+
+        val query = """
+            SELECT u.id, u.nombre
+            FROM programar_actividades_bitacora pab
+            JOIN rel_cuadrillas_usuarios rcu ON rcu.IdCuadrilla = pab.IdCuadrilla
+            JOIN users u ON u.id = rcu.IdUsuario
+            WHERE pab.id = ?
+        """.trimIndent()
+
+        // Usamos el bloque .use para seguridad y limpieza automática del cursor
+        db.rawQuery(query, arrayOf(idActividad.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val nombre = cursor.getString(cursor.getColumnIndexOrThrow("nombre"))
+
+                listaUsuarios.add(Usuario(id, nombre))
+            }
+        }
+        return listaUsuarios
+    }
+
+
+    // ...
+
+    fun getAllUsers(): List<Usuario> {
+        val userList = mutableListOf<Usuario>()
+        val db = this.readableDatabase
+        val query = "SELECT id, nombre FROM users ORDER BY nombre ASC" // Asume que tu tabla se llama 'users'
+
+        db.rawQuery(query, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val nombre = cursor.getString(cursor.getColumnIndexOrThrow("nombre"))
+                userList.add(Usuario(id, nombre))
+            }
+        }
+        return userList
+    }
+
+    fun getUsuarioPorId(usuarioId: Int): Usuario? {
+        val db = this.readableDatabase
+        var usuario: Usuario? = null
+        val query = "SELECT id, nombre FROM users WHERE id = ?"
+
+        db.rawQuery(query, arrayOf(usuarioId.toString())).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val nombre = cursor.getString(cursor.getColumnIndexOrThrow("nombre"))
+                usuario = Usuario(id, nombre)
+            }
+        }
+        return usuario
+    }
+
+
+    private fun getCurrentTimestamp(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        return sdf.format(Date())
+    }
+
+
+
+    fun insertarRegistroBitacora(
+        numeroActividad: Int,
+        prInicial: String,
+        prFinal: String,
+        cantidad: Double,
+        observacion: String,
+        idUsuarios: List<Int>, // <-- Ahora se recibe la lista de usuarios
+        fotos: List<File>       // <-- Y la lista de fotos
+    ): Boolean {
+        val db = this.writableDatabase
+        var exito = false
+
+        // INICIAMOS LA TRANSACCIÓN
+        db.beginTransaction()
+        try {
+            val timestamp = getCurrentTimestamp()
+
+            // --- PASO 1: Insertar el registro principal ---
+            val valuesRegistro = ContentValues().apply {
+                put("idRelProgramarActividadesBitacora", numeroActividad)
+                put("PrInicial", prInicial)
+                put("PrFinal", prFinal)
+                put("Cantidad", cantidad)
+                put("Programada", 1)
+                put("ObservacionInterna", observacion)
+                put("created_at", timestamp)
+                put("updated_at", timestamp)
+                put("sincronizado", 0)
+            }
+
+            val idNuevoRegistro = db.insert("rel_bitacora_actividades", null, valuesRegistro)
+
+            // Si el registro principal falla, detenemos todo.
+            if (idNuevoRegistro == -1L) {
+                return false
+            }
+
+            // --- PASO 2: Insertar todas las fotos ---
+            fotos.forEach { file ->
+                val valuesFoto = ContentValues().apply {
+                    put("idRelProgramarActividadesBitacora", idNuevoRegistro)
+                    put("ruta", file.absolutePath)
+                    put("estado", 0)
+                    put("created_at", timestamp)
+                    put("updated_at", timestamp)
+                    put("sincronizado", 0)
+                }
+                db.insert("rel_fotos_bitacora_actividades", null, valuesFoto)
+            }
+
+            // --- PASO 3: Insertar todos los usuarios ---
+            idUsuarios.forEach { usuarioId ->
+                val valuesUsuario = ContentValues().apply {
+                    put("idRelProgramarActividadesBitacora", idNuevoRegistro)
+                    put("idUsuario", usuarioId)
+                    put("created_at", timestamp)
+                    put("updated_at", timestamp)
+                    put("sincronizado", 0)
+                }
+                db.insert("rel_usuarios_bitacora_actividades", null, valuesUsuario)
+            }
+
+            // Si todos los inserts fueron exitosos, marcamos la transacción como completada
+            db.setTransactionSuccessful()
+            exito = true
+
+        } finally {
+            // Finalizamos la transacción. Si fue exitosa, se guardan los cambios. Si no, se revierten.
+            db.endTransaction()
+        }
+
+        db.close()
+        return exito
+    }
+
+    private fun parseRangeString(rangeStr: String?): Pair<Double, Double> {
+        // Si el texto de la BD es nulo o vacío, devuelve un rango que no se puede cumplir.
+        if (rangeStr.isNullOrBlank()) {
+            return Pair(0.0, 0.0)
+        }
+
+        // Divide el texto usando el "+" como separador. "456+1231" se convierte en ["456", "1231"]
+        val parts = rangeStr.split('+')
+
+        // Si el formato no es correcto (no hay un '+'), devuelve un rango inválido.
+        if (parts.size != 2) {
+            return Pair(0.0, 0.0)
+        }
+
+        // Convierte cada parte a número, eliminando espacios. Si falla, usa 0.0.
+        val min = parts[0].trim().toDoubleOrNull() ?: 0.0
+        val max = parts[1].trim().toDoubleOrNull() ?: 0.0
+
+        return Pair(min, max)
+    }
+
+    // Dentro de DatabaseHelper.kt
+    fun getValidationRanges(numeroActividad: Int): ValidationRangesRaw? {
+        val db = this.readableDatabase
+        var ranges: ValidationRangesRaw? = null
+
+        // Usamos TU consulta para traer los textos crudos
+        val query = """
+        SELECT PrInicial, PrFinal, Cantidad
+        FROM programar_actividades_bitacora
+        WHERE id = ?
+    """.trimIndent()
+
+        db.rawQuery(query, arrayOf(numeroActividad.toString())).use { cursor ->
+            if (cursor.moveToFirst()) {
+                ranges = ValidationRangesRaw(
+                    prInicialStr = cursor.getString(cursor.getColumnIndexOrThrow("PrInicial")),
+                    prFinalStr = cursor.getString(cursor.getColumnIndexOrThrow("PrFinal")),
+                    cantidadStr = cursor.getString(cursor.getColumnIndexOrThrow("Cantidad"))
+                )
+            }
+        }
+        return ranges
+    }
+
+    fun getValidationParams(numeroActividad: Int): ValidationParams? {
+        val db = this.readableDatabase
+        var params: ValidationParams? = null
+
+        // USAMOS TU CONSULTA EXACTA
+        val query = """
+        SELECT PrInicial, PrFinal, Cantidad
+        FROM programar_actividades_bitacora
+        WHERE id = ?
+    """.trimIndent()
+
+        db.rawQuery(query, arrayOf(numeroActividad.toString())).use { cursor ->
+            if (cursor.moveToFirst()) {
+                // 1. Obtenemos los textos tal como vienen de la BD (ej: "456+1231")
+                val prInicialStr = cursor.getString(cursor.getColumnIndexOrThrow("PrInicial"))
+                val prFinalStr = cursor.getString(cursor.getColumnIndexOrThrow("PrFinal"))
+                val cantidadStr = cursor.getString(cursor.getColumnIndexOrThrow("Cantidad"))
+
+                // 2. Usamos nuestra función auxiliar para "traducir" cada texto a un rango
+                val prInicialRange = parseRangeString(prInicialStr)
+                val prFinalRange = parseRangeString(prFinalStr)
+                val cantidadRange = parseRangeString(cantidadStr)
+
+                // 3. Creamos el objeto de parámetros con los valores ya separados
+                params = ValidationParams(
+                    prInicialMin = prInicialRange.first,  // El número antes del '+'
+                    prInicialMax = prInicialRange.second, // El número después del '+'
+                    prFinalMin = prFinalRange.first,
+                    prFinalMax = prFinalRange.second,
+                    cantidadMin = cantidadRange.first,
+                    cantidadMax = cantidadRange.second
+                )
+            }
+        }
+        return params
+    }
+
+
+    // Dentro de la clase DatabaseHelper.kt
+
+    /**
+     * Obtiene todos los registros de bitácora pendientes de sincronizar (sincronizado = 0),
+     * incluyendo sus listas de usuarios y fotos asociadas.
+     */
+    fun obtenerBitacorasPendientes(): List<BitacoraRecord> {
+        val listaBitacoras = mutableListOf<BitacoraRecord>()
+        val db = this.readableDatabase
+
+        // 1. Obtenemos los registros principales de bitácora pendientes
+        val queryPrincipal = "SELECT * FROM rel_bitacora_actividades WHERE sincronizado = 0 and Programada = 1"
+        db.rawQuery(queryPrincipal, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val idRegistro = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val idProgramada = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+
+                // 2. Por cada registro, buscamos sus usuarios asociados
+                val listaUsuarios = mutableListOf<Int>()
+                val queryUsuarios = "SELECT idUsuario FROM rel_usuarios_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+                db.rawQuery(queryUsuarios, arrayOf(idProgramada.toString())).use { userCursor ->
+                    while (userCursor.moveToNext()) {
+                        listaUsuarios.add(userCursor.getInt(userCursor.getColumnIndexOrThrow("idUsuario")))
+                    }
+                }
+                Log.d("DepuracionUsuarios", "IDs de usuarios encontrados: $idRegistro " + listaUsuarios.toString())
+
+                // 3. Por cada registro, buscamos sus fotos asociadas
+                val listaFotos = mutableListOf<File>()
+                val queryFotos = "SELECT ruta FROM rel_fotos_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+                db.rawQuery(queryFotos, arrayOf(idProgramada.toString())).use { photoCursor ->
+                    while (photoCursor.moveToNext()) {
+                        val path = photoCursor.getString(photoCursor.getColumnIndexOrThrow("ruta"))
+                        listaFotos.add(File(path))
+                    }
+                }
+
+                // 4. Creamos el objeto completo y lo añadimos a la lista
+                listaBitacoras.add(
+                    BitacoraRecord(
+                        id = idRegistro,
+                        idRelProgramarActividadesBitacora = idProgramada,
+                        prInicial = cursor.getString(cursor.getColumnIndexOrThrow("PrInicial")),
+                        prFinal = cursor.getString(cursor.getColumnIndexOrThrow("PrFinal")),
+                        cantidad = cursor.getDouble(cursor.getColumnIndexOrThrow("Cantidad")),
+                        observacion = cursor.getString(cursor.getColumnIndexOrThrow("ObservacionInterna")),
+                        usuarios = listaUsuarios,
+                        fotos = listaFotos
+                    )
+                )
+            }
+        }
+        return listaBitacoras
+    }
+
+    /**
+     * Actualiza el estado de un registro de bitácora a sincronizado (sincronizado = 1).
+     */
+    fun marcarBitacoraSincronizada(idRegistro: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("sincronizado", 1)
+        }
+        db.update("rel_bitacora_actividades", values, "id = ?", arrayOf(idRegistro.toString()))
+        db.close()
+    }
 
 
 }

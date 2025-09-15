@@ -6,84 +6,248 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/login_background"
-    android:fitsSystemWindows="true"
-    >
+    android:fitsSystemWindows="true">
 
+    <!-- ScrollView para contenido desplazable -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="32dp"
+            android:gravity="center">
 
-            <ImageView
-                android:layout_width="160dp"
-                android:layout_height="160dp"
-                android:background="@drawable/rounded_corner_whitebk"
-                android:src="@mipmap/ic_launcher_foreground" />
+            <!-- Espaciador superior -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="0.3" />
 
-            <EditText
-                android:id="@+id/username_input"
+            <!-- Logo y Header -->
+            <LinearLayout
+                android:orientation="vertical"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:background="@drawable/rounded_corner"
-                android:hint="Cédula"
-                android:inputType="number"
-                android:padding="18dp"
-                android:textColor="@color/white"
-                android:textColorHint="@color/white"
-                android:textSize="20sp" />
+                android:gravity="center"
+                android:layout_marginBottom="48dp">
 
-            <EditText
-                android:id="@+id/password_input"
+                <!-- Logo con sombra elegante -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="120dp"
+                    android:layout_height="120dp"
+                    app:cardCornerRadius="60dp"
+                    app:cardElevation="12dp"
+                    app:cardBackgroundColor="@android:color/white">
+
+                    <ImageView
+                        android:layout_width="160dp"
+                        android:layout_height="120dp"
+                        android:layout_gravity="center"
+                        android:src="@mipmap/ic_launcher_foreground"
+                        android:scaleType="centerCrop" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Títulos -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="Sistema de Mantenimiento"
+                    android:textColor="@android:color/white"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:shadowColor="@android:color/black"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="3" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Ingresa tus credenciales para continuar"
+                    android:textColor="@color/login_subtitle"
+                    android:textSize="16sp"
+                    android:gravity="center"
+                    android:alpha="0.9" />
+            </LinearLayout>
+
+            <!-- Formulario de Login -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/rounded_corner"
-                android:hint="Contraseña"
-                android:inputType="numberPassword"
-                android:padding="18dp"
-                android:textColor="@color/white"
-                android:textColorHint="@color/white"
-                android:textSize="20sp" />
+                android:layout_marginBottom="32dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="8dp"
+                app:cardBackgroundColor="@color/login_card_background"
+                app:strokeWidth="0dp">
 
-            <Button
-                android:id="@+id/login_btn"
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="32dp">
+
+                    <!-- Campo Cédula -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        app:boxStrokeColor="@color/primary"
+                        app:boxStrokeWidth="2dp"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusBottomEnd="12dp"
+                        app:startIconDrawable="@android:drawable/ic_dialog_info"
+                        app:startIconTint="@color/primary"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/username_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Número de Cédula"
+                            android:inputType="number"
+                            android:textSize="16sp"
+                            android:textColor="@color/text_primary"
+                            android:padding="16dp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Campo Contraseña -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="32dp"
+                        app:boxStrokeColor="@color/primary"
+                        app:boxStrokeWidth="2dp"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusBottomEnd="12dp"
+                        app:startIconDrawable="@android:drawable/ic_lock_idle_lock"
+                        app:startIconTint="@color/primary"
+                        app:endIconMode="password_toggle"
+                        app:endIconTint="@color/primary"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/password_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Contraseña"
+                            android:inputType="numberPassword"
+                            android:textSize="16sp"
+                            android:textColor="@color/text_primary"
+                            android:padding="16dp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Botón de Login -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/login_btn"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="Iniciar Sesión"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="false"
+                        app:cornerRadius="28dp"
+                        app:backgroundTint="@color/primary"
+                        app:icon="@drawable/modern_road_icon"
+                        app:iconGravity="textStart"
+                        app:iconTint="@android:color/white"
+                        style="@style/Widget.Material3.Button" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Espaciador flexible -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="0.4" />
+
+            <!-- Footer con versión -->
+            <LinearLayout
+                android:orientation="vertical"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:padding="18dp"
-                android:text="Iniciar Sesión"
-                android:textColor="#002C58"
-                android:textSize="20sp"
-                android:backgroundTint="@color/white" />
+                android:gravity="center">
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/sincronizar_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end|bottom"
-                android:layout_margin="16dp"
-                app:backgroundTint="@color/black"
-                app:fabSize="normal"
-                app:srcCompat="@drawable/sincronizar_icon"
-                app:tint="@android:color/white" />
+                <TextView
+                    android:id="@+id/tVersion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Versión 1.0"
+                    android:textColor="@color/login_version_text"
+                    android:textSize="14sp"
+                    android:alpha="0.7"
+                    android:layout_marginBottom="8dp" />
 
-            <TextView
-                android:id="@+id/tVersion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="Versión: 1.0"
-                android:textColor="@color/black"
-                android:textSize="20sp" />
-
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="© 2025 APP ITSOM"
+                    android:textColor="@color/login_version_text"
+                    android:textSize="12sp"
+                    android:alpha="0.6" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
+
+    <!-- FAB de Sincronización (posición fija) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/sincronizar_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="24dp"
+        app:backgroundTint="@color/fab_background"
+        app:tint="@android:color/white"
+        app:fabSize="normal"
+        app:srcCompat="@drawable/sincronizar_icon"
+        app:elevation="8dp"
+        app:borderWidth="0dp" />
+
+    <!-- Indicador de carga (inicialmente oculto) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/loading_card"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="gone"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="12dp"
+        app:cardBackgroundColor="@color/loading_background">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="20dp"
+            android:gravity="center_vertical">
+
+            <ProgressBar
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:indeterminateTint="@color/primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="Iniciando sesión..."
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
 </RelativeLayout>

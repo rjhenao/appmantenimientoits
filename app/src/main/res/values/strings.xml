@@ -7,5 +7,17 @@
         <item>Opción 2</item>
         <item>Opción 3</item>
     </string-array>
+    <string-array name="estado_final">
+        <item>Funcionando</item>
+        <item>En reparación</item>
+        <item>Fuera de servicio</item>
+    </string-array>
+
+    <string-array name="prioridad">
+        <item>Baja</item>
+        <item>Media</item>
+        <item>Alta</item>
+        <item>Crítica</item>
+    </string-array>
 
 </resources>

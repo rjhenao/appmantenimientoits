@@ -93,6 +93,110 @@ interface ApiService {
         val aUsuario: List<UsuarioVehiculo>
     )
 
+    data class BitacoraMantenimiento(
+        // Los nombres de las propiedades AHORA coinciden con las columnas de la BD
+        @SerializedName("id") val id: Int,
+        @SerializedName("FechaInicio") val FechaInicio: String,
+        @SerializedName("FechaFin") val FechaFin: String,
+        @SerializedName("idUsuario") val idUsuario: Int,
+        @SerializedName("estado") val estado: Int,
+        @SerializedName("Observacion") val Observacion: String?,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class ActividadBitacora(
+        @SerializedName("id") val id: Int,
+        @SerializedName("Descripcion") val Descripcion: String,
+        @SerializedName("Estado") val Estado: Int,
+        @SerializedName("TipoUnidad") val TipoUnidad: String,
+        @SerializedName("Indicador") val Indicador: String,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class ProgramarActividadBitacora(
+        @SerializedName("id") val id: Int,
+        @SerializedName("idBitacora") val idBitacora: Int,
+        @SerializedName("idActividad") val idActividad: Int,
+        @SerializedName("PrInicial") val PrInicial: String,
+        @SerializedName("PrFinal") val PrFinal: String?,
+        @SerializedName("IdCuadrilla") val IdCuadrilla: Int,
+        @SerializedName("UF") val UF: Int,
+        @SerializedName("Sentido") val Sentido: String,
+        @SerializedName("Lado") val Lado: String,
+        @SerializedName("Cantidad") val Cantidad: String, // Cambiado de Double a String para coincidir con el JSON
+        @SerializedName("Estado") val Estado: Int,
+        @SerializedName("Observacion") val Observacion: String?,
+        @SerializedName("supervisorResponsable") val supervisorResponsable: Int,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class RelBitacoraActividad(
+        @SerializedName("id") val id: Int,
+        @SerializedName("idRelProgramarActividadesBitacora") val idRelProgramarActividadesBitacora: Int,
+        @SerializedName("PrInicial") val PrInicial: String,
+        @SerializedName("PrFinal") val PrFinal: String,
+        @SerializedName("Cantidad") val Cantidad: Double, // Ver nota abajo
+        @SerializedName("Programada") val Programada: Int,
+        @SerializedName("ObservacionInterna") val ObservacionInterna: String?,
+        @SerializedName("sincronizado") val sincronizado: Int,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class RelFotosBitacoraActividad(
+        @SerializedName("id") val id: Int,
+        @SerializedName("idRelProgramarActividadesBitacora") val idRelProgramarActividadesBitacora: Int,
+        @SerializedName("ruta") val ruta: String,
+        @SerializedName("estado") val estado: Int,
+        @SerializedName("sincronizado") val sincronizado: Int,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class RelCuadrillaUsuario(
+        @SerializedName("id") val id: Int,
+        @SerializedName("IdCuadrilla") val IdCuadrilla: Int,
+        @SerializedName("IdUsuario") val IdUsuario: Int,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+
+    data class Cuadrilla(
+        @SerializedName("id") val id: Int,
+        @SerializedName("Nombre") val Nombre: String,
+        @SerializedName("Descripcion") val Descripcion: String?,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class InspeccionUsuario(
+        @SerializedName("id") val id: Int,
+        @SerializedName("idUsuario") val idUsuario: Int,
+        @SerializedName("fecha") val fecha: String,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class ActividadInspeccion(
+        @SerializedName("id") val id: Int,
+        @SerializedName("descripcion") val descripcion: String,
+        @SerializedName("estado") val estado: Int,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
+
+    data class RelInspeccionActividad(
+        @SerializedName("id") val id: Int,
+        @SerializedName("idInspeccionUsuarios") val idInspeccionUsuarios: Int,
+        @SerializedName("idActividadInspeccion") val idActividadInspeccion: Int,
+        @SerializedName("estado") val estado: Int,
+        @SerializedName("created_at") val created_at: String?,
+        @SerializedName("updated_at") val updated_at: String?
+    )
 
     data class ValidarVehiculoRequest(
         val idusuario: Int,
@@ -159,6 +263,38 @@ interface ApiService {
     fun validarUsuario(@Query("idUsuario") idUsuario: Int): Call<UsuarioValidadoResponse>
 
 
+    @GET("/api/actividadesinspeccion")
+    fun getActividadesInspeccion(): Call<List<ActividadInspeccion>>
+
+    @GET("/api/inspeccionusuario")
+    fun getInspeccionUsuarios(): Call<List<InspeccionUsuario>>
+
+    @GET("/api/relinspeccionactividades")
+    fun getRelInspeccionActividad(): Call<List<RelInspeccionActividad>>
+
+    // ----
+    @GET("/api/bitacoras")
+    fun getBitacoraMantenimientos(): Call<List<BitacoraMantenimiento>>
+
+    @GET("/api/actividadesbitacora")
+    fun getActividadesBitacoras(): Call<List<ActividadBitacora>>
+
+    @GET("/api/programaractividadesbitacora")
+    fun getProgramarActividadesBitacora(): Call<List<ProgramarActividadBitacora>>
+
+    @GET("/api/relbitacoraactividades")
+    fun getRelBitacoraActividades(): Call<List<RelBitacoraActividad>>
+
+    @GET("/api/relfotobitacoraactividades")
+    fun getRelFotosBitacoraActividades(): Call<List<RelFotosBitacoraActividad>>
+
+    @GET("/api/relcuadrillausuarios")
+    fun getRelCuadrillasUsuarios(): Call<List<RelCuadrillaUsuario>>
+
+
+    @GET("/api/cuadrillas")
+    fun getCuadrillas(): Call<List<Cuadrilla>>
+
 
 
     @GET("api/actividades-formato")
@@ -194,6 +330,24 @@ interface ApiService {
         @Part("json") json: RequestBody,
         @Part imagenes: List<MultipartBody.Part>
     ): Call<Void>
+
+    @Multipart
+    @POST("api/finalizarMantenimiento")
+    fun finalizarMantenimiento(
+        @Part("json") json: RequestBody,
+        @Part imagenes: List<MultipartBody.Part>
+    ): Call<Void>
+
+
+    @Multipart
+    @POST("api/finalizaractividadbitacora")
+    fun finalizarMantenimientoBitacora(
+        @Part("json") json: RequestBody,
+        @Part imagenes: List<MultipartBody.Part>
+    ): Call<Void>
+
+
+
 
 
 
