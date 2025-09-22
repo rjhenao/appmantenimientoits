@@ -10,6 +10,7 @@
     android:background="@color/background_light"
     tools:context=".HomeActivity">
 
+
     <!-- CONTENIDO PRINCIPAL -->
     <LinearLayout
         android:orientation="vertical"
@@ -18,6 +19,7 @@
 
         <!-- Header global con Toolbar -->
         <include layout="@layout/header_global"/>
+
 
         <!-- ScrollView para contenido desplazable -->
         <ScrollView
@@ -59,8 +61,8 @@
                             app:cardBackgroundColor="@color/primary_light">
 
                             <ImageView
-                                android:layout_width="48dp"
-                                android:layout_height="48dp"
+                                android:layout_width="128dp"
+                                android:layout_height="128dp"
                                 android:layout_gravity="center"
                                 android:src="@mipmap/ic_launcher_foreground"
                                 android:scaleType="centerCrop"/>

@@ -23,9 +23,19 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.PartMap
 import retrofit2.http.Query
 
 interface ApiService {
+
+    data class SincronizacionInspeccion(
+        @SerializedName("inspecciones") // <-- ¡Esta es la clave!
+        val usuarios: List<InspeccionUsuario>,
+
+        @SerializedName("actividades")
+        val actividades: List<RelInspeccionActividad>
+    )
+
 
     data class ApiResponse(
         val messagedd2: String,
@@ -339,12 +349,19 @@ interface ApiService {
     ): Call<Void>
 
 
+
+
     @Multipart
     @POST("api/finalizaractividadbitacora")
     fun finalizarMantenimientoBitacora(
-        @Part("json") json: RequestBody,
+        @Part("json") json: RequestBody, // <-- CAMBIA @PartMap POR @Part("json")
         @Part imagenes: List<MultipartBody.Part>
     ): Call<Void>
+
+
+
+    @POST("api/sincronizarInspeccionCompleta")
+    fun sincronizarInspeccionCompleta(@Body data: SincronizacionInspeccion): Call<Void>
 
 
 
