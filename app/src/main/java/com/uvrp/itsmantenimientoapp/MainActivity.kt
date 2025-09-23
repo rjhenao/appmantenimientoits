@@ -3,6 +3,7 @@ package com.uvrp.itsmantenimientoapp
 import ApiService
 import ApiService.InspeccionUsuario
 import ApiService.RelInspeccionActividad
+import com.uvrp.itsmantenimientoapp.models.Ticket
 import android.content.ContentValues
 import android.content.Intent
 import android.os.Bundle
@@ -173,6 +174,7 @@ class MainActivity : AppCompatActivity() {
                 async { sincronizarTabla("rel_cuadrillas_usuarios", api.getRelCuadrillasUsuarios()) },
                 async { sincronizarTabla("cuadrillas", api.getCuadrillas()) },
                 async { sincronizarTabla("actividades_inspeccion", api.getActividadesInspeccion()) },
+                async { sincronizarTickets() },
 
             )
 
@@ -244,6 +246,47 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 // 6. Si hubo un problema de red o de conversión de datos, lo capturamos.
                 Log.e(tag, "Excepción durante la sincronización: ${e.message}", e)
+                false // La sincronización falló
+            }
+        }
+    }
+
+    // Función específica para sincronizar tickets
+    suspend fun sincronizarTickets(): Boolean {
+        val dbHelper = DatabaseHelper(this)
+        val tag = "API_SYNC_TICKETS"
+
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Ejecutamos la llamada a la API
+                val response = api.getTickets().execute()
+
+                // 2. Verificamos si la respuesta del servidor fue exitosa
+                if (response.isSuccessful) {
+                    val ticketResponse = response.body()
+
+                    Log.d(tag, "Respuesta recibida: $ticketResponse")
+
+                    if (ticketResponse != null && ticketResponse.success && ticketResponse.data.isNotEmpty()) {
+                        Log.d(tag, "Procesando ${ticketResponse.data.size} tickets.")
+                        
+                        // Usar la función de extensión para insertar tickets
+                        dbHelper.insertarOActualizarTickets(ticketResponse.data)
+                        
+                        true // La sincronización fue exitosa
+                    } else {
+                        Log.w(tag, "La respuesta fue exitosa pero no contiene datos de tickets.")
+                        true // Técnicamente no es un error, solo no había nada que sincronizar.
+                    }
+                } else {
+                    // Si la API devolvió un error
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(tag, "Error en la respuesta de la API: ${response.code()} - $errorBody")
+                    false // La sincronización falló
+                }
+            } catch (e: Exception) {
+                // Si hubo un problema de red o de conversión de datos
+                Log.e(tag, "Excepción durante la sincronización de tickets: ${e.message}", e)
                 false // La sincronización falló
             }
         }

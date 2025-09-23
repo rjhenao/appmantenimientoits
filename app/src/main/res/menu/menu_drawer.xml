@@ -15,6 +15,9 @@
         android:id="@+id/nav_bitacoras"
         android:title="Bitacoras" />
     <item
+        android:id="@+id/nav_tickets"
+        android:title="Tickets" />
+    <item
         android:id="@+id/nav_cerrarsesion"
         android:title="Cerrar Sesión" />
 </menu>
