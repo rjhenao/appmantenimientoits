@@ -82,6 +82,17 @@
                             android:layout_height="wrap_content"
                             android:text="Tag del equipo: --"
                             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+
+                        <!-- Información del ticket (solo visible si viene de un ticket) -->
+                        <TextView
+                            android:id="@+id/tvTicketInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=""
+                            android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                            android:textColor="@color/design_default_color_primary"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 

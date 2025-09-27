@@ -16,6 +16,7 @@ import com.uvrp.itsmantenimientoapp.MainActivity
 import com.uvrp.itsmantenimientoapp.Nivel1Activity
 import com.uvrp.itsmantenimientoapp.R
 import com.uvrp.itsmantenimientoapp.SeleccionEquipoActivity
+import com.uvrp.itsmantenimientoapp.TicketsActivity
 import com.uvrp.itsmantenimientoapp.iniciarPreoperacional
 
 object HeaderHelper {
@@ -63,6 +64,7 @@ object HeaderHelper {
         menu.findItem(R.id.nav_its).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_correctivo).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_bitacoras).isVisible = tienePermisosMantenimiento
+        menu.findItem(R.id.nav_tickets).isVisible = tienePermisosITS
 
         // --- FIN DE LA MEJORA PRINCIPAL ---
 
@@ -87,6 +89,7 @@ object HeaderHelper {
                 R.id.nav_correctivo -> navigateTo(activity, SeleccionEquipoActivity::class.java)
                 R.id.nav_preoperacional -> navigateTo(activity, iniciarPreoperacional::class.java)
                 R.id.nav_bitacoras -> navigateTo(activity, BitacorasActivity::class.java)
+                R.id.nav_tickets -> navigateTo(activity, TicketsActivity::class.java)
                 R.id.nav_cerrarsesion -> logout(activity) // Usamos la función centralizada
             }
             // Cierra el menú lateral después de la selección

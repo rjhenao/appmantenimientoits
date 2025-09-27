@@ -37,7 +37,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 36) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 39) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -446,6 +446,75 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 """
         db.execSQL(createRelInspeccionActividades)
 
+        // ===== TABLAS DE TICKETS =====
+        // Tabla principal de tickets
+        val createTicketsTable = """
+            CREATE TABLE tickets (
+                id INTEGER PRIMARY KEY,
+                ticket_number TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                status TEXT NOT NULL,
+                status_text TEXT NOT NULL,
+                priority TEXT NOT NULL,
+                priority_text TEXT NOT NULL,
+                category TEXT NOT NULL,
+                category_text TEXT NOT NULL,
+                reported_at TEXT NOT NULL,
+                reported_at_formatted TEXT NOT NULL,
+                resolved_at TEXT,
+                resolution TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                reported_by_id INTEGER NOT NULL,
+                reported_by_name TEXT NOT NULL,
+                reported_by_email TEXT NOT NULL,
+                assigned_to_id INTEGER,
+                assigned_to_name TEXT,
+                assigned_to_email TEXT,
+                location_id INTEGER NOT NULL,
+                location_name TEXT NOT NULL,
+                system_id INTEGER,
+                system_name TEXT,
+                subsystem_id INTEGER,
+                subsystem_name TEXT,
+                equipment_id INTEGER,
+                equipment_tag TEXT,
+                equipment_type TEXT,
+                comments_count INTEGER NOT NULL DEFAULT 0
+            )
+        """
+        db.execSQL(createTicketsTable)
+
+        // Tabla de comentarios de tickets
+        val createTicketCommentsTable = """
+            CREATE TABLE ticket_comments (
+                id INTEGER PRIMARY KEY,
+                ticket_id INTEGER NOT NULL,
+                comment TEXT NOT NULL,
+                is_internal INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                created_at_formatted TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                user_name TEXT NOT NULL,
+                FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE
+            )
+        """
+        db.execSQL(createTicketCommentsTable)
+
+        // Tabla de relación entre tickets y mantenimientos correctivos
+        val createRelTicketsCorrectivosTable = """
+            CREATE TABLE rel_tickets_correctivos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                idTicket INTEGER NOT NULL,
+                idMantenimientoCorrectivo INTEGER NOT NULL,
+                sincronizado INTEGER DEFAULT 0,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """
+        db.execSQL(createRelTicketsCorrectivosTable)
+
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -481,6 +550,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL("DROP TABLE IF EXISTS actividades_inspeccion")
         db.execSQL("DROP TABLE IF EXISTS rel_inspeccion_actividades")
         db.execSQL("DROP TABLE IF EXISTS rel_usuarios_bitacora_actividades")
+        db.execSQL("DROP TABLE IF EXISTS rel_tickets_correctivos")
 
         onCreate(db)
     }
@@ -2254,7 +2324,8 @@ return insertOk
         causa: String,
         observaciones: String,
         usuariosIds: List<Int>,
-        fotos: List<File>
+        fotos: List<File>,
+        idTicket: Int? = null // Nuevo parámetro opcional para el ID del ticket
     ): Boolean {
         val db = writableDatabase
         var idMantenimiento: Long = -1
@@ -2300,6 +2371,18 @@ return insertOk
                 if (res == -1L) throw Exception("Error insertando foto")
             }
 
+            // Insertar relación con ticket si viene de uno
+            if (idTicket != null) {
+                val valuesRelacion = ContentValues().apply {
+                    put("idTicket", idTicket)
+                    put("idMantenimientoCorrectivo", idMantenimiento)
+                    put("created_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+                    put("updated_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+                }
+                val resRelacion = db.insert("rel_tickets_correctivos", null, valuesRelacion)
+                if (resRelacion == -1L) throw Exception("Error insertando relación ticket-correctivo")
+            }
+
             db.setTransactionSuccessful()
             true
         } catch (e: Exception) {
@@ -2338,7 +2421,7 @@ return insertOk
         // Usamos .use para que el cursor se cierre automáticamente, es más seguro.
         db.rawQuery(
             """
-        SELECT 
+        SELECT DISTINCT
             CONCAT(
                 SUBSTR(ab.Descripcion, 1, 10), 
                 ' ', 
@@ -2352,6 +2435,13 @@ return insertOk
             actividades_bitacoras ab ON (ab.id = pab.idActividad)
         WHERE
             rba.sincronizado = 0
+        AND rba.Programada = 1
+        AND EXISTS (
+            SELECT 1 FROM rel_bitacora_actividades rba_check
+            WHERE rba_check.idRelProgramarActividadesBitacora = pab.id
+            AND rba_check.Programada = 1
+            AND rba_check.sincronizado = 0
+        )
         """, null
         ).use { cursor ->
             if (cursor.moveToFirst()) {
@@ -2370,11 +2460,18 @@ return insertOk
         val db = readableDatabase
         val cursor = db.rawQuery(
             """
-        SELECT e.tag
+        SELECT DISTINCT e.tag
         FROM rel_tecnico_mantenimiento rma
-        join programar_mantenimientos as pro on (rma.idMantenimiento = pro.id )
+        JOIN programar_mantenimientos pro ON (rma.idMantenimiento = pro.id)
         JOIN equipos e ON (pro.id_equipo = e.id)
+        JOIN rel_mantenimiento_actividad rma_act ON (rma_act.id_mantenimiento = pro.id)
         WHERE rma.sincronizado = 0
+        AND rma_act.estado = 1
+        AND EXISTS (
+            SELECT 1 FROM rel_mantenimiento_actividad rma_check
+            WHERE rma_check.id_mantenimiento = pro.id
+            AND rma_check.estado = 1
+        )
         """, null
         )
 
@@ -3222,6 +3319,116 @@ return insertOk
             db.endTransaction() // Finaliza la transacción (confirma o revierte)
             db.close()
         }
+    }
+
+    // Función para insertar relación entre ticket y mantenimiento correctivo
+    fun insertarRelacionTicketCorrectivo(idTicket: Int, idMantenimientoCorrectivo: Int): Boolean {
+        val db = this.writableDatabase
+        var exito = false
+        
+        try {
+            db.beginTransaction()
+            
+            val values = ContentValues().apply {
+                put("idTicket", idTicket)
+                put("idMantenimientoCorrectivo", idMantenimientoCorrectivo)
+                put("sincronizado", 0) // 0 = no sincronizado, 1 = sincronizado
+                put("created_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+                put("updated_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+            }
+            
+            val resultado = db.insert("rel_tickets_correctivos", null, values)
+            exito = resultado != -1L
+            
+            if (exito) {
+                db.setTransactionSuccessful()
+            }
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al insertar relación ticket-correctivo", e)
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+        
+        return exito
+    }
+
+    // Función para verificar si un ticket ya tiene mantenimiento correctivo
+    fun ticketTieneMantenimientoCorrectivo(idTicket: Int): Boolean {
+        val db = this.readableDatabase
+        var tieneMantenimiento = false
+        
+        try {
+            val cursor = db.rawQuery(
+                "SELECT COUNT(*) as count FROM rel_tickets_correctivos WHERE idTicket = ?",
+                arrayOf(idTicket.toString())
+            )
+            
+            if (cursor.moveToFirst()) {
+                val count = cursor.getInt(cursor.getColumnIndexOrThrow("count"))
+                tieneMantenimiento = count > 0
+            }
+            
+            cursor.close()
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al verificar ticket con mantenimiento", e)
+        } finally {
+            db.close()
+        }
+        
+        return tieneMantenimiento
+    }
+
+    // Función para obtener relaciones no sincronizadas
+    fun obtenerRelacionesNoSincronizadas(): List<Pair<Int, Int>> {
+        val db = this.readableDatabase
+        val relaciones = mutableListOf<Pair<Int, Int>>()
+        
+        try {
+            val cursor = db.rawQuery(
+                "SELECT idTicket, idMantenimientoCorrectivo FROM rel_tickets_correctivos WHERE sincronizado = 0",
+                null
+            )
+            
+            while (cursor.moveToNext()) {
+                val idTicket = cursor.getInt(0)
+                val idMantenimiento = cursor.getInt(1)
+                relaciones.add(Pair(idTicket, idMantenimiento))
+            }
+            
+            cursor.close()
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al obtener relaciones no sincronizadas", e)
+        }
+        
+        return relaciones
+    }
+
+    // Función para marcar relación como sincronizada
+    fun marcarRelacionComoSincronizada(idTicket: Int, idMantenimientoCorrectivo: Int): Boolean {
+        val db = this.writableDatabase
+        var exito = false
+        
+        try {
+            val values = ContentValues().apply {
+                put("sincronizado", 1)
+                put("updated_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+            }
+            
+            val resultado = db.update(
+                "rel_tickets_correctivos",
+                values,
+                "idTicket = ? AND idMantenimientoCorrectivo = ?",
+                arrayOf(idTicket.toString(), idMantenimientoCorrectivo.toString())
+            )
+            
+            exito = resultado > 0
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al marcar relación como sincronizada", e)
+        }
+        
+        return exito
     }
 
 

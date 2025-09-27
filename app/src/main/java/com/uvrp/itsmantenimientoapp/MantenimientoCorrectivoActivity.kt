@@ -12,6 +12,7 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -138,11 +139,32 @@ class MantenimientoCorrectivoActivity : AppCompatActivity() {
         val tipoEquipo = intent.getStringExtra("tipoEquipoDescripcion") ?: "--"
         val tagEquipo = intent.getStringExtra("tagEquipoDescripcion") ?: "--"
 
+        // ==== DATOS DEL TICKET (si viene de un ticket) ====
+        val ticketId = intent.getStringExtra("ticketId")
+        val ticketNumber = intent.getStringExtra("ticketNumber")
+        val ticketTitle = intent.getStringExtra("ticketTitle")
+        val ticketDescription = intent.getStringExtra("ticketDescription")
+
         findViewById<TextView>(R.id.tvLocacion).text = "Locación: $locacion"
         findViewById<TextView>(R.id.tvSistema).text = "Sistema: $sistema"
         findViewById<TextView>(R.id.tvSubsistema).text = "Subsistema: $subsistema"
         findViewById<TextView>(R.id.tvTipoEquipo).text = "Tipo de equipo: $tipoEquipo"
         findViewById<TextView>(R.id.tvTagEquipo).text = "Tag del equipo: $tagEquipo"
+
+        // Mostrar información del ticket si viene de uno
+        if (!ticketId.isNullOrEmpty() && !ticketNumber.isNullOrEmpty()) {
+            // Buscar el TextView para mostrar información del ticket
+            val tvTicketInfo = findViewById<TextView>(R.id.tvTicketInfo)
+            if (tvTicketInfo != null) {
+                tvTicketInfo.text = "Ticket: $ticketNumber - $ticketTitle"
+                tvTicketInfo.visibility = View.VISIBLE
+            }
+            
+            // Pre-llenar la descripción de la falla con la descripción del ticket
+            if (!ticketDescription.isNullOrEmpty()) {
+                etDescripcionFalla.setText(ticketDescription)
+            }
+        }
     }
 
 
@@ -268,6 +290,7 @@ class MantenimientoCorrectivoActivity : AppCompatActivity() {
 
     private fun guardarDatosEnPrefs() {
         val idEquipo = intent.getStringExtra("tagId") ?: "0"
+        val ticketId = intent.getStringExtra("ticketId") ?: ""
         val prefs = getSharedPreferences("DatosMantenimiento", MODE_PRIVATE)
         with(prefs.edit()) {
             putString("descripcion_falla_$idEquipo", etDescripcionFalla.text.toString())
@@ -277,6 +300,7 @@ class MantenimientoCorrectivoActivity : AppCompatActivity() {
             putString("estado_final_$idEquipo", spEstadoFinal.text.toString())
             putString("causa_raiz_$idEquipo", etCausaRaiz.text.toString())
             putString("observaciones_$idEquipo", etObservaciones.text.toString())
+            putString("ticket_id_$idEquipo", ticketId) // Guardar ID del ticket
             putStringSet(
                 "empleados_seleccionados_$idEquipo",
                 checkBoxEmpleadoMap.filter { it.key.isChecked }.map { it.value.id.toString() }
@@ -414,6 +438,7 @@ class MantenimientoCorrectivoActivity : AppCompatActivity() {
         }
 
         // 2️⃣ Ejecutar en transacción
+        val ticketId = intent.getStringExtra("ticketId")?.toIntOrNull()
         val exito = dbHelper.insertarMantenimientoCompleto(
             idEquipo,
             etDescripcionFalla.text.toString(),
@@ -424,7 +449,8 @@ class MantenimientoCorrectivoActivity : AppCompatActivity() {
             etCausaRaiz.text.toString(),
             etObservaciones.text.toString(),
             usuariosSeleccionadosIds,
-            fotosList
+            fotosList,
+            ticketId // Pasar el ID del ticket si viene de uno
         )
 
         if (exito) {
@@ -544,6 +570,7 @@ class MantenimientoCorrectivoActivity : AppCompatActivity() {
         prefs.remove("estado_final_$idEquipo")
         prefs.remove("causa_raiz_$idEquipo")
         prefs.remove("observaciones_$idEquipo")
+        prefs.remove("ticket_id_$idEquipo") // Limpiar también el ID del ticket
         prefs.remove("empleados_seleccionados_$idEquipo")
         prefs.apply()
     }
