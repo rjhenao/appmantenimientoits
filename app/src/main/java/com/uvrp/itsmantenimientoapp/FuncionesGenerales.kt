@@ -48,6 +48,25 @@ object FuncionesGenerales {
             progressDialog.dismiss()
 
             if (resultado) {
+                // Si la sincronización fue exitosa, sincronizar también los tickets
+                withContext(Dispatchers.IO) {
+                    try {
+                        val api = RetrofitClient.instance
+                        val response = api.getTickets().execute()
+                        
+                        if (response.isSuccessful) {
+                            val ticketResponse = response.body()
+                            if (ticketResponse != null && ticketResponse.success) {
+                                dbHelper.insertarOActualizarTickets(ticketResponse.data)
+                                Log.i("SyncTickets", "Tickets sincronizados exitosamente después de mantenimientos")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SyncTickets", "Error sincronizando tickets después de mantenimientos: ${e.message}", e)
+                    }
+                    Unit // Retorno explícito para evitar que el if sea interpretado como expresión
+                }
+                
                 Toast.makeText(context, "Sincronización completada.", Toast.LENGTH_LONG).show()
                 onResult(true)
             } else {
@@ -66,6 +85,11 @@ object FuncionesGenerales {
 
         for (mantenimiento in pendientes) {
             try {
+                // Obtener relaciones con tickets para este mantenimiento
+                val relacionesTickets = dbHelper.obtenerRelacionesNoSincronizadas()
+                    .filter { it.second == mantenimiento.id }
+                    .map { mapOf("idTicket" to it.first) }
+
                 val jsonString = JSONObject().apply {
                     put("descripcion_falla", mantenimiento.descripcionFalla)
                     put("diagnostico", mantenimiento.diagnostico)
@@ -76,6 +100,11 @@ object FuncionesGenerales {
                     put("observaciones", mantenimiento.observaciones)
                     put("usuarios_checkeados", JSONArray(mantenimiento.usuarios))
                     put("id_tag_equipo", mantenimiento.idEquipo)
+                    
+                    // Agregar relaciones con tickets si existen
+                    if (relacionesTickets.isNotEmpty()) {
+                        put("relaciones_tickets", JSONArray(relacionesTickets))
+                    }
                 }.toString()
 
                 val requestBody = jsonString.toRequestBody("application/json".toMediaTypeOrNull())
@@ -99,6 +128,13 @@ object FuncionesGenerales {
 
                 if (response.isSuccessful) {
                     dbHelper.marcarMantenimientoSincronizado(mantenimiento.id)
+                    
+                    // Marcar relaciones como sincronizadas
+                    relacionesTickets.forEach { relacion ->
+                        val idTicket = relacion["idTicket"] as Int
+                        dbHelper.marcarRelacionComoSincronizada(idTicket, mantenimiento.id)
+                    }
+                    
                     huboExito = true
                 } else {
                     Log.e("SyncCorrectivo", "Error sincronizando mantenimiento id=${mantenimiento.id}, code=${response.code()}")

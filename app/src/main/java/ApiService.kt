@@ -14,6 +14,10 @@ import com.uvrp.itsmantenimientoapp.TipoEquipos
 import com.uvrp.itsmantenimientoapp.Uf
 import com.uvrp.itsmantenimientoapp.User
 import com.uvrp.itsmantenimientoapp.UsuarioValidadoResponse
+import com.uvrp.itsmantenimientoapp.models.Ticket
+import com.uvrp.itsmantenimientoapp.models.TicketResponse
+import com.uvrp.itsmantenimientoapp.models.TicketDetailResponse
+import com.uvrp.itsmantenimientoapp.models.TicketStatsResponse
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -368,5 +372,16 @@ interface ApiService {
 
 
 
+
+    // ===== ENDPOINTS DE TICKETS =====
+    
+    @GET("/api/tickets")
+    fun getTickets(): Call<TicketResponse>
+    
+    @GET("/api/tickets/{id}")
+    fun getTicket(@retrofit2.http.Path("id") id: Int): Call<TicketDetailResponse>
+    
+    @GET("/api/tickets-stats")
+    fun getTicketStats(): Call<TicketStatsResponse>
 
 }
