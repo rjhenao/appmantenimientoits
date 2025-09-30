@@ -18,6 +18,8 @@ import com.uvrp.itsmantenimientoapp.models.Ticket
 import com.uvrp.itsmantenimientoapp.models.TicketResponse
 import com.uvrp.itsmantenimientoapp.models.TicketDetailResponse
 import com.uvrp.itsmantenimientoapp.models.TicketStatsResponse
+import com.uvrp.itsmantenimientoapp.models.FotosMasivasRequest
+import com.uvrp.itsmantenimientoapp.models.FotosMasivasResponse
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -383,5 +385,10 @@ interface ApiService {
     
     @GET("/api/tickets-stats")
     fun getTicketStats(): Call<TicketStatsResponse>
+
+    // ===== ENDPOINTS DE FOTOS MASIVAS =====
+    
+    @POST("/api/sincronizar-fotos-masivas")
+    fun sincronizarFotosMasivas(@Body requestBody: FotosMasivasRequest): Call<FotosMasivasResponse>
 
 }

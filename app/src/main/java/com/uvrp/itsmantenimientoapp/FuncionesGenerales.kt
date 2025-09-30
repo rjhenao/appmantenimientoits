@@ -40,9 +40,10 @@ object FuncionesGenerales {
                 val exitoCorrectivos = sincronizarPendientesCorrectivos(context, dbHelper)
                 val exitoBitacoras = sincronizarPendientesBitacora(context, dbHelper)
                 val exitoInspecciones = sincronizarInspeccionesCompletas(dbHelper)
+                val exitoFotosMasivas = sincronizarFotosMasivas(context, dbHelper)
 
                 // El resultado total es exitoso si CUALQUIERA de los procesos tuvo éxito
-                exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones
+                exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas
             }
 
             progressDialog.dismiss()
@@ -467,5 +468,28 @@ object FuncionesGenerales {
 
 
 
+    /**
+     * Sincronizar fotos masivas de mantenimiento preventivo
+     */
+    private suspend fun sincronizarFotosMasivas(context: Context, dbHelper: DatabaseHelper): Boolean {
+        return try {
+            Log.d("FUNCIONES_GENERALES", "🔄 Iniciando sincronización de fotos masivas...")
+            
+            val resultado = dbHelper.sincronizarFotosMasivas()
+            val exito = resultado == 1
+            
+            if (exito) {
+                Log.d("FUNCIONES_GENERALES", "✅ Sincronización de fotos masivas exitosa")
+            } else {
+                Log.w("FUNCIONES_GENERALES", "⚠️ Sincronización de fotos masivas falló o no había datos")
+            }
+            
+            exito
+            
+        } catch (e: Exception) {
+            Log.e("FUNCIONES_GENERALES", "❌ Error en sincronización de fotos masivas: ${e.message}")
+            false
+        }
+    }
 
 }
