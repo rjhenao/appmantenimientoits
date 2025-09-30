@@ -11,6 +11,8 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import com.uvrp.itsmantenimientoapp.models.ValidationRangesRaw
+import com.uvrp.itsmantenimientoapp.models.FotoMasivaRequest
+import com.uvrp.itsmantenimientoapp.models.FotosMasivasRequest
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.uvrp.itsmantenimientoapp.models.ActividadInfo
@@ -37,7 +39,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 39) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 40) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -515,6 +517,19 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         """
         db.execSQL(createRelTicketsCorrectivosTable)
 
+        // Tabla para fotos masivas de mantenimiento preventivo
+        val createRelFotosMantenimientoPreventivoTable = """
+            CREATE TABLE rel_fotos_mantenimiento_preventivo (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_mantenimiento INTEGER NOT NULL,
+                ruta TEXT NOT NULL,
+                sincronizado INTEGER DEFAULT 0,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """
+        db.execSQL(createRelFotosMantenimientoPreventivoTable)
+
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -550,7 +565,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL("DROP TABLE IF EXISTS actividades_inspeccion")
         db.execSQL("DROP TABLE IF EXISTS rel_inspeccion_actividades")
         db.execSQL("DROP TABLE IF EXISTS rel_usuarios_bitacora_actividades")
+        db.execSQL("DROP TABLE IF EXISTS tickets")
+        db.execSQL("DROP TABLE IF EXISTS ticket_comments")
+        db.execSQL("DROP TABLE IF EXISTS ticket_attachments")
         db.execSQL("DROP TABLE IF EXISTS rel_tickets_correctivos")
+        db.execSQL("DROP TABLE IF EXISTS rel_fotos_mantenimiento_preventivo")
 
         onCreate(db)
     }
@@ -1792,7 +1811,7 @@ Log.d("jdudud" , "$lista")
                                     put("sincronizado", 1)
                                     put("estado", 2)
                                 }
-                                dbb.update("rel_tecnico_mantenimiento", values, "idMantenimiento = ?", arrayOf(idMantenimiento.toString()))
+                                this@DatabaseHelper.writableDatabase.update("rel_tecnico_mantenimiento", values, "idMantenimiento = ?", arrayOf(idMantenimiento.toString()))
                                 insertOk = 1
                             }
                             Log.d("API_RESPONSE", "Mensaje del servidor: ${apiResponse?.messagedd2}")
@@ -1874,7 +1893,7 @@ Log.d("jdudud" , "$lista")
                                     put("estado", 2)
                                 }
 
-                                dbb.update(
+                                this@DatabaseHelper.writableDatabase.update(
                                     "rel_tecnico_mantenimiento",
                                     values1,
                                     "idMantenimiento = ?",
@@ -2051,7 +2070,7 @@ Log.d("jdudud" , "$lista")
                                     put("fecha_realizado", System.currentTimeMillis()) // Guardar fecha actual en formato UNIX timestamp
                                 }
 
-                                dbb.update(
+                                this@DatabaseHelper.writableDatabase.update(
                                     "programar_mantenimientos",  // Nombre de la tabla
                                     values,                      // Valores a actualizar
                                     "id = ?",                    // WHERE condición
@@ -2063,7 +2082,7 @@ Log.d("jdudud" , "$lista")
                                     put("estado", 2)
                                 }
 
-                                dbb.update(
+                                this@DatabaseHelper.writableDatabase.update(
                                     "rel_tecnico_mantenimiento",  // Nombre de la tabla
                                     values1,                      // Valores a actualizar
                                     "idMantenimiento = ?",                    // WHERE condición
@@ -3430,6 +3449,279 @@ return insertOk
         
         return exito
     }
+
+    // ===== MÉTODOS PARA FOTOS MASIVAS =====
+    
+    // Insertar foto masiva
+    fun insertarFotoMasiva(idMantenimiento: Int, ruta: String): Boolean {
+        val db = this.writableDatabase
+        var exito = false
+        
+        try {
+            val values = ContentValues().apply {
+                put("id_mantenimiento", idMantenimiento)
+                put("ruta", ruta)
+                put("sincronizado", 0)
+                put("created_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+                put("updated_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+            }
+            
+            val resultado = db.insert("rel_fotos_mantenimiento_preventivo", null, values)
+            exito = resultado != -1L
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al insertar foto masiva", e)
+        }
+        
+        return exito
+    }
+    
+    // Obtener fotos masivas por mantenimiento
+    fun obtenerFotosMasivas(idMantenimiento: Int): List<String> {
+        val db = this.readableDatabase
+        val fotos = mutableListOf<String>()
+        
+        try {
+            val cursor = db.query(
+                "rel_fotos_mantenimiento_preventivo",
+                arrayOf("ruta"),
+                "id_mantenimiento = ?",
+                arrayOf(idMantenimiento.toString()),
+                null, null, "created_at ASC"
+            )
+            
+            while (cursor.moveToNext()) {
+                val ruta = cursor.getString(cursor.getColumnIndexOrThrow("ruta"))
+                fotos.add(ruta)
+            }
+            cursor.close()
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al obtener fotos masivas", e)
+        }
+        
+        return fotos
+    }
+    
+    // Eliminar foto masiva
+    fun eliminarFotoMasiva(ruta: String): Boolean {
+        val db = this.writableDatabase
+        var exito = false
+        
+        try {
+            val resultado = db.delete(
+                "rel_fotos_mantenimiento_preventivo",
+                "ruta = ?",
+                arrayOf(ruta)
+            )
+            exito = resultado > 0
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al eliminar foto masiva", e)
+        }
+        
+        return exito
+    }
+    
+    // Eliminar todas las fotos masivas de un mantenimiento
+    fun eliminarTodasFotosMasivas(idMantenimiento: Int): Boolean {
+        val db = this.writableDatabase
+        var exito = false
+        
+        try {
+            val resultado = db.delete(
+                "rel_fotos_mantenimiento_preventivo",
+                "id_mantenimiento = ?",
+                arrayOf(idMantenimiento.toString())
+            )
+            exito = resultado >= 0 // Puede ser 0 si no hay fotos
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al eliminar todas las fotos masivas", e)
+        }
+        
+        return exito
+    }
+
+    /**
+     * Sincronizar fotos masivas de mantenimiento preventivo con Laravel
+     */
+    suspend fun sincronizarFotosMasivas(): Int {
+        var exito = 0
+        
+        try {
+            Log.d("FOTOS_MASIVAS_SYNC", "=== INICIANDO SINCRONIZACIÓN DE FOTOS MASIVAS ===")
+            
+            // Obtener fotos no sincronizadas
+            val fotosNoSincronizadas = obtenerFotosMasivasNoSincronizadas()
+            
+            Log.d("FOTOS_MASIVAS_SYNC", "Fotos encontradas para sincronizar: ${fotosNoSincronizadas.size}")
+            
+            if (fotosNoSincronizadas.isEmpty()) {
+                Log.d("FOTOS_MASIVAS_SYNC", "No hay fotos masivas para sincronizar")
+                return 1 // Éxito, no hay nada que sincronizar
+            }
+            
+            Log.d("FOTOS_MASIVAS_SYNC", "Encontradas ${fotosNoSincronizadas.size} fotos para sincronizar")
+            
+            // Preparar datos para envío
+            val fotosParaEnviar = mutableListOf<FotoMasivaRequest>()
+            
+            for (foto in fotosNoSincronizadas) {
+                try {
+                    val archivo = File(foto.ruta)
+                    if (archivo.exists()) {
+                        // Convertir imagen a Base64
+                        val imagenBase64 = convertirImagenABase64(archivo)
+                        if (imagenBase64 != null) {
+                            fotosParaEnviar.add(FotoMasivaRequest(
+                                id_mantenimiento = foto.idMantenimiento,
+                                ruta = foto.ruta,
+                                imagen_base64 = imagenBase64,
+                                created_at = foto.createdAt
+                            ))
+                            Log.d("FOTOS_MASIVAS_SYNC", "Foto preparada: ${archivo.name}")
+                        } else {
+                            Log.e("FOTOS_MASIVAS_SYNC", "Error al convertir imagen a Base64: ${archivo.name}")
+                        }
+                    } else {
+                        Log.e("FOTOS_MASIVAS_SYNC", "Archivo no encontrado: ${foto.ruta}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("FOTOS_MASIVAS_SYNC", "Error procesando foto: ${e.message}")
+                }
+            }
+            
+            if (fotosParaEnviar.isEmpty()) {
+                Log.w("FOTOS_MASIVAS_SYNC", "No se pudieron preparar fotos para envío")
+                return 0
+            }
+            
+            Log.d("FOTOS_MASIVAS_SYNC", "Enviando ${fotosParaEnviar.size} fotos a Laravel")
+            
+            // Enviar a Laravel
+            val api = RetrofitClient.instance
+            val requestBody = FotosMasivasRequest(fotos = fotosParaEnviar)
+            
+            val call = api.sincronizarFotosMasivas(requestBody)
+            val response = call.execute()
+            
+            if (response.isSuccessful) {
+                val responseBody = response.body()
+                if (responseBody?.success == true) {
+                    Log.d("FOTOS_MASIVAS_SYNC", "✅ Sincronización exitosa: ${responseBody.fotos_procesadas} fotos procesadas")
+                    
+                    // Marcar fotos como sincronizadas
+                    for (foto in fotosNoSincronizadas) {
+                        marcarFotoMasivaComoSincronizada(foto.id)
+                    }
+                    
+                    exito = 1
+                } else {
+                    Log.e("FOTOS_MASIVAS_SYNC", "❌ Error en respuesta: ${responseBody?.message}")
+                }
+            } else {
+                Log.e("FOTOS_MASIVAS_SYNC", "❌ Error HTTP: ${response.code()} - ${response.message()}")
+            }
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_SYNC", "❌ Error general en sincronización: ${e.message}")
+            exito = 0
+        }
+        
+        Log.d("FOTOS_MASIVAS_SYNC", "=== SINCRONIZACIÓN DE FOTOS MASIVAS COMPLETADA ===")
+        return exito
+    }
+    
+    /**
+     * Obtener fotos masivas no sincronizadas
+     */
+    private fun obtenerFotosMasivasNoSincronizadas(): List<FotoMasiva> {
+        val fotos = mutableListOf<FotoMasiva>()
+        
+        try {
+            Log.d("FOTOS_MASIVAS_SYNC", "Consultando fotos no sincronizadas...")
+            
+            val cursor = readableDatabase.query(
+                "rel_fotos_mantenimiento_preventivo",
+                arrayOf("id", "id_mantenimiento", "ruta", "sincronizado", "created_at"),
+                "sincronizado = ?",
+                arrayOf("0"),
+                null, null, "created_at ASC"
+            )
+            
+            Log.d("FOTOS_MASIVAS_SYNC", "Cursor obtenido, count: ${cursor.count}")
+            
+            while (cursor.moveToNext()) {
+                val foto = FotoMasiva(
+                    id = cursor.getLong(0),
+                    idMantenimiento = cursor.getInt(1),
+                    ruta = cursor.getString(2),
+                    sincronizado = cursor.getInt(3),
+                    createdAt = cursor.getString(4)
+                )
+                fotos.add(foto)
+                Log.d("FOTOS_MASIVAS_SYNC", "Foto encontrada: ID=${foto.id}, Mantenimiento=${foto.idMantenimiento}, Ruta=${foto.ruta}")
+            }
+            
+            cursor.close()
+            Log.d("FOTOS_MASIVAS_SYNC", "Total fotos no sincronizadas: ${fotos.size}")
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_SYNC", "Error obteniendo fotos no sincronizadas: ${e.message}")
+        }
+        
+        return fotos
+    }
+    
+    /**
+     * Marcar foto masiva como sincronizada
+     */
+    private fun marcarFotoMasivaComoSincronizada(id: Long) {
+        try {
+            val values = ContentValues().apply {
+                put("sincronizado", 1)
+                put("updated_at", System.currentTimeMillis().toString())
+            }
+            
+            writableDatabase.update(
+                "rel_fotos_mantenimiento_preventivo",
+                values,
+                "id = ?",
+                arrayOf(id.toString())
+            )
+            
+            Log.d("FOTOS_MASIVAS_SYNC", "Foto $id marcada como sincronizada")
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_SYNC", "Error marcando foto como sincronizada: ${e.message}")
+        }
+    }
+    
+    /**
+     * Convertir imagen a Base64
+     */
+    private fun convertirImagenABase64(archivo: File): String? {
+        return try {
+            val bytes = archivo.readBytes()
+            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT)
+            "data:image/jpeg;base64,$base64"
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_SYNC", "Error convirtiendo imagen a Base64: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Data class para fotos masivas
+     */
+    data class FotoMasiva(
+        val id: Long,
+        val idMantenimiento: Int,
+        val ruta: String,
+        val sincronizado: Int,
+        val createdAt: String
+    )
 
 
 }

@@ -5,6 +5,7 @@ import ActividadEstado
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
@@ -34,6 +35,8 @@ import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -46,11 +49,22 @@ class MantenimientoActivity : AppCompatActivity() {
     private lateinit var empleados: List<Empleado>
     private val REQUEST_IMAGE_CAPTURE = 1
     private val REQUEST_IMAGE_CAPTURE_2 = 2
+    private val REQUEST_IMAGE_CAPTURE_MASIVO = 3
     private var currentPhotoPath: String? = null
     private var currentActividad: Actividad? = null
     private var currentIdEstado = 1
     private var currentIdMantenimiento = 0
     private var currentFotoButton: Button? = null
+
+    // Variables para fotos masivas
+    private lateinit var buttonTakePhotoMasivo: Button
+    private lateinit var rvPhotosMasivo: RecyclerView
+    private lateinit var fotosMasivasAdapter: FotoAdapter
+    private lateinit var fotosMasivasList: MutableList<File>
+    private var currentPhotoFileMasivo: File? = null
+
+    // SharedPreferences para persistencia
+    private lateinit var sharedPrefs: SharedPreferences
 
     // Mapa para guardar temporalmente las observaciones usando claves únicas
     private val observacionesTemporales = mutableMapOf<String, String>()
@@ -60,6 +74,12 @@ class MantenimientoActivity : AppCompatActivity() {
 
     private val checkBoxEmpleadoMap = mutableMapOf<CheckBox, Empleado>()
     private val dbHelper: DatabaseHelper by lazy { DatabaseHelper(this) }
+
+    companion object {
+        private const val PREFS_NAME = "fotos_masivas_prefs"
+        private const val KEY_FOTOS_MASIVAS = "fotos_masivas_list"
+        private const val KEY_MANTENIMIENTO_ID = "mantenimiento_id"
+    }
 
     private fun allPermissionsGranted(): Boolean {
         return REQUIRED_PERMISSIONS.all {
@@ -76,6 +96,9 @@ class MantenimientoActivity : AppCompatActivity() {
             requestPermissions()
         }
 
+        // Inicializar SharedPreferences
+        sharedPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+
         val idMantenimiento = intent.getIntExtra("idmantenimiento", -1)
         currentIdMantenimiento = idMantenimiento
         val actividades = intent.getParcelableArrayListExtra<Actividad>("actividades") ?: arrayListOf()
@@ -83,6 +106,9 @@ class MantenimientoActivity : AppCompatActivity() {
 
         empleados = dbHelper.getEmpleados()
         setupCheckboxes()
+
+        // Configurar fotos masivas
+        setupFotosMasivas()
 
         findViewById<TextView>(R.id.tLocacion).text = intent.getStringExtra("column1f1")
         findViewById<TextView>(R.id.tSistema).text = intent.getStringExtra("column2f1")
@@ -287,8 +313,11 @@ class MantenimientoActivity : AppCompatActivity() {
         dbHelper.insertRelUserMantenimientoBatch(currentIdMantenimiento, idEmpleadosSeleccionados)
 
         if (dbHelper.insertFinalizarMantenimiento(currentIdMantenimiento)) {
+            // Limpiar SharedPreferences de fotos masivas
+            limpiarFotosMasivasPrefs()
+            
             Toast.makeText(this, "Mantenimiento finalizado exitosamente.", Toast.LENGTH_LONG).show()
-            startActivity(Intent(this, Nivel1Activity::class.java))
+            startActivity(Intent(this, HomeActivity::class.java))
             finish()
         } else {
             Toast.makeText(this, "No se pudo finalizar el mantenimiento.", Toast.LENGTH_LONG).show()
@@ -367,26 +396,72 @@ class MantenimientoActivity : AppCompatActivity() {
             return
         }
 
-        currentPhotoPath?.let { photoPath ->
-            try {
-                val finalBitmap = processImage(photoPath)
-                guardarImagenConMarca(finalBitmap, photoPath)
-
-                val isSuccess = when (requestCode) {
-                    REQUEST_IMAGE_CAPTURE -> currentActividad?.let { dbHelper.insertarImagen(it.idEstado, photoPath) } ?: false
-                    REQUEST_IMAGE_CAPTURE_2 -> dbHelper.insertarImagen2(currentIdEstado, photoPath)
-                    else -> false
+        when (requestCode) {
+            REQUEST_IMAGE_CAPTURE_MASIVO -> {
+                Log.d("FOTOS_MASIVAS_DEBUG", "Procesando foto masiva...")
+                
+                currentPhotoFileMasivo?.let { photoFile ->
+                    try {
+                        Log.d("FOTOS_MASIVAS_DEBUG", "Archivo de foto masiva: ${photoFile.absolutePath}")
+                        
+                        // Comprimir y aplicar marca de agua
+                        val bitmapProcesado = comprimirImagenMasiva(photoFile.absolutePath)
+                        
+                        if (bitmapProcesado != null) {
+                            Log.d("FOTOS_MASIVAS_DEBUG", "Imagen procesada exitosamente")
+                            
+                            // Agregar a la lista
+                            fotosMasivasList.add(photoFile)
+                            
+                            // Guardar en base de datos
+                            val success = dbHelper.insertarFotoMasiva(currentIdMantenimiento, photoFile.absolutePath)
+                            Log.d("FOTOS_MASIVAS_DEBUG", "Guardado en BD: $success")
+                            
+                            // Guardar en SharedPreferences
+                            guardarFotosMasivasEnPrefs()
+                            
+                            // Notificar al adapter
+                            fotosMasivasAdapter.notifyDataSetChanged()
+                            
+                            Log.d("FOTOS_MASIVAS_DEBUG", "Foto masiva agregada. Total: ${fotosMasivasList.size}")
+                            Toast.makeText(this, "Foto agregada exitosamente.", Toast.LENGTH_SHORT).show()
+                            
+                        } else {
+                            Log.e("FOTOS_MASIVAS_DEBUG", "Error al procesar la imagen")
+                            Toast.makeText(this, "Error al procesar la imagen.", Toast.LENGTH_SHORT).show()
+                        }
+                        
+                    } catch (e: Exception) {
+                        Log.e("FOTOS_MASIVAS_DEBUG", "Error en procesamiento de foto masiva: ${e.message}", e)
+                        Toast.makeText(this, "Error al procesar la foto.", Toast.LENGTH_SHORT).show()
+                    }
                 }
+            }
+            
+            else -> {
+                // Procesamiento normal de fotos individuales
+                currentPhotoPath?.let { photoPath ->
+                    try {
+                        val finalBitmap = processImage(photoPath)
+                        guardarImagenConMarca(finalBitmap, photoPath)
 
-                if (isSuccess) {
-                    currentFotoButton?.backgroundTintList = ColorStateList.valueOf(getColor(R.color.success))
-                    Toast.makeText(this, "Imagen guardada.", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Error al guardar imagen en BD.", Toast.LENGTH_SHORT).show()
+                        val isSuccess = when (requestCode) {
+                            REQUEST_IMAGE_CAPTURE -> currentActividad?.let { dbHelper.insertarImagen(it.idEstado, photoPath) } ?: false
+                            REQUEST_IMAGE_CAPTURE_2 -> dbHelper.insertarImagen2(currentIdEstado, photoPath)
+                            else -> false
+                        }
+
+                        if (isSuccess) {
+                            currentFotoButton?.backgroundTintList = ColorStateList.valueOf(getColor(R.color.success))
+                            Toast.makeText(this, "Imagen guardada.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this, "Error al guardar imagen en BD.", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch(e: Exception) {
+                        Log.e("ImageProcessingError", "Error al procesar la imagen: ${e.message}", e)
+                        Toast.makeText(this, "Error al procesar la imagen.", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            } catch(e: Exception) {
-                Log.e("ImageProcessingError", "Error al procesar la imagen: ${e.message}", e)
-                Toast.makeText(this, "Error al procesar la imagen.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -462,6 +537,266 @@ class MantenimientoActivity : AppCompatActivity() {
             if (!allPermissionsGranted()) {
                 Toast.makeText(this, "Permiso de cámara denegado. La función de fotos no estará disponible.", Toast.LENGTH_LONG).show()
             }
+        }
+    }
+
+    // ===== MÉTODOS PARA FOTOS MASIVAS =====
+
+    private fun setupFotosMasivas() {
+        Log.d("FOTOS_MASIVAS_DEBUG", "=== INICIANDO SETUP FOTOS MASIVAS ===")
+        
+        try {
+            // Inicializar componentes UI
+            buttonTakePhotoMasivo = findViewById(R.id.btnTakePhotoMasivo)
+            rvPhotosMasivo = findViewById(R.id.rvPhotosMasivo)
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Configurando fotos masivas...")
+            Log.d("FOTOS_MASIVAS_DEBUG", "Botón y RecyclerView encontrados")
+            
+            // Inicializar lista y adapter
+            fotosMasivasList = mutableListOf()
+            fotosMasivasAdapter = FotoAdapter(fotosMasivasList) { fotoFile ->
+                eliminarFotoMasiva(fotoFile)
+            }
+            
+            rvPhotosMasivo.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            rvPhotosMasivo.adapter = fotosMasivasAdapter
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "RecyclerView configurado con ${fotosMasivasList.size} fotos")
+            
+            // Cargar fotos desde SharedPreferences
+            cargarFotosMasivasDesdePrefs()
+            
+            // Configurar botón
+            buttonTakePhotoMasivo.setOnClickListener {
+                Log.d("FOTOS_MASIVAS_DEBUG", "Botón de tomar foto presionado")
+                if (allPermissionsGranted()) {
+                    dispatchTakePictureIntentMasivo()
+                } else {
+                    requestPermissions()
+                }
+            }
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Setup completado. Fotos cargadas: ${fotosMasivasList.size}")
+            Log.d("FOTOS_MASIVAS_DEBUG", "Sistema de logging listo - Filtrar por: FOTOS_MASIVAS_DEBUG")
+            Log.d("FOTOS_MASIVAS_DEBUG", "=== SETUP FOTOS MASIVAS COMPLETADO ===")
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_DEBUG", "Error en setupFotosMasivas: ${e.message}", e)
+        }
+    }
+
+    private fun dispatchTakePictureIntentMasivo() {
+        Log.d("FOTOS_MASIVAS_DEBUG", "Iniciando captura de foto masiva...")
+        
+        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+            if (takePictureIntent.resolveActivity(packageManager) == null) {
+                Log.e("FOTOS_MASIVAS_DEBUG", "No se encontró aplicación de cámara")
+                Toast.makeText(this, "No se encontró aplicación de cámara.", Toast.LENGTH_SHORT).show()
+                return@also
+            }
+            
+            createImageFileMasivo()?.also { photoFile ->
+                currentPhotoFileMasivo = photoFile
+                Log.d("FOTOS_MASIVAS_DEBUG", "Archivo de foto creado: ${photoFile.absolutePath}")
+                
+                val photoURI: Uri = FileProvider.getUriForFile(this, "com.uvrp.itsmantenimientoapp.provider", photoFile)
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE_MASIVO)
+                
+                Log.d("FOTOS_MASIVAS_DEBUG", "Intent de cámara iniciado con REQUEST_IMAGE_CAPTURE_MASIVO")
+            }
+        }
+    }
+
+    private fun createImageFileMasivo(): File? {
+        return try {
+            val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            val fileName = "MASIVO_${timeStamp}_${System.currentTimeMillis()}.jpg"
+            File.createTempFile("MASIVO_${timeStamp}_", ".jpg", storageDir).apply {
+                Log.d("FOTOS_MASIVAS_DEBUG", "Archivo temporal creado: ${absolutePath}")
+            }
+        } catch (ex: IOException) {
+            Log.e("FOTOS_MASIVAS_DEBUG", "Error al crear archivo de imagen masiva", ex)
+            Toast.makeText(this, "No se pudo crear el archivo para la foto.", Toast.LENGTH_SHORT).show()
+            null
+        }
+    }
+
+    private fun comprimirImagenMasiva(imagePath: String): Bitmap? {
+        Log.d("FOTOS_MASIVAS_DEBUG", "Iniciando compresión de imagen: $imagePath")
+        
+        return try {
+            val bitmapOriginal = BitmapFactory.decodeFile(imagePath)
+            if (bitmapOriginal == null) {
+                Log.e("FOTOS_MASIVAS_DEBUG", "Error: bitmapOriginal es null")
+                return null
+            }
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Bitmap original decodificado: ${bitmapOriginal.width}x${bitmapOriginal.height}")
+            
+            // Redimensionar a máximo 1024px
+            val maxSize = 1024
+            val width = bitmapOriginal.width
+            val height = bitmapOriginal.height
+            val scale = if (width > height) maxSize.toFloat() / width else maxSize.toFloat() / height
+            
+            val matrix = Matrix()
+            matrix.postScale(scale, scale)
+            val bitmapRedimensionado = Bitmap.createBitmap(bitmapOriginal, 0, 0, width, height, matrix, true)
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Bitmap redimensionado: ${bitmapRedimensionado.width}x${bitmapRedimensionado.height}")
+            
+            // Aplicar marca de agua
+            val bitmapConMarca = agregarMarcaDeAguaMasiva(bitmapRedimensionado)
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Marca de agua aplicada")
+            
+            // Guardar con compresión 80%
+            FileOutputStream(imagePath).use { out ->
+                bitmapConMarca.compress(Bitmap.CompressFormat.JPEG, 80, out)
+            }
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Imagen comprimida y guardada con 80% calidad")
+            
+            bitmapConMarca
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_DEBUG", "Error en comprimirImagenMasiva: ${e.message}", e)
+            null
+        }
+    }
+
+    private fun agregarMarcaDeAguaMasiva(bitmap: Bitmap): Bitmap {
+        Log.d("FOTOS_MASIVAS_DEBUG", "Aplicando marca de agua...")
+        
+        val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(mutableBitmap)
+        val paint = Paint().apply {
+            color = Color.WHITE
+            textSize = 20f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            setShadowLayer(5f, 2f, 2f, Color.BLACK)
+        }
+        
+        val tLocacion = findViewById<TextView>(R.id.tLocacion).text.toString()
+        val fechaHoraActual = SimpleDateFormat("dd-MMM-yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        val line1 = "$tLocacion - $fechaHoraActual"
+        
+        val x = mutableBitmap.width * 0.05f
+        val y = mutableBitmap.height * 0.95f
+        
+        canvas.drawText(line1, x, y, paint)
+        
+        Log.d("FOTOS_MASIVAS_DEBUG", "Marca de agua aplicada: $line1")
+        
+        return mutableBitmap
+    }
+
+    private fun eliminarFotoMasiva(fotoFile: File) {
+        Log.d("FOTOS_MASIVAS_DEBUG", "Eliminando foto: ${fotoFile.name}")
+        
+        try {
+            // Eliminar de la lista
+            fotosMasivasList.remove(fotoFile)
+            
+            // Eliminar de la base de datos
+            dbHelper.eliminarFotoMasiva(fotoFile.absolutePath)
+            
+            // Eliminar archivo físico
+            if (fotoFile.exists()) {
+                fotoFile.delete()
+                Log.d("FOTOS_MASIVAS_DEBUG", "Archivo físico eliminado")
+            }
+            
+            // Actualizar SharedPreferences
+            guardarFotosMasivasEnPrefs()
+            
+            // Notificar al adapter
+            fotosMasivasAdapter.notifyDataSetChanged()
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Foto eliminada exitosamente. Fotos restantes: ${fotosMasivasList.size}")
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_DEBUG", "Error al eliminar foto: ${e.message}", e)
+        }
+    }
+
+    private fun guardarFotosMasivasEnPrefs() {
+        Log.d("FOTOS_MASIVAS_DEBUG", "Guardando fotos en SharedPreferences...")
+        
+        try {
+            val fotosPaths = fotosMasivasList.map { it.absolutePath }
+            val fotosJson = fotosPaths.joinToString(",")
+            
+            sharedPrefs.edit()
+                .putString(KEY_FOTOS_MASIVAS, fotosJson)
+                .putInt(KEY_MANTENIMIENTO_ID, currentIdMantenimiento)
+                .apply()
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "Fotos guardadas en SharedPreferences: ${fotosPaths.size} fotos")
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_DEBUG", "Error al guardar en SharedPreferences: ${e.message}", e)
+        }
+    }
+
+    private fun cargarFotosMasivasDesdePrefs() {
+        Log.d("FOTOS_MASIVAS_DEBUG", "Cargando fotos desde SharedPreferences. Mantenimiento ID: ${sharedPrefs.getInt(KEY_MANTENIMIENTO_ID, -1)}, Current: $currentIdMantenimiento")
+        
+        try {
+            val mantenimientoIdGuardado = sharedPrefs.getInt(KEY_MANTENIMIENTO_ID, -1)
+            
+            // Solo cargar si es el mismo mantenimiento
+            if (mantenimientoIdGuardado == currentIdMantenimiento) {
+                val fotosJson = sharedPrefs.getString(KEY_FOTOS_MASIVAS, "")
+                if (!fotosJson.isNullOrEmpty()) {
+                    val fotosPaths = fotosJson.split(",")
+                    fotosMasivasList.clear()
+                    
+                    fotosPaths.forEach { path ->
+                        val file = File(path)
+                        if (file.exists()) {
+                            fotosMasivasList.add(file)
+                            Log.d("FOTOS_MASIVAS_DEBUG", "Foto cargada: ${file.name}")
+                        } else {
+                            Log.w("FOTOS_MASIVAS_DEBUG", "Archivo no encontrado: $path")
+                        }
+                    }
+                    
+                    Log.d("FOTOS_MASIVAS_DEBUG", "Fotos cargadas desde SharedPreferences: ${fotosMasivasList.size}")
+                } else {
+                    Log.d("FOTOS_MASIVAS_DEBUG", "No hay fotos guardadas en SharedPreferences")
+                }
+            } else {
+                Log.d("FOTOS_MASIVAS_DEBUG", "No hay fotos guardadas o mantenimiento diferente")
+            }
+            
+            // Notificar al adapter solo si está inicializado
+            if (::fotosMasivasAdapter.isInitialized) {
+                fotosMasivasAdapter.notifyDataSetChanged()
+                Log.d("FOTOS_MASIVAS_DEBUG", "Adapter notificado de cambios")
+            }
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_DEBUG", "Error al cargar desde SharedPreferences: ${e.message}", e)
+        }
+    }
+
+    private fun limpiarFotosMasivasPrefs() {
+        Log.d("FOTOS_MASIVAS_DEBUG", "Limpiando SharedPreferences de fotos masivas...")
+        
+        try {
+            sharedPrefs.edit()
+                .remove(KEY_FOTOS_MASIVAS)
+                .remove(KEY_MANTENIMIENTO_ID)
+                .apply()
+            
+            Log.d("FOTOS_MASIVAS_DEBUG", "SharedPreferences limpiados")
+            
+        } catch (e: Exception) {
+            Log.e("FOTOS_MASIVAS_DEBUG", "Error al limpiar SharedPreferences: ${e.message}", e)
         }
     }
 }
