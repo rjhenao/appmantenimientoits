@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
 
 data class Bitacora(
-    val numero: String,
+    val id: String,
     val estado: String,
     val supervisor: String,
     val periodo: String
@@ -45,7 +45,7 @@ class BitacorasAdapter(
         val bitacora = bitacoras[position]
         val context = holder.itemView.context
 
-        holder.numeroBitacora.text = "Bitácora #${bitacora.numero}"
+        holder.numeroBitacora.text = "Bitácora #${bitacora.id}"
         holder.chipStatus.text = bitacora.estado
         holder.supervisor.text = bitacora.supervisor
         holder.periodo.text = bitacora.periodo

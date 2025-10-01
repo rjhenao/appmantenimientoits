@@ -39,7 +39,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 40) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 41) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -346,6 +346,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         Estado INTEGER NOT NULL DEFAULT 0,
         Observacion TEXT,
         supervisorResponsable INTEGER NOT NULL,
+        sincronizado INTEGER NOT NULL DEFAULT 0,
         created_at TEXT,
         updated_at TEXT
     )
@@ -533,45 +534,56 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS users")
-        db.execSQL("DROP TABLE IF EXISTS programar_mantenimientos")
-        db.execSQL("DROP TABLE IF EXISTS actividades")
-        db.execSQL("DROP TABLE IF EXISTS equipos")
-        db.execSQL("DROP TABLE IF EXISTS locaciones")
-        db.execSQL("DROP TABLE IF EXISTS periodicidad")
-        db.execSQL("DROP TABLE IF EXISTS rel_sistema_locacion")
-        db.execSQL("DROP TABLE IF EXISTS rel_subsistema_sistema")
-        db.execSQL("DROP TABLE IF EXISTS sistemas")
-        db.execSQL("DROP TABLE IF EXISTS subsistemas")
-        db.execSQL("DROP TABLE IF EXISTS tipo_equipos")
-        db.execSQL("DROP TABLE IF EXISTS uf")
-        db.execSQL("DROP TABLE IF EXISTS rel_tecnico_mantenimiento")
-        db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_actividad")
-        db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_estado")
-        db.execSQL("DROP TABLE IF EXISTS rel_user_mantenimiento")
-        db.execSQL("DROP TABLE IF EXISTS rel_roles_usuarios")
-        db.execSQL("DROP TABLE IF EXISTS mantenimientos_correctivos")
-        db.execSQL("DROP TABLE IF EXISTS fotos_mantenimiento_correctivo")
-        db.execSQL("DROP TABLE IF EXISTS usuarios_mantenimiento_correctivo")
-        //-----
-        db.execSQL("DROP TABLE IF EXISTS bitacora_mantenimientos")
-        db.execSQL("DROP TABLE IF EXISTS actividades_bitacoras")
-        db.execSQL("DROP TABLE IF EXISTS programar_actividades_bitacora")
-        db.execSQL("DROP TABLE IF EXISTS rel_bitacora_actividades")
-        db.execSQL("DROP TABLE IF EXISTS rel_fotos_bitacora_actividades")
-        db.execSQL("DROP TABLE IF EXISTS rel_cuadrillas_usuarios")
-        db.execSQL("DROP TABLE IF EXISTS cuadrillas")
-        db.execSQL("DROP TABLE IF EXISTS inspeccion_usuarios")
-        db.execSQL("DROP TABLE IF EXISTS actividades_inspeccion")
-        db.execSQL("DROP TABLE IF EXISTS rel_inspeccion_actividades")
-        db.execSQL("DROP TABLE IF EXISTS rel_usuarios_bitacora_actividades")
-        db.execSQL("DROP TABLE IF EXISTS tickets")
-        db.execSQL("DROP TABLE IF EXISTS ticket_comments")
-        db.execSQL("DROP TABLE IF EXISTS ticket_attachments")
-        db.execSQL("DROP TABLE IF EXISTS rel_tickets_correctivos")
-        db.execSQL("DROP TABLE IF EXISTS rel_fotos_mantenimiento_preventivo")
-
-        onCreate(db)
+        // Migración incremental desde la versión 40 a la 41
+        if (oldVersion < 41) {
+            try {
+                // Agregar columna sincronizado a programar_actividades_bitacora
+                db.execSQL("ALTER TABLE programar_actividades_bitacora ADD COLUMN sincronizado INTEGER NOT NULL DEFAULT 0")
+                Log.d("DB_UPGRADE", "Columna 'sincronizado' agregada exitosamente a programar_actividades_bitacora")
+            } catch (e: Exception) {
+                Log.e("DB_UPGRADE", "Error agregando columna sincronizado: ${e.message}")
+                // Si falla la migración, recrear todo
+                db.execSQL("DROP TABLE IF EXISTS users")
+                db.execSQL("DROP TABLE IF EXISTS programar_mantenimientos")
+                db.execSQL("DROP TABLE IF EXISTS actividades")
+                db.execSQL("DROP TABLE IF EXISTS equipos")
+                db.execSQL("DROP TABLE IF EXISTS locaciones")
+                db.execSQL("DROP TABLE IF EXISTS periodicidad")
+                db.execSQL("DROP TABLE IF EXISTS rel_sistema_locacion")
+                db.execSQL("DROP TABLE IF EXISTS rel_subsistema_sistema")
+                db.execSQL("DROP TABLE IF EXISTS sistemas")
+                db.execSQL("DROP TABLE IF EXISTS subsistemas")
+                db.execSQL("DROP TABLE IF EXISTS tipo_equipos")
+                db.execSQL("DROP TABLE IF EXISTS uf")
+                db.execSQL("DROP TABLE IF EXISTS rel_tecnico_mantenimiento")
+                db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_actividad")
+                db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_estado")
+                db.execSQL("DROP TABLE IF EXISTS rel_user_mantenimiento")
+                db.execSQL("DROP TABLE IF EXISTS rel_roles_usuarios")
+                db.execSQL("DROP TABLE IF EXISTS mantenimientos_correctivos")
+                db.execSQL("DROP TABLE IF EXISTS fotos_mantenimiento_correctivo")
+                db.execSQL("DROP TABLE IF EXISTS usuarios_mantenimiento_correctivo")
+                //-----
+                db.execSQL("DROP TABLE IF EXISTS bitacora_mantenimientos")
+                db.execSQL("DROP TABLE IF EXISTS actividades_bitacoras")
+                db.execSQL("DROP TABLE IF EXISTS programar_actividades_bitacora")
+                db.execSQL("DROP TABLE IF EXISTS rel_bitacora_actividades")
+                db.execSQL("DROP TABLE IF EXISTS rel_fotos_bitacora_actividades")
+                db.execSQL("DROP TABLE IF EXISTS rel_cuadrillas_usuarios")
+                db.execSQL("DROP TABLE IF EXISTS cuadrillas")
+                db.execSQL("DROP TABLE IF EXISTS inspeccion_usuarios")
+                db.execSQL("DROP TABLE IF EXISTS actividades_inspeccion")
+                db.execSQL("DROP TABLE IF EXISTS rel_inspeccion_actividades")
+                db.execSQL("DROP TABLE IF EXISTS rel_usuarios_bitacora_actividades")
+                db.execSQL("DROP TABLE IF EXISTS tickets")
+                db.execSQL("DROP TABLE IF EXISTS ticket_comments")
+                db.execSQL("DROP TABLE IF EXISTS ticket_attachments")
+                db.execSQL("DROP TABLE IF EXISTS rel_tickets_correctivos")
+                db.execSQL("DROP TABLE IF EXISTS rel_fotos_mantenimiento_preventivo")
+                
+                onCreate(db)
+            }
+        }
     }
 
     fun getObservacionActividadEstado(idEstado: Int): String {
@@ -2844,13 +2856,14 @@ return insertOk
             pab.PrFinal,
             pab.Cantidad,
             ab.TipoUnidad,
-            pab.Observacion
+            pab.Observacion,
+            pab.Estado
         FROM programar_actividades_bitacora pab
         JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
         JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
         JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
         LEFT JOIN rel_cuadrillas_usuarios rcu on (rcu.IdCuadrilla  = c.id)        
-        WHERE bm.id = ? AND rcu.IdUsuario = ?
+        WHERE bm.id = ? AND rcu.IdUsuario = ? AND ab.Descripcion != 'No Programada'
         GROUP BY pab.id
     """.trimIndent()
 
@@ -2870,6 +2883,7 @@ return insertOk
                 val cantidadIndex = it.getColumnIndexOrThrow("Cantidad")
                 val tipoUnidadIndex = it.getColumnIndexOrThrow("TipoUnidad")
                 val observacionIndex = it.getColumnIndexOrThrow("Observacion")
+                val estadoIndex = it.getColumnIndexOrThrow("Estado")
 
                 do {
                     val rawCantidad = it.getDouble(cantidadIndex)
@@ -2888,30 +2902,13 @@ return insertOk
                         prFinal = it.getString(prFinalIndex),
                         cantidad = cantidadYUnidad,
                         tipoUnidad = tipoUnidad,
-                        observacion = it.getString(observacionIndex)
+                        observacion = it.getString(observacionIndex),
+                        estado = it.getInt(estadoIndex)
                     )
                     actividadesList.add(actividad)
                 } while (it.moveToNext())
             }
         }
-
-        // Verifica si la lista quedó vacía después de procesar el cursor
-
-            val noProgramada = ActividadMantenimiento(
-                id = -1,
-                descripcion = "No programada",
-                cuadrillaNombre = "No programada",
-                uf = "No programada",
-                sentido = "No programada",
-                lado = "No programada",
-                prInicial = "No programada",
-                prFinal = "No programada",
-                cantidad = "0 kms",
-                tipoUnidad = "kms",
-                observacion = "No programada"
-            )
-            actividadesList.add(noProgramada)
-
 
         return actividadesList
     }
@@ -3184,7 +3181,7 @@ return insertOk
         val listaBitacoras = mutableListOf<BitacoraRecord>()
         val db = this.readableDatabase
 
-        // 1. Obtenemos los registros principales de bitácora pendientes
+        // 1. Obtenemos los registros principales de bitácora pendientes (actividades programadas)
         val queryPrincipal = "SELECT * FROM rel_bitacora_actividades WHERE sincronizado = 0 and Programada = 1"
         db.rawQuery(queryPrincipal, null).use { cursor ->
             while (cursor.moveToNext()) {
@@ -3211,7 +3208,7 @@ return insertOk
                     }
                 }
 
-                // 4. Creamos el objeto completo y lo añadimos a la lista
+                // 4. Creamos el objeto completo y lo añadimos a la lista (actividad programada)
                 listaBitacoras.add(
                     BitacoraRecord(
                         id = idRegistro,
@@ -3221,23 +3218,75 @@ return insertOk
                         cantidad = cursor.getDouble(cursor.getColumnIndexOrThrow("Cantidad")),
                         observacion = cursor.getString(cursor.getColumnIndexOrThrow("ObservacionInterna")),
                         usuarios = listaUsuarios,
-                        fotos = listaFotos
+                        fotos = listaFotos,
+                        estado = 1 // Actividad programada
                     )
                 )
             }
         }
+
+        // 5. Obtenemos las actividades no programadas pendientes
+        val queryNoProgramadas = "SELECT * FROM programar_actividades_bitacora WHERE sincronizado = 0 AND Estado = 2"
+        db.rawQuery(queryNoProgramadas, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val idRegistro = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                
+                // Para actividades no programadas, no hay usuarios asociados
+                val listaUsuarios = emptyList<Int>()
+                
+                // Para actividades no programadas, no hay fotos asociadas por ahora
+                val listaFotos = emptyList<File>()
+
+                // Creamos el objeto completo y lo añadimos a la lista (actividad no programada)
+                listaBitacoras.add(
+                    BitacoraRecord(
+                        id = idRegistro,
+                        idRelProgramarActividadesBitacora = idRegistro, // Usamos el mismo ID
+                        prInicial = cursor.getString(cursor.getColumnIndexOrThrow("PrInicial")),
+                        prFinal = cursor.getString(cursor.getColumnIndexOrThrow("PrFinal")),
+                        cantidad = cursor.getDouble(cursor.getColumnIndexOrThrow("Cantidad")),
+                        observacion = cursor.getString(cursor.getColumnIndexOrThrow("Observacion")),
+                        usuarios = listaUsuarios,
+                        fotos = listaFotos,
+                        estado = 2, // Actividad no programada
+                        // Campos adicionales para actividades no programadas
+                        idBitacora = cursor.getInt(cursor.getColumnIndexOrThrow("idBitacora")),
+                        idActividad = cursor.getInt(cursor.getColumnIndexOrThrow("idActividad")),
+                        idCuadrilla = cursor.getInt(cursor.getColumnIndexOrThrow("IdCuadrilla")),
+                        uf = cursor.getInt(cursor.getColumnIndexOrThrow("UF")),
+                        sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
+                        lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado")),
+                        supervisorResponsable = cursor.getInt(cursor.getColumnIndexOrThrow("supervisorResponsable"))
+                    )
+                )
+            }
+        }
+
         return listaBitacoras
     }
 
     /**
      * Actualiza el estado de un registro de bitácora a sincronizado (sincronizado = 1).
      */
-    fun marcarBitacoraSincronizada(idRegistro: Int) {
+    fun marcarBitacoraSincronizada(idRegistro: Int, esActividadNoProgramada: Boolean = false) {
         val db = this.writableDatabase
-        val values = ContentValues().apply {
-            put("sincronizado", 1)
+        
+        if (esActividadNoProgramada) {
+            // Para actividades no programadas, marcar en programar_actividades_bitacora
+            val values = ContentValues().apply {
+                put("sincronizado", 1)
+            }
+            db.update("programar_actividades_bitacora", values, "id = ?", arrayOf(idRegistro.toString()))
+            Log.d("SyncBitacora", "✅ Actividad no programada ID=$idRegistro marcada como sincronizada")
+        } else {
+            // Para actividades programadas, marcar en rel_bitacora_actividades
+            val values = ContentValues().apply {
+                put("sincronizado", 1)
+            }
+            db.update("rel_bitacora_actividades", values, "id = ?", arrayOf(idRegistro.toString()))
+            Log.d("SyncBitacora", "✅ Bitácora ID=$idRegistro marcada como sincronizada")
         }
-        db.update("rel_bitacora_actividades", values, "id = ?", arrayOf(idRegistro.toString()))
+        
         db.close()
     }
 
@@ -3722,6 +3771,114 @@ return insertOk
         val sincronizado: Int,
         val createdAt: String
     )
+
+    data class ActividadBitacora(
+        val id: Int,
+        val descripcion: String,
+        val tipoUnidad: String
+    )
+
+    data class Cuadrilla(
+        val id: Int,
+        val nombre: String
+    )
+
+    /**
+     * Obtiene todas las actividades de bitácoras para los spinners
+     */
+    fun obtenerActividadesBitacoras(): List<ActividadBitacora> {
+        val actividades = mutableListOf<ActividadBitacora>()
+        val db = this.readableDatabase
+        
+        val query = "SELECT id, Descripcion, TipoUnidad FROM actividades_bitacoras ORDER BY Descripcion"
+        db.rawQuery(query, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                actividades.add(
+                    ActividadBitacora(
+                        id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                        descripcion = cursor.getString(cursor.getColumnIndexOrThrow("Descripcion")),
+                        tipoUnidad = cursor.getString(cursor.getColumnIndexOrThrow("TipoUnidad")) ?: ""
+                    )
+                )
+            }
+        }
+        
+        return actividades
+    }
+
+    /**
+     * Obtiene todas las cuadrillas para los spinners
+     */
+    fun obtenerCuadrillas(): List<Cuadrilla> {
+        val cuadrillas = mutableListOf<Cuadrilla>()
+        val db = this.readableDatabase
+        
+        val query = "SELECT id, Nombre FROM cuadrillas ORDER BY Nombre"
+        db.rawQuery(query, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                cuadrillas.add(
+                    Cuadrilla(
+                        id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                        nombre = cursor.getString(cursor.getColumnIndexOrThrow("Nombre"))
+                    )
+                )
+            }
+        }
+        
+        return cuadrillas
+    }
+
+    /**
+     * Inserta una nueva actividad no programada
+     */
+    fun insertarActividadNoProgramada(
+        idBitacora: Int,
+        idActividad: Int,
+        idCuadrilla: Int,
+        uf: Int,
+        sentido: String,
+        lado: String,
+        prInicial: String,
+        prFinal: String,
+        cantidad: Double,
+        observacion: String,
+        supervisorResponsable: Int
+    ): Long {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("idBitacora", idBitacora)
+            put("idActividad", idActividad)
+            put("IdCuadrilla", idCuadrilla)
+            put("UF", uf)
+            put("Sentido", sentido)
+            put("Lado", lado)
+            put("PrInicial", prInicial)
+            put("PrFinal", prFinal)
+            put("Cantidad", cantidad)
+            put("Observacion", observacion)
+            put("Estado", 2) // 2 = No Programada (1 = Programada)
+            put("supervisorResponsable", supervisorResponsable)
+            put("sincronizado", 0) // 0 = No sincronizado, 1 = Sincronizado
+        }
+        
+        val result = db.insert("programar_actividades_bitacora", null, values)
+        Log.d("ACTIVIDAD_NO_PROGRAMADA", "Actividad no programada insertada con ID: $result")
+        return result
+    }
+
+    /**
+     * Verifica si existe una bitácora por ID
+     */
+    fun existeBitacora(idBitacora: Int): Boolean {
+        val db = this.readableDatabase
+        val query = "SELECT COUNT(*) as count FROM bitacora_mantenimientos WHERE id = ?"
+        db.rawQuery(query, arrayOf(idBitacora.toString())).use { cursor ->
+            if (cursor.moveToFirst()) {
+                return cursor.getInt(cursor.getColumnIndexOrThrow("count")) > 0
+            }
+        }
+        return false
+    }
 
 
 }

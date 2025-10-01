@@ -11,6 +11,7 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.uvrp.itsmantenimientoapp.adapters.ActividadesProgramadasAdapter
 import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper
@@ -21,6 +22,8 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
     private lateinit var navView: NavigationView
     private lateinit var recyclerView: RecyclerView
     private lateinit var dbHelper: DatabaseHelper
+    private lateinit var fabAgregarActividad: FloatingActionButton
+    private var bitacoraId: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +33,7 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
         recyclerView = findViewById(R.id.rvActividadesProgramadas)
+        fabAgregarActividad = findViewById(R.id.fabAgregarActividad)
         dbHelper = DatabaseHelper(this)
 
         // INSERTA ESTAS LÍNEAS PARA EL MENÚ
@@ -38,10 +42,14 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
 
         // Configurar RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(this)
+        
         // Obtener el ID de la bitácora desde el Intent
-        val bitacoraId = intent.getIntExtra("NUMERO_BITACORA", -1)
+        bitacoraId = intent.getIntExtra("NUMERO_BITACORA", -1)
         val prefs = getSharedPreferences("Sesion" , Context.MODE_PRIVATE)
         val idUser = prefs.getInt("idUser" , -1)
+        
+        // Configurar FAB
+        setupFabListener()
 
         if (bitacoraId != -1) {
             val actividades = dbHelper.getActividadesPorBitacora(bitacoraId , idUser)
@@ -77,5 +85,41 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
         } else {
             super.onBackPressed()
         }
+    }
+
+    private fun setupFabListener() {
+        fabAgregarActividad.setOnClickListener {
+            abrirCrearActividad()
+        }
+    }
+
+    private fun abrirCrearActividad() {
+        if (bitacoraId == -1) {
+            Toast.makeText(this, "Error: No se pudo obtener el ID de la bitácora", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val intent = Intent(this, CrearActividadNoProgramadaActivity::class.java)
+        intent.putExtra("id_bitacora", bitacoraId)
+        startActivityForResult(intent, REQUEST_CODE_CREAR_ACTIVIDAD)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == REQUEST_CODE_CREAR_ACTIVIDAD && resultCode == RESULT_OK) {
+            // Recargar la lista de actividades
+            val prefs = getSharedPreferences("Sesion", Context.MODE_PRIVATE)
+            val idUser = prefs.getInt("idUser", -1)
+            val actividades = dbHelper.getActividadesPorBitacora(bitacoraId, idUser)
+            val adapter = ActividadesProgramadasAdapter(actividades, this)
+            recyclerView.adapter = adapter
+            
+            Toast.makeText(this, "Actividad no programada creada exitosamente", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    companion object {
+        private const val REQUEST_CODE_CREAR_ACTIVIDAD = 1001
     }
 }

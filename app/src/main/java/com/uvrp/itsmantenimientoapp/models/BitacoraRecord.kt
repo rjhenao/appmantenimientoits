@@ -10,5 +10,14 @@ data class BitacoraRecord(
     val cantidad: Double,
     val observacion: String,
     val usuarios: List<Int>,
-    val fotos: List<File>
+    val fotos: List<File>,
+    val estado: Int = 1, // 1 = Programada, 2 = No Programada
+    // Campos adicionales para actividades no programadas
+    val idBitacora: Int? = null,
+    val idActividad: Int? = null,
+    val idCuadrilla: Int? = null,
+    val uf: Int? = null,
+    val sentido: String? = null,
+    val lado: String? = null,
+    val supervisorResponsable: Int? = null
 )

@@ -8,25 +8,43 @@
     android:fitsSystemWindows="true"
     tools:context=".VerActividadesProgramadasActivity">
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
-        <include
-            android:id="@+id/header"
-            layout="@layout/header_global" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvActividadesProgramadas"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="8dp"
-            android:clipToPadding="false"
-            android:scrollbars="vertical"
-            tools:listitem="@layout/item_actividad_programada" />
+            android:orientation="vertical">
 
-    </LinearLayout>
+            <include
+                android:id="@+id/header"
+                layout="@layout/header_global" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvActividadesProgramadas"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="8dp"
+                android:clipToPadding="false"
+                android:scrollbars="vertical"
+                tools:listitem="@layout/item_actividad_programada" />
+
+        </LinearLayout>
+
+        <!-- Floating Action Button -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabAgregarActividad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:src="@drawable/ic_add"
+            app:backgroundTint="@color/primary_blue"
+            app:tint="@color/white"
+            app:fabSize="normal" />
+
+    </FrameLayout>
 
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"

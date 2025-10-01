@@ -205,6 +205,18 @@ object FuncionesGenerales {
                     put("cantidad", bitacora.cantidad)
                     put("observaciones", bitacora.observacion)
                     put("usuarios_checkeados", JSONArray(bitacora.usuarios))
+                    put("estado", bitacora.estado)
+                    
+                    // Campos adicionales para actividades no programadas
+                    if (bitacora.estado == 2) {
+                        put("id_bitacora", bitacora.idBitacora)
+                        put("id_actividad", bitacora.idActividad)
+                        put("id_cuadrilla", bitacora.idCuadrilla)
+                        put("uf", bitacora.uf)
+                        put("sentido", bitacora.sentido)
+                        put("lado", bitacora.lado)
+                        put("supervisor_responsable", bitacora.supervisorResponsable)
+                    }
                 }
                 val jsonRequestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
 
@@ -239,7 +251,7 @@ object FuncionesGenerales {
                 // ... (resto del código para procesar la respuesta)
                 if (response.isSuccessful) {
                     Log.i("SyncBitacora", "✅ Bitácora ID=${bitacora.id} sincronizada.")
-                    dbHelper.marcarBitacoraSincronizada(bitacora.id)
+                    dbHelper.marcarBitacoraSincronizada(bitacora.id, bitacora.estado == 2)
                     huboExito = true
                 } else {
                     val errorBody = response.errorBody()?.string()
