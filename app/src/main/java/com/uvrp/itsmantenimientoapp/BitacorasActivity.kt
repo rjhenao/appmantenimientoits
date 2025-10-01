@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -51,7 +52,7 @@ class BitacorasActivity : AppCompatActivity(), BitacorasAdapter.OnItemClickListe
         if (existeInspeccion) {
             Toast.makeText(this, "Ya existe una inspección registrada el día de hoy.", Toast.LENGTH_LONG).show()
             intent = Intent(this, VerActividadesProgramadasActivity::class.java).apply {
-                val hjj = bitacora.numero.toInt()
+                val hjj: Int = bitacora.id.toInt()
 
                 putExtra("NUMERO_BITACORA", hjj)
             }
@@ -79,4 +80,5 @@ class BitacorasActivity : AppCompatActivity(), BitacorasAdapter.OnItemClickListe
             super.onBackPressed()
         }
     }
+
 }

@@ -11,5 +11,6 @@ data class ActividadMantenimiento(
     val prFinal: String,
     val cantidad: String,
     val tipoUnidad: String,
-    val observacion: String
+    val observacion: String,
+    val estado: Int // 1 = Programada, 2 = No Programada
 )

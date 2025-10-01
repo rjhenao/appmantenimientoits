@@ -71,6 +71,9 @@
             android:name=".BitacorasActivity"
             android:exported="false" />
         <activity
+            android:name=".CrearActividadNoProgramadaActivity"
+            android:exported="false" />
+        <activity
             android:name=".TicketsActivity"
             android:exported="false" />
         <activity android:name=".InspectionActivity"

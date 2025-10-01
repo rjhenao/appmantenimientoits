@@ -6,6 +6,7 @@ import ApiService.RelInspeccionActividad
 import com.uvrp.itsmantenimientoapp.models.Ticket
 import android.content.ContentValues
 import android.content.Intent
+import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
@@ -211,7 +212,15 @@ class MainActivity : AppCompatActivity() {
                         mutex.withLock {
                             db.beginTransaction()
                             try {
-                                db.execSQL("DELETE FROM $nombreTabla") // Limpia la tabla local
+                                // PROTECCIÓN: No eliminar actividades no programadas pendientes de sincronización
+                                if (nombreTabla == "programar_actividades_bitacora") {
+                                    // Solo eliminar actividades programadas (Estado != 2) o ya sincronizadas (sincronizado = 1)
+                                    db.execSQL("DELETE FROM $nombreTabla WHERE NOT (Estado = 2 AND sincronizado = 0)")
+                                    Log.d(tag, "Tabla $nombreTabla limpiada (preservando actividades no programadas pendientes)")
+                                } else {
+                                    db.execSQL("DELETE FROM $nombreTabla") // Limpia la tabla local
+                                }
+                                
                                 datos.forEach { item ->
                                     val values = ContentValues().apply {
                                         item::class.java.declaredFields.forEach { field ->
@@ -221,10 +230,19 @@ class MainActivity : AppCompatActivity() {
                                             put(fieldName, field.get(item)?.toString())
                                         }
                                     }
+                                    
                                     // 4. Verificamos si la inserción en la BD fue exitosa
-                                    val id = db.insert(nombreTabla, null, values)
-                                    if (id == -1L) {
-                                        Log.e(tag, "¡FALLÓ LA INSERCIÓN! -> Fila: $values")
+                                    // Para programar_actividades_bitacora, usamos INSERT OR IGNORE para no sobrescribir IDs locales
+                                    if (nombreTabla == "programar_actividades_bitacora") {
+                                        val id = db.insertWithOnConflict(nombreTabla, null, values, SQLiteDatabase.CONFLICT_IGNORE)
+                                        if (id == -1L) {
+                                            Log.d(tag, "Registro ya existe (ID del servidor), ignorado correctamente")
+                                        }
+                                    } else {
+                                        val id = db.insert(nombreTabla, null, values)
+                                        if (id == -1L) {
+                                            Log.e(tag, "¡FALLÓ LA INSERCIÓN! -> Fila: $values")
+                                        }
                                     }
                                 }
                                 db.setTransactionSuccessful()
