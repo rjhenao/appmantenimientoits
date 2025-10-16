@@ -169,11 +169,11 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             ufAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spinnerUF.adapter = ufAdapter
 
-            // Configurar spinner de sentido (CUPA y PACU como en el formulario web)
+            // Configurar spinner de sentido (PACU, CUPA y PACU / CUPA como en el formulario web)
             val sentidoAdapter = ArrayAdapter(
                 this,
                 android.R.layout.simple_spinner_item,
-                listOf("CUPA", "PACU")
+                listOf("PACU", "CUPA", "PACU / CUPA")
             )
             sentidoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spinnerSentido.adapter = sentidoAdapter
@@ -182,7 +182,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             val ladoAdapter = ArrayAdapter(
                 this,
                 android.R.layout.simple_spinner_item,
-                listOf("Derecha", "Izquierda", "Derecha e Izquierda", "Eje", "Retorno")
+                listOf("Der", "Izq", "Eje", "Der / Izq", "Der N1", "Der N2", "Der N3", "Der N4", "Der N5", "Izq N1", "Izq N2", "Izq N3", "Izq N4", "Izq N5", "Der / Eje", "Retorno")
             )
             ladoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spinnerLado.adapter = ladoAdapter
@@ -223,8 +223,9 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             val actividad = actividadesList[selectedActividad]
             val cuadrilla = cuadrillasList[selectedCuadrilla]
             val uf = selectedUF // Ya viene como 1, 2, 3, 4, 5, 6
-            val sentido = if (selectedSentido == 0) "CUPA" else "PACU"
-            val ladoOpciones = listOf("Derecha", "Izquierda", "Derecha e Izquierda", "Eje", "Retorno")
+            val sentidoOpciones = listOf("PACU", "CUPA", "PACU / CUPA")
+            val sentido = sentidoOpciones[selectedSentido]
+            val ladoOpciones = listOf("Der", "Izq", "Eje", "Der / Izq", "Der N1", "Der N2", "Der N3", "Der N4", "Der N5", "Izq N1", "Izq N2", "Izq N3", "Izq N4", "Izq N5", "Der / Eje", "Retorno")
             val lado = ladoOpciones[selectedLado]
             
             // Combinar Km + m en formato "XX+YYY" para PR Inicial y PR Final
@@ -288,7 +289,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
     private fun validarCampos(): Boolean {
         var esValido = true
 
-        // Validar PR Inicial Km
+        // Validar PR Inicial Km (obligatorio, permite 1-4 dígitos)
         if (etPrInicialKm.text.toString().trim().isEmpty()) {
             tilPrInicialKm.error = "Km obligatorio"
             esValido = false
@@ -296,7 +297,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             tilPrInicialKm.error = null
         }
 
-        // Validar PR Inicial m
+        // Validar PR Inicial m (obligatorio, permite 1-4 dígitos)
         if (etPrInicialM.text.toString().trim().isEmpty()) {
             tilPrInicialM.error = "m obligatorio"
             esValido = false
@@ -304,7 +305,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             tilPrInicialM.error = null
         }
 
-        // Validar PR Final Km
+        // Validar PR Final Km (obligatorio, permite 1-4 dígitos)
         if (etPrFinalKm.text.toString().trim().isEmpty()) {
             tilPrFinalKm.error = "Km obligatorio"
             esValido = false
@@ -312,7 +313,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             tilPrFinalKm.error = null
         }
 
-        // Validar PR Final m
+        // Validar PR Final m (obligatorio, permite 1-4 dígitos)
         if (etPrFinalM.text.toString().trim().isEmpty()) {
             tilPrFinalM.error = "m obligatorio"
             esValido = false

@@ -476,15 +476,22 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
             esValido = false
         }
 
+        // Validar PR Inicial Km (obligatorio, máximo 4 dígitos)
         if (inputPrInicial1.text.isBlank()) {
             marcarError(inputPrInicial1, "Este campo es obligatorio")
         }
+        
+        // Validar PR Inicial m (obligatorio, máximo 4 dígitos)
         if (inputPrInicial2.text.isBlank()) {
             marcarError(inputPrInicial2, "Este campo es obligatorio")
         }
+        
+        // Validar PR Final Km (obligatorio, máximo 4 dígitos)
         if (inputPrFinal1.text.isBlank()) {
             marcarError(inputPrFinal1, "Este campo es obligatorio")
         }
+        
+        // Validar PR Final m (obligatorio, máximo 4 dígitos)
         if (inputPrFinal2.text.isBlank()) {
             marcarError(inputPrFinal2, "Este campo es obligatorio")
         }

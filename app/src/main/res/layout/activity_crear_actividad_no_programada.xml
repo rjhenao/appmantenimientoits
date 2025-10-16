@@ -198,7 +198,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginEnd="4dp"
-                                android:hint="Km"
+                                android:hint="Km (máx. 4)"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                                 app:boxStrokeColor="@color/primary_blue"
                                 app:hintTextColor="@color/primary_blue">
@@ -208,7 +208,7 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:maxLength="3"
+                                    android:maxLength="4"
                                     android:maxLines="1" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -228,7 +228,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginStart="4dp"
-                                android:hint="m"
+                                android:hint="m (máx. 4)"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                                 app:boxStrokeColor="@color/primary_blue"
                                 app:hintTextColor="@color/primary_blue">
@@ -238,7 +238,7 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:maxLength="3"
+                                    android:maxLength="4"
                                     android:maxLines="1" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -267,7 +267,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginEnd="4dp"
-                                android:hint="Km"
+                                android:hint="Km (máx. 4)"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                                 app:boxStrokeColor="@color/primary_blue"
                                 app:hintTextColor="@color/primary_blue">
@@ -277,7 +277,7 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:maxLength="3"
+                                    android:maxLength="4"
                                     android:maxLines="1" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -297,7 +297,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:layout_marginStart="4dp"
-                                android:hint="m"
+                                android:hint="m (máx. 4)"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                                 app:boxStrokeColor="@color/primary_blue"
                                 app:hintTextColor="@color/primary_blue">
@@ -307,7 +307,7 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:maxLength="3"
+                                    android:maxLength="4"
                                     android:maxLines="1" />
 
                             </com.google.android.material.textfield.TextInputLayout>
