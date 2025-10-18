@@ -39,7 +39,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 41) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 42) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -363,6 +363,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         Cantidad REAL NOT NULL,
         Programada INTEGER NOT NULL DEFAULT 1,
         ObservacionInterna TEXT,
+        Sentido TEXT,
+        Lado TEXT,
         sincronizado INTEGER NOT NULL DEFAULT 0,
         created_at TEXT,
         updated_at TEXT
@@ -574,6 +576,51 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                 db.execSQL("DROP TABLE IF EXISTS inspeccion_usuarios")
                 db.execSQL("DROP TABLE IF EXISTS actividades_inspeccion")
                 db.execSQL("DROP TABLE IF EXISTS rel_inspeccion_actividades")
+                db.execSQL("DROP TABLE IF EXISTS rel_usuarios_bitacora_actividades")
+                db.execSQL("DROP TABLE IF EXISTS tickets")
+                db.execSQL("DROP TABLE IF EXISTS ticket_comments")
+                db.execSQL("DROP TABLE IF EXISTS ticket_attachments")
+                db.execSQL("DROP TABLE IF EXISTS rel_tickets_correctivos")
+                db.execSQL("DROP TABLE IF EXISTS rel_fotos_mantenimiento_preventivo")
+                
+                onCreate(db)
+            }
+        }
+        
+        // Migración desde la versión 41 a la 42
+        if (oldVersion < 42) {
+            try {
+                // Agregar columnas Sentido y Lado a rel_bitacora_actividades
+                db.execSQL("ALTER TABLE rel_bitacora_actividades ADD COLUMN Sentido TEXT")
+                db.execSQL("ALTER TABLE rel_bitacora_actividades ADD COLUMN Lado TEXT")
+                Log.d("DB_UPGRADE", "Columnas 'Sentido' y 'Lado' agregadas exitosamente a rel_bitacora_actividades")
+            } catch (e: Exception) {
+                Log.e("DB_UPGRADE", "Error agregando columnas Sentido y Lado: ${e.message}")
+                // Si falla la migración, recrear todo
+                db.execSQL("DROP TABLE IF EXISTS users")
+                db.execSQL("DROP TABLE IF EXISTS programar_mantenimientos")
+                db.execSQL("DROP TABLE IF EXISTS actividades")
+                db.execSQL("DROP TABLE IF EXISTS equipos")
+                db.execSQL("DROP TABLE IF EXISTS locaciones")
+                db.execSQL("DROP TABLE IF EXISTS periodicidad")
+                db.execSQL("DROP TABLE IF EXISTS rel_sistema_locacion")
+                db.execSQL("DROP TABLE IF EXISTS rel_subsistema_sistema")
+                db.execSQL("DROP TABLE IF EXISTS sistemas")
+                db.execSQL("DROP TABLE IF EXISTS subsistemas")
+                db.execSQL("DROP TABLE IF EXISTS tipo_equipos")
+                db.execSQL("DROP TABLE IF EXISTS uf")
+                db.execSQL("DROP TABLE IF EXISTS rel_tecnico_mantenimiento")
+                db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_actividad")
+                db.execSQL("DROP TABLE IF EXISTS rel_mantenimiento_estado")
+                db.execSQL("DROP TABLE IF EXISTS rel_user_mantenimiento")
+                db.execSQL("DROP TABLE IF EXISTS rel_roles_usuarios")
+                db.execSQL("DROP TABLE IF EXISTS rel_cuadrilla_usuario")
+                db.execSQL("DROP TABLE IF EXISTS cuadrillas")
+                db.execSQL("DROP TABLE IF EXISTS bitacora_mantenimientos")
+                db.execSQL("DROP TABLE IF EXISTS actividades_bitacoras")
+                db.execSQL("DROP TABLE IF EXISTS programar_actividades_bitacora")
+                db.execSQL("DROP TABLE IF EXISTS rel_bitacora_actividades")
+                db.execSQL("DROP TABLE IF EXISTS rel_fotos_bitacora_actividades")
                 db.execSQL("DROP TABLE IF EXISTS rel_usuarios_bitacora_actividades")
                 db.execSQL("DROP TABLE IF EXISTS tickets")
                 db.execSQL("DROP TABLE IF EXISTS ticket_comments")
@@ -2449,15 +2496,27 @@ return insertOk
         val pendientes = mutableListOf<String>()
         val db = readableDatabase
 
+        // Log para debuggear
+        android.util.Log.d("DatabaseHelper", "🔍 Buscando bitácoras pendientes...")
+
+        // Primero verificamos si hay datos básicos
+        val countQuery = """
+            SELECT COUNT(*) FROM rel_bitacora_actividades 
+            WHERE sincronizado = 0 AND Programada = 1
+        """
+        val countCursor = db.rawQuery(countQuery, null)
+        var totalRegistros = 0
+        if (countCursor.moveToFirst()) {
+            totalRegistros = countCursor.getInt(0)
+        }
+        countCursor.close()
+        android.util.Log.d("DatabaseHelper", "📊 Total registros pendientes: $totalRegistros")
+
         // Usamos .use para que el cursor se cierre automáticamente, es más seguro.
         db.rawQuery(
             """
         SELECT DISTINCT
-            CONCAT(
-                SUBSTR(ab.Descripcion, 1, 10), 
-                ' ', 
-                CAST(rba.Cantidad AS TEXT)
-            ) AS tag
+            (SUBSTR(ab.Descripcion, 1, 10) || ' ' || CAST(rba.Cantidad AS TEXT)) AS tag
         FROM 
             rel_bitacora_actividades rba 
         JOIN 
@@ -2475,14 +2534,21 @@ return insertOk
         )
         """, null
         ).use { cursor ->
+            android.util.Log.d("DatabaseHelper", "📊 Cursor count: ${cursor.count}")
+            
             if (cursor.moveToFirst()) {
                 do {
                     // El índice 0 corresponde a la primera (y única) columna: "tag"
-                    pendientes.add(cursor.getString(0))
+                    val tag = cursor.getString(0)
+                    android.util.Log.d("DatabaseHelper", "✅ Encontrado: $tag")
+                    pendientes.add(tag)
                 } while (cursor.moveToNext())
+            } else {
+                android.util.Log.d("DatabaseHelper", "❌ No se encontraron registros")
             }
         }
 
+        android.util.Log.d("DatabaseHelper", "📋 Total pendientes: ${pendientes.size}")
         return pendientes
     }
 
@@ -3019,6 +3085,8 @@ return insertOk
         prFinal: String,
         cantidad: Double,
         observacion: String,
+        sentido: String,        // <-- NUEVO: Sentido
+        lado: String,           // <-- NUEVO: Lado
         idUsuarios: List<Int>, // <-- Ahora se recibe la lista de usuarios
         fotos: List<File>       // <-- Y la lista de fotos
     ): Boolean {
@@ -3038,6 +3106,8 @@ return insertOk
                 put("Cantidad", cantidad)
                 put("Programada", 1)
                 put("ObservacionInterna", observacion)
+                put("Sentido", sentido)  // <-- NUEVO
+                put("Lado", lado)        // <-- NUEVO
                 put("created_at", timestamp)
                 put("updated_at", timestamp)
                 put("sincronizado", 0)
@@ -3219,7 +3289,9 @@ return insertOk
                         observacion = cursor.getString(cursor.getColumnIndexOrThrow("ObservacionInterna")),
                         usuarios = listaUsuarios,
                         fotos = listaFotos,
-                        estado = 1 // Actividad programada
+                        estado = 1, // Actividad programada
+                        sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")), // <-- NUEVO
+                        lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado"))        // <-- NUEVO
                     )
                 )
             }

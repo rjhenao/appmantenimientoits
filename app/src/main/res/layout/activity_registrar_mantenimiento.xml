@@ -127,11 +127,11 @@
                             android:layout_marginBottom="20dp"
                             android:background="@color/divider" />
 
-                        <!-- Presión Inicial -->
+                        <!-- PR Inicial -->
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Presión Inicial"
+                            android:text="PR Inicial"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp"
                             android:textStyle="bold"
@@ -156,8 +156,9 @@
                                     android:id="@+id/input_pr_inicial_1"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 1"
-                                    android:inputType="numberDecimal"
+                                    android:hint="Km (máx. 4)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -186,19 +187,20 @@
                                     android:id="@+id/input_pr_inicial_2"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 2"
-                                    android:inputType="numberDecimal"
+                                    android:hint="m (máx. 4)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
 
                         </LinearLayout>
 
-                        <!-- Presión Final -->
+                        <!-- PR Final -->
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Presión Final"
+                            android:text="PR Final"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp"
                             android:textStyle="bold"
@@ -222,8 +224,9 @@
                                     android:id="@+id/input_pr_final_1"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 1"
-                                    android:inputType="numberDecimal"
+                                    android:hint="Km (máx. 4)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -252,13 +255,56 @@
                                     android:id="@+id/input_pr_final_2"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 2"
-                                    android:inputType="numberDecimal"
+                                    android:hint="m (máx. 4)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
 
                         </LinearLayout>
+
+                        <!-- Divider -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="20dp"
+                            android:background="@color/divider" />
+
+                        <!-- Sentido -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Sentido"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+
+                        <Spinner
+                            android:id="@+id/spinnerSentido"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp"
+                            android:background="@drawable/spinner_background" />
+
+                        <!-- Lado -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Lado"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+
+                        <Spinner
+                            android:id="@+id/spinnerLado"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp"
+                            android:background="@drawable/spinner_background" />
 
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>

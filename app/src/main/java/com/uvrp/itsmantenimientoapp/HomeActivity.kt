@@ -103,8 +103,11 @@ class HomeActivity : AppCompatActivity() {
                 pendientesPreventivos = dbHelper.getMantenimientosPendientesActividad()
             }
             5, 6, 7 -> {
+                android.util.Log.d("HomeActivity", "🔍 Rol $idRol: Obteniendo pendientes...")
                 pendientesCorrectivos = dbHelper.getMantenimientosPendientes()
+                android.util.Log.d("HomeActivity", "📋 Correctivos: ${pendientesCorrectivos.size}")
                 pendientesPreventivos = dbHelper.getMantenimientosPendientesBicatacoras()
+                android.util.Log.d("HomeActivity", "📋 Preventivos (bitácoras): ${pendientesPreventivos.size}")
             }
             else -> {
                 // Para roles no reconocidos, mostramos la tarjeta de "Sin Novedades"

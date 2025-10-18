@@ -49,6 +49,8 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
     private lateinit var buttonRegister: Button
     private lateinit var buttonAgregarUsuario: Button
     private lateinit var rvParticipantes: RecyclerView
+    private lateinit var spinnerSentido: Spinner
+    private lateinit var spinnerLado: Spinner
 
     // --- Lógica y Datos ---
     private lateinit var participantesAdapter: ParticipantesAdapter
@@ -87,6 +89,7 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         // 3. Configuramos todos los listeners y adapters
         setupListeners()
+        setupSpinners()
         setupRecyclerViewFotos()
         setupParticipantesRecyclerView()
 
@@ -120,6 +123,8 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         buttonRegister = findViewById(R.id.button_register)
         buttonAgregarUsuario = findViewById(R.id.button_agregar_usuario)
         rvParticipantes = findViewById(R.id.recycler_view_participantes)
+        spinnerSentido = findViewById(R.id.spinnerSentido)
+        spinnerLado = findViewById(R.id.spinnerLado)
     }
 
     private fun setupListeners() {
@@ -148,6 +153,42 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
             inputObservacion
         ).forEach { editText ->
             editText.addTextChangedListener(textWatcher)
+        }
+    }
+
+    private fun setupSpinners() {
+        // Spinner Sentido
+        val sentidoAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            listOf("Seleccionar...", "PACU", "CUPA", "PACU / CUPA")
+        )
+        sentidoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerSentido.adapter = sentidoAdapter
+
+        // Spinner Lado
+        val ladoAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            listOf("Seleccionar...", "Der", "Izq", "Eje", "Der / Izq", "Der N1", "Der N2", "Der N3", "Der N4", "Der N5", 
+                   "Izq N1", "Izq N2", "Izq N3", "Izq N4", "Izq N5", "Der / Eje", "Retorno")
+        )
+        ladoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerLado.adapter = ladoAdapter
+
+        // Listeners para guardar en prefs
+        spinnerSentido.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                guardarDatosEnPrefs()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        spinnerLado.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                guardarDatosEnPrefs()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
 
@@ -420,12 +461,17 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         val prFinalFusionado = "${inputPrFinal1.text}+${inputPrFinal2.text}"
 
         val usuariosSeleccionadosIds = participantesAdapter.getSelectedUserIds().toList()
+        val sentido = spinnerSentido.selectedItem.toString()
+        val lado = spinnerLado.selectedItem.toString()
+        
         val exito = dbHelper.insertarRegistroBitacora(
             numeroActividad = numeroActividad,
             prInicial = prInicialFusionado,
-            prFinal= prFinalFusionado,
+            prFinal = prFinalFusionado,
             cantidad = cantidadUsuario,
             observacion = inputObservacion.text.toString(),
+            sentido = sentido,
+            lado = lado,
             idUsuarios = usuariosSeleccionadosIds,
             fotos = fotosList
         )
@@ -502,6 +548,18 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         if (fotosList.isEmpty()) {
             Toast.makeText(this, "Debes agregar al menos una foto de evidencia", Toast.LENGTH_SHORT).show()
+            esValido = false
+        }
+
+        // Validar Sentido
+        if (spinnerSentido.selectedItemPosition == 0) {
+            Toast.makeText(this, "Debe seleccionar un Sentido", Toast.LENGTH_SHORT).show()
+            esValido = false
+        }
+        
+        // Validar Lado
+        if (spinnerLado.selectedItemPosition == 0) {
+            Toast.makeText(this, "Debe seleccionar un Lado", Toast.LENGTH_SHORT).show()
             esValido = false
         }
 
