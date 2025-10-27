@@ -458,33 +458,19 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                 title TEXT NOT NULL,
                 description TEXT NOT NULL,
                 status TEXT NOT NULL,
-                status_text TEXT NOT NULL,
                 priority TEXT NOT NULL,
-                priority_text TEXT NOT NULL,
                 category TEXT NOT NULL,
-                category_text TEXT NOT NULL,
                 reported_at TEXT NOT NULL,
-                reported_at_formatted TEXT NOT NULL,
                 resolved_at TEXT,
                 resolution TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                reported_by_id INTEGER NOT NULL,
-                reported_by_name TEXT NOT NULL,
-                reported_by_email TEXT NOT NULL,
-                assigned_to_id INTEGER,
-                assigned_to_name TEXT,
-                assigned_to_email TEXT,
-                location_id INTEGER NOT NULL,
-                location_name TEXT NOT NULL,
-                system_id INTEGER,
-                system_name TEXT,
-                subsystem_id INTEGER,
-                subsystem_name TEXT,
-                equipment_id INTEGER,
-                equipment_tag TEXT,
-                equipment_type TEXT,
-                comments_count INTEGER NOT NULL DEFAULT 0
+                user_id INTEGER NOT NULL,
+                assigned_to INTEGER,
+                locacion_id INTEGER NOT NULL,
+                sistema_id INTEGER,
+                subsistema_id INTEGER,
+                equipo_id INTEGER
             )
         """
         db.execSQL(createTicketsTable)
@@ -3878,6 +3864,253 @@ return insertOk
             }
         }
         return false
+    }
+
+    // ===== MÉTODOS PARA TICKETS =====
+    
+    /**
+     * Inserta o actualiza tickets en la base de datos local
+     */
+    fun insertarOActualizarTickets(tickets: List<com.uvrp.itsmantenimientoapp.models.Ticket>): Boolean {
+        val db = this.writableDatabase
+        var exito = true
+        
+        Log.d("DatabaseHelper", "=== INICIANDO INSERCIÓN DE TICKETS ===")
+        Log.d("DatabaseHelper", "Total tickets a insertar: ${tickets.size}")
+        
+        try {
+            db.beginTransaction()
+            
+            for (ticket in tickets) {
+                Log.d("DatabaseHelper", "Procesando ticket: ${ticket.ticketNumber} - ${ticket.title}")
+                
+                val values = ContentValues().apply {
+                    put("id", ticket.id)
+                    put("ticket_number", ticket.ticketNumber)
+                    put("title", ticket.title)
+                    put("description", ticket.description)
+                    put("status", ticket.status)
+                    put("priority", ticket.priority)
+                    put("category", ticket.category)
+                    put("reported_at", ticket.reportedAt)
+                    put("resolved_at", ticket.resolvedAt)
+                    put("resolution", ticket.resolution)
+                    put("created_at", ticket.createdAt)
+                    put("updated_at", ticket.updatedAt)
+                    put("user_id", ticket.reportedBy.id)
+                    put("assigned_to", ticket.assignedTo?.id)
+                    put("locacion_id", ticket.location.id)
+                    put("sistema_id", ticket.system?.id)
+                    put("subsistema_id", ticket.subsystem?.id)
+                    put("equipo_id", ticket.equipment?.id)
+                }
+                
+                // Insertar o actualizar ticket
+                val resultado = db.insertWithOnConflict(
+                    "tickets",
+                    null,
+                    values,
+                    SQLiteDatabase.CONFLICT_REPLACE
+                )
+                
+                if (resultado == -1L) {
+                    exito = false
+                    Log.e("DatabaseHelper", "Error al insertar ticket: ${ticket.ticketNumber}")
+                } else {
+                    Log.d("DatabaseHelper", "Ticket insertado/actualizado exitosamente: ${ticket.ticketNumber}")
+                }
+            }
+            
+            if (exito) {
+                db.setTransactionSuccessful()
+                Log.d("DatabaseHelper", "=== INSERCIÓN DE TICKETS COMPLETADA EXITOSAMENTE ===")
+            } else {
+                Log.e("DatabaseHelper", "=== ERROR EN LA INSERCIÓN DE TICKETS ===")
+            }
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al insertar tickets", e)
+            exito = false
+        } finally {
+            db.endTransaction()
+        }
+        
+        return exito
+    }
+    
+    /**
+     * Obtiene tickets por estado desde la base de datos local
+     */
+    fun obtenerTicketsPorEstado(estados: List<String>): List<com.uvrp.itsmantenimientoapp.models.Ticket> {
+        val tickets = mutableListOf<com.uvrp.itsmantenimientoapp.models.Ticket>()
+        val db = this.readableDatabase
+        
+        try {
+            val placeholders = estados.joinToString(",") { "?" }
+            val query = """
+                SELECT t.*, 
+                       u.nombre as reported_by_name, u.email as reported_by_email,
+                       ua.nombre as assigned_to_name, ua.email as assigned_to_email,
+                       l.nombre as location_name,
+                       s.nombre as system_name,
+                       ss.nombre as subsystem_name,
+                       e.tag as equipment_tag, te.nombre as equipment_type
+                FROM tickets t
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN users ua ON t.assigned_to = ua.id
+                LEFT JOIN locaciones l ON t.locacion_id = l.id
+                LEFT JOIN sistemas s ON t.sistema_id = s.id
+                LEFT JOIN subsistemas ss ON t.subsistema_id = ss.id
+                LEFT JOIN equipos e ON t.equipo_id = e.id
+                LEFT JOIN tipo_equipos te ON e.id_equipo = te.id
+                WHERE t.status IN ($placeholders)
+                ORDER BY t.created_at DESC
+            """.trimIndent()
+            
+            Log.d("DatabaseHelper", "Consulta SQL: $query")
+            Log.d("DatabaseHelper", "Estados buscados: $estados")
+            
+            val cursor = db.rawQuery(query, estados.toTypedArray())
+            
+            var count = 0
+            while (cursor.moveToNext()) {
+                count++
+                Log.d("DatabaseHelper", "Ticket encontrado #$count: ${cursor.getString(cursor.getColumnIndexOrThrow("ticket_number"))}")
+                
+                val ticket = com.uvrp.itsmantenimientoapp.models.Ticket(
+                    id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                    ticketNumber = cursor.getString(cursor.getColumnIndexOrThrow("ticket_number")),
+                    title = cursor.getString(cursor.getColumnIndexOrThrow("title")),
+                    description = cursor.getString(cursor.getColumnIndexOrThrow("description")),
+                    status = cursor.getString(cursor.getColumnIndexOrThrow("status")),
+                    statusText = when (cursor.getString(cursor.getColumnIndexOrThrow("status"))) {
+                        "abierto" -> "Abierto"
+                        "en_progreso" -> "En Progreso"
+                        "cerrado" -> "Cerrado"
+                        "finalizado" -> "Finalizado"
+                        "cancelado" -> "Cancelado"
+                        else -> "Desconocido"
+                    },
+                    priority = cursor.getString(cursor.getColumnIndexOrThrow("priority")),
+                    priorityText = when (cursor.getString(cursor.getColumnIndexOrThrow("priority"))) {
+                        "baja" -> "Baja"
+                        "media" -> "Media"
+                        "alta" -> "Alta"
+                        "critica" -> "Crítica"
+                        else -> "Desconocida"
+                    },
+                    category = cursor.getString(cursor.getColumnIndexOrThrow("category")),
+                    categoryText = when (cursor.getString(cursor.getColumnIndexOrThrow("category"))) {
+                        "ventilacion" -> "Ventilación"
+                        "cctv" -> "CCTV"
+                        "workstation" -> "Workstation"
+                        "sistemas" -> "Sistemas"
+                        "red" -> "Red"
+                        "otros" -> "Otros"
+                        else -> "Desconocida"
+                    },
+                    reportedAt = cursor.getString(cursor.getColumnIndexOrThrow("reported_at")),
+                    reportedAtFormatted = cursor.getString(cursor.getColumnIndexOrThrow("reported_at")),
+                    resolvedAt = cursor.getString(cursor.getColumnIndexOrThrow("resolved_at")),
+                    resolution = cursor.getString(cursor.getColumnIndexOrThrow("resolution")),
+                    createdAt = cursor.getString(cursor.getColumnIndexOrThrow("created_at")),
+                    updatedAt = cursor.getString(cursor.getColumnIndexOrThrow("updated_at")),
+                    reportedBy = com.uvrp.itsmantenimientoapp.models.TicketUser(
+                        id = cursor.getInt(cursor.getColumnIndexOrThrow("user_id")),
+                        name = cursor.getString(cursor.getColumnIndexOrThrow("reported_by_name")) ?: "Usuario Desconocido",
+                        email = cursor.getString(cursor.getColumnIndexOrThrow("reported_by_email")) ?: ""
+                    ),
+                    assignedTo = if (cursor.getInt(cursor.getColumnIndexOrThrow("assigned_to")) != 0) {
+                        com.uvrp.itsmantenimientoapp.models.TicketUser(
+                            id = cursor.getInt(cursor.getColumnIndexOrThrow("assigned_to")),
+                            name = cursor.getString(cursor.getColumnIndexOrThrow("assigned_to_name")) ?: "Usuario Desconocido",
+                            email = cursor.getString(cursor.getColumnIndexOrThrow("assigned_to_email")) ?: ""
+                        )
+                    } else null,
+                    location = com.uvrp.itsmantenimientoapp.models.TicketLocation(
+                        id = cursor.getInt(cursor.getColumnIndexOrThrow("locacion_id")),
+                        name = cursor.getString(cursor.getColumnIndexOrThrow("location_name")) ?: "Ubicación Desconocida"
+                    ),
+                    system = if (cursor.getInt(cursor.getColumnIndexOrThrow("sistema_id")) != 0) {
+                        com.uvrp.itsmantenimientoapp.models.TicketSystem(
+                            id = cursor.getInt(cursor.getColumnIndexOrThrow("sistema_id")),
+                            name = cursor.getString(cursor.getColumnIndexOrThrow("system_name")) ?: "Sistema Desconocido"
+                        )
+                    } else null,
+                    subsystem = if (cursor.getInt(cursor.getColumnIndexOrThrow("subsistema_id")) != 0) {
+                        com.uvrp.itsmantenimientoapp.models.TicketSubsystem(
+                            id = cursor.getInt(cursor.getColumnIndexOrThrow("subsistema_id")),
+                            name = cursor.getString(cursor.getColumnIndexOrThrow("subsystem_name")) ?: "Subsistema Desconocido"
+                        )
+                    } else null,
+                    equipment = if (cursor.getInt(cursor.getColumnIndexOrThrow("equipo_id")) != 0) {
+                        com.uvrp.itsmantenimientoapp.models.TicketEquipment(
+                            id = cursor.getInt(cursor.getColumnIndexOrThrow("equipo_id")),
+                            tag = cursor.getString(cursor.getColumnIndexOrThrow("equipment_tag")) ?: "Sin Tag",
+                            type = cursor.getString(cursor.getColumnIndexOrThrow("equipment_type")) ?: "Sin Tipo"
+                        )
+                    } else null,
+                    comments = emptyList(), // Por ahora vacío, se puede implementar después
+                    commentsCount = 0
+                )
+                
+                tickets.add(ticket)
+            }
+            
+            Log.d("DatabaseHelper", "Total tickets encontrados: ${tickets.size}")
+            cursor.close()
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error al obtener tickets", e)
+        }
+        
+        return tickets
+    }
+    
+    /**
+     * Método de depuración para verificar qué tickets están en la base de datos
+     */
+    fun debugTicketsEnBD(): Unit {
+        val db = this.readableDatabase
+        
+        try {
+            Log.d("DatabaseHelper", "=== DEBUG: VERIFICANDO TICKETS EN BD ===")
+            
+            // Contar total de tickets
+            val cursorCount = db.rawQuery("SELECT COUNT(*) as total FROM tickets", null)
+            if (cursorCount.moveToFirst()) {
+                val total = cursorCount.getInt(0)
+                Log.d("DatabaseHelper", "Total tickets en BD: $total")
+            }
+            cursorCount.close()
+            
+            // Mostrar todos los tickets con su estado
+            val cursorAll = db.rawQuery("SELECT id, ticket_number, title, status FROM tickets ORDER BY created_at DESC", null)
+            var count = 0
+            while (cursorAll.moveToNext()) {
+                count++
+                val id = cursorAll.getInt(0)
+                val ticketNumber = cursorAll.getString(1)
+                val title = cursorAll.getString(2)
+                val status = cursorAll.getString(3)
+                Log.d("DatabaseHelper", "Ticket #$count: ID=$id, Number=$ticketNumber, Status=$status, Title=$title")
+            }
+            cursorAll.close()
+            
+            // Contar por estado
+            val cursorStatus = db.rawQuery("SELECT status, COUNT(*) as count FROM tickets GROUP BY status", null)
+            while (cursorStatus.moveToNext()) {
+                val status = cursorStatus.getString(0)
+                val count = cursorStatus.getInt(1)
+                Log.d("DatabaseHelper", "Estado '$status': $count tickets")
+            }
+            cursorStatus.close()
+            
+            Log.d("DatabaseHelper", "=== FIN DEBUG ===")
+            
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error en debug", e)
+        }
     }
 
 

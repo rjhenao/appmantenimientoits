@@ -30,7 +30,8 @@ object HeaderHelper {
     ) {
         val toolbar: Toolbar = activity.findViewById(R.id.toolbar_home)
             ?: run {
-                Toast.makeText(activity, "No se encontró el Toolbar (id: toolbar_home)", Toast.LENGTH_LONG).show()
+                // Si no se encuentra el toolbar, simplemente retornamos sin mostrar toast
+                // Esto puede pasar si el layout no incluye el header_global correctamente
                 return
             }
 
