@@ -39,7 +39,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 41) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 43) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
