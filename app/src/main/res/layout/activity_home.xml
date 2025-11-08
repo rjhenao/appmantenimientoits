@@ -96,7 +96,76 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Sección de Notificaciones/Alertas -->
+                <!-- Sección de Combustible Pendiente (Parte Superior) -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardCombustiblePendiente"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="3dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/warning_border"
+                    app:cardBackgroundColor="@color/warning_background">
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="20dp">
+
+                        <!-- Header de combustible -->
+                        <LinearLayout
+                            android:orientation="horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_notification_important"
+                                android:tint="@color/warning_primary" />
+
+                            <TextView
+                                android:id="@+id/tvCombustibleTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="12dp"
+                                android:text="Combustible Pendiente"
+                                android:textStyle="bold"
+                                android:textSize="16sp"
+                                android:textColor="@color/warning_primary"/>
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipCombustibleCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:textColor="@android:color/white"
+                                app:chipBackgroundColor="@color/warning_primary"
+                                app:chipMinHeight="24dp"/>
+                        </LinearLayout>
+
+                        <!-- Descripción -->
+                        <TextView
+                            android:id="@+id/tvCombustibleDescription"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Combustibles pendientes por sincronizar"
+                            android:textSize="14sp"
+                            android:textColor="@color/warning_text"
+                            android:layout_marginBottom="12dp"/>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Sección de Notificaciones/Alertas (Mantenimientos) -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardNotifications"
                     android:layout_width="match_parent"

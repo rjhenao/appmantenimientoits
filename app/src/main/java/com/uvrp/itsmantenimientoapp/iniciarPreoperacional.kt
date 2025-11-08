@@ -252,9 +252,22 @@ class iniciarPreoperacional : AppCompatActivity() {
     private fun abrirPreoperacional(idUsuario: Int) {
         val request = ApiService.PreoperacionalRequest(idVehiculoSeleccionado!!, idUsuario)
         RetrofitClient.instance.abrirPreoperacional(request)
-            .enqueue(object : Callback<Void> {
-                override fun onResponse(call: Call<Void>, response: Response<Void>) {
+            .enqueue(object : Callback<ApiService.PreoperacionalResponse> {
+                override fun onResponse(call: Call<ApiService.PreoperacionalResponse>, response: Response<ApiService.PreoperacionalResponse>) {
                     if (response.isSuccessful) {
+                        val body = response.body()
+                        if (body != null && body.success && body.idPreoperacional != null) {
+                            // Guardar id_preoperacional en SharedPreferences para validación offline de combustible
+                            val prefs = getSharedPreferences("PreoperacionalesIniciados", MODE_PRIVATE)
+                            prefs.edit().apply {
+                                putInt("idPreoperacional_$idUsuario", body.idPreoperacional!!)
+                                putInt("idVehiculo_$idUsuario", idVehiculoSeleccionado!!)
+                                putString("placa_$idUsuario", placaa ?: "")
+                                putLong("fechaInicio_$idUsuario", System.currentTimeMillis())
+                                apply()
+                            }
+                            Log.d("Preoperacional", "✅ Preoperacional guardado en SharedPreferences: ID=${body.idPreoperacional}, Usuario=$idUsuario")
+                        }
                         startFormulario()
                     } else {
                         AlertDialog.Builder(this@iniciarPreoperacional)
@@ -265,7 +278,7 @@ class iniciarPreoperacional : AppCompatActivity() {
                     }
                 }
 
-                override fun onFailure(call: Call<Void>, t: Throwable) {
+                override fun onFailure(call: Call<ApiService.PreoperacionalResponse>, t: Throwable) {
                     AlertDialog.Builder(this@iniciarPreoperacional)
                         .setTitle("Error de red")
                         .setMessage("No se pudo conectar con el servidor.\n${t.localizedMessage}")

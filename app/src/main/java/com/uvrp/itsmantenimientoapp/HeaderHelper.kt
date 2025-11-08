@@ -18,6 +18,7 @@ import com.uvrp.itsmantenimientoapp.R
 import com.uvrp.itsmantenimientoapp.SeleccionEquipoActivity
 import com.uvrp.itsmantenimientoapp.TicketsActivity
 import com.uvrp.itsmantenimientoapp.iniciarPreoperacional
+import com.uvrp.itsmantenimientoapp.IniciarCombustibleActivity
 
 object HeaderHelper {
 
@@ -89,6 +90,7 @@ object HeaderHelper {
                 R.id.nav_home -> navigateTo(activity, HomeActivity::class.java)
                 R.id.nav_correctivo -> navigateTo(activity, SeleccionEquipoActivity::class.java)
                 R.id.nav_preoperacional -> navigateTo(activity, iniciarPreoperacional::class.java)
+                R.id.nav_combustible -> navigateTo(activity, IniciarCombustibleActivity::class.java)
                 R.id.nav_bitacoras -> navigateTo(activity, BitacorasActivity::class.java)
                 R.id.nav_tickets -> navigateTo(activity, TicketsActivity::class.java)
                 R.id.nav_cerrarsesion -> logout(activity) // Usamos la función centralizada

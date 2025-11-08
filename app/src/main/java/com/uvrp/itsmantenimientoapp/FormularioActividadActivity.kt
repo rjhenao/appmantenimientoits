@@ -97,6 +97,11 @@ class FormularioActividadActivity : AppCompatActivity() {
             // El botón se habilitará en onResponse o onFailure
         }
 
+        // Botón para llenar todo con datos de prueba
+        val btnLlenarPrueba = findViewById<Button>(R.id.btnLlenarPrueba)
+        btnLlenarPrueba.setOnClickListener {
+            llenarTodoConPrueba()
+        }
 
         val radioPortaDocumento = findViewById<RadioGroup>(R.id.radioPortaDocumento)
         val radioPortaLicencia = findViewById<RadioGroup>(R.id.radioPortaLicencia)
@@ -218,7 +223,8 @@ class FormularioActividadActivity : AppCompatActivity() {
                 verificarPermisosCamara()
             }
 
-
+            // Guardar el ID de la actividad en el tag del view para poder recuperarlo después
+            itemView.tag = idActividad
 
             containerActividades.addView(itemView)
         }
@@ -419,6 +425,76 @@ class FormularioActividadActivity : AppCompatActivity() {
                 radio.isChecked = true
                 break
             }
+        }
+    }
+
+    /**
+     * Función para llenar automáticamente todos los campos con datos de prueba
+     */
+    private fun llenarTodoConPrueba() {
+        try {
+            // 1. Llenar Kilometraje Inicial
+            val inputKmInicial = findViewById<EditText>(R.id.inputKmInicial)
+            inputKmInicial.setText("10000")
+            guardarKilometraje("10000")
+
+            // 2. Llenar Observación Inicial
+            val inputObservacionInicial = findViewById<EditText>(R.id.inputObservacionInicial)
+            inputObservacionInicial.setText("prueba")
+            guardarObservacionInicial("prueba")
+
+            // 3. Seleccionar "Sí" en los 3 RadioGroups
+            val radioPortaDocumento = findViewById<RadioGroup>(R.id.radioPortaDocumento)
+            val radioPortaLicencia = findViewById<RadioGroup>(R.id.radioPortaLicencia)
+            val radioSaludConductor = findViewById<RadioGroup>(R.id.radioSaludConductor)
+
+            // Seleccionar "Sí" en Porta Documento
+            val rbPortaDocumentoSi = findViewById<RadioButton>(R.id.rbPortaDocumentoSi)
+            rbPortaDocumentoSi?.isChecked = true
+            guardarSeleccionRadio("porta_documento", "Sí")
+
+            // Seleccionar "Sí" en Porta Licencia
+            val rbPortaLicenciaSi = findViewById<RadioButton>(R.id.rbPortaLicenciaSi)
+            rbPortaLicenciaSi?.isChecked = true
+            guardarSeleccionRadio("porta_licencia", "Sí")
+
+            // Seleccionar "Sí" en Salud Conductor
+            val rbSaludSi = findViewById<RadioButton>(R.id.rbSaludSi)
+            rbSaludSi?.isChecked = true
+            guardarSeleccionRadio("salud_conductor", "Sí")
+
+            // 4. Llenar todas las actividades dinámicas
+            val actividadesCount = containerActividades.childCount
+            for (i in 0 until actividadesCount) {
+                val itemView = containerActividades.getChildAt(i)
+                
+                // Obtener el ID de la actividad desde el tag del view
+                val idActividad = itemView.tag as? Int
+                
+                if (idActividad != null) {
+                    // Buscar los elementos dentro del item
+                    val btnB = itemView.findViewById<Button>(R.id.btnB)
+                    val btnNA = itemView.findViewById<Button>(R.id.btnNA)
+                    val btnNT = itemView.findViewById<Button>(R.id.btnNT)
+                    val btnM = itemView.findViewById<Button>(R.id.btnM)
+                    val inputObs = itemView.findViewById<EditText>(R.id.inputObservaciones)
+                    
+                    // Llenar observación con "prueba"
+                    inputObs?.setText("prueba")
+                    guardarObservacion(idActividad, "prueba")
+                    
+                    // Seleccionar estado "B" (Bueno) para esta actividad
+                    val botones = listOf(btnB, btnNA, btnNT, btnM).filterNotNull()
+                    if (btnB != null && botones.isNotEmpty()) {
+                        actualizarEstado(btnB, botones, idActividad, "B")
+                    }
+                }
+            }
+
+            Toast.makeText(this, "✅ Todos los campos llenados con datos de prueba", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("LlenarPrueba", "Error al llenar campos: ${e.message}", e)
+            Toast.makeText(this, "Error al llenar campos: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 

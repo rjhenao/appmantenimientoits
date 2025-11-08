@@ -206,13 +206,28 @@
 
     </ScrollView>
 
-    <!-- Botón fijo -->
-    <Button
-        android:id="@+id/btnIniciarPreoperacional"
+    <!-- Botones fijos -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:backgroundTint="@color/azul"
-        android:text="Iniciar Preoperacional"
-        android:textColor="@android:color/white" />
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/btnLlenarPrueba"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="@color/orange_warning"
+            android:text="🔧 Llenar Todo con Prueba"
+            android:textColor="@android:color/white" />
+
+        <Button
+            android:id="@+id/btnIniciarPreoperacional"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/azul"
+            android:text="Iniciar Preoperacional"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
 </LinearLayout>
