@@ -162,6 +162,20 @@
                             android:textColor="@color/warning_text"
                             android:layout_marginBottom="12dp"/>
 
+                        <!-- Botón de sincronización de combustibles -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSincronizarCombustible"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Sincronizar Combustibles"
+                            android:textStyle="bold"
+                            android:textAllCaps="false"
+                            app:icon="@drawable/ic_sync"
+                            app:iconGravity="textStart"
+                            app:cornerRadius="12dp"
+                            style="@style/Widget.Material3.Button.UnelevatedButton"
+                            app:backgroundTint="@color/warning_primary"/>
+
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 

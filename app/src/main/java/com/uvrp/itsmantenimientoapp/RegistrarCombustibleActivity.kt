@@ -148,8 +148,8 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
         // Formato para kilometraje (124.567,89) - con miles y decimales
         configurarFormatoNumericoConMiles(inputKmInicial, true)
         
-        // Formato para galones (12,45) - solo decimales, sin miles
-        configurarFormatoNumericoSinMiles(inputCantidadGalones)
+        // Formato para galones (15.000,87) - con miles y decimales
+        configurarFormatoNumericoConMiles(inputCantidadGalones, true)
         
         // Formato para valores (16.400,00) - con miles y decimales
         configurarFormatoNumericoConMiles(inputValorGalon, true)
@@ -157,131 +157,66 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
     }
 
     private fun configurarFormatoNumericoConMiles(editText: EditText, permitirDecimales: Boolean) {
-        // Mantener inputType numérico para mostrar teclado numérico
-        editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER or 
-                            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        // Usar inputType TEXT para permitir comas desde el teclado
+        editText.inputType = android.text.InputType.TYPE_CLASS_TEXT
         
-        // Configurar KeyListener personalizado que permita números y coma
-        editText.keyListener = object : android.text.method.DigitsKeyListener() {
-            override fun getInputType(): Int {
-                return android.text.InputType.TYPE_CLASS_NUMBER or 
-                       android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            }
-            
-            override fun filter(
-                source: CharSequence?,
-                start: Int,
-                end: Int,
-                dest: Spanned?,
-                dstart: Int,
-                dend: Int
-            ): CharSequence? {
-                val textoActual = dest?.toString() ?: ""
-                val tieneComa = textoActual.contains(",")
-                
-                // Si el usuario está escribiendo una coma directamente
-                if (source != null && source.toString() == ",") {
-                    // Permitir la coma solo si no hay ya una coma
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Si el usuario está escribiendo un punto, convertirlo a coma
-                if (source != null && source.toString() == ".") {
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Permitir números usando el filtro base
-                return super.filter(source, start, end, dest, dstart, dend)
-            }
-        }
-        
-        // Agregar filtro adicional para asegurar que funcione correctamente
-        editText.filters = arrayOf(object : InputFilter {
-            override fun filter(
-                source: CharSequence?,
-                start: Int,
-                end: Int,
-                dest: Spanned?,
-                dstart: Int,
-                dend: Int
-            ): CharSequence? {
-                val textoActual = dest?.toString() ?: ""
-                val tieneComa = textoActual.contains(",")
-                
-                // Si el usuario está escribiendo una coma directamente
-                if (source != null && source.toString() == ",") {
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Si el usuario está escribiendo un punto, convertirlo a coma
-                if (source != null && source.toString() == ".") {
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Permitir números
-                if (source != null && source.toString().all { it.isDigit() }) {
-                    return null
-                }
-                
-                return null
-            }
-        })
+        // Configurar KeyListener personalizado para teclado numérico con coma
+        editText.keyListener = android.text.method.DigitsKeyListener.getInstance("0123456789,")
         
         val textWatcher = object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            private var textoAnterior = ""
+            private var cursorAnterior = 0
+            
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                textoAnterior = s?.toString() ?: ""
+                cursorAnterior = editText.selectionStart
+            }
+            
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             
             override fun afterTextChanged(s: Editable?) {
                 // Verificar si ya estamos formateando este campo
                 if (formatoEnProceso[editText] == true) return
                 
-                val texto = s?.toString() ?: ""
+                val textoActual = s?.toString() ?: ""
                 
                 // Si está vacío, no hacer nada
-                if (texto.isEmpty()) {
+                if (textoActual.isEmpty()) {
                     formatoEnProceso[editText] = false
                     return
                 }
                 
-                // Separar parte entera y decimal usando la coma como separador
-                val tieneComa = texto.contains(",")
-                val partes = texto.split(",")
+                // Separar parte entera y decimal usando la coma como separador decimal
+                val tieneComa = textoActual.contains(",")
+                val partes = textoActual.split(",", limit = 2)
                 
-                // Extraer solo los números de la parte entera (eliminar puntos existentes)
+                // Extraer solo los números de la parte entera (eliminar puntos y otros caracteres)
                 val parteEnteraSinFormato = partes[0].replace(Regex("[^0-9]"), "")
                 
                 // Extraer solo números de la parte decimal (máximo 2 dígitos)
-                val parteDecimal = if (partes.size > 1) {
+                val parteDecimal = if (partes.size > 1 && permitirDecimales) {
                     partes[1].replace(Regex("[^0-9]"), "").take(2)
                 } else {
                     ""
                 }
                 
-                // Si no hay parte entera, no hacer nada (permitir que el usuario siga escribiendo)
-                if (parteEnteraSinFormato.isEmpty()) {
+                // Si no hay parte entera y no hay coma, no formatear aún
+                if (parteEnteraSinFormato.isEmpty() && !tieneComa) {
+                    formatoEnProceso[editText] = false
+                    return
+                }
+                
+                // Si solo hay coma sin parte entera, permitir (usuario puede estar escribiendo 0,XX)
+                if (parteEnteraSinFormato.isEmpty() && tieneComa) {
                     formatoEnProceso[editText] = false
                     return
                 }
                 
                 // Formatear parte entera con puntos de miles automáticamente
-                val parteEnteraFormateada = try {
-                    val numero = parteEnteraSinFormato.toLong()
-                    // Formatear manualmente con puntos cada 3 dígitos desde la derecha
-                    formatearConPuntosMiles(numero.toString())
-                } catch (e: Exception) {
-                    parteEnteraSinFormato
+                val parteEnteraFormateada = if (parteEnteraSinFormato.isNotEmpty()) {
+                    formatearConPuntosMiles(parteEnteraSinFormato)
+                } else {
+                    ""
                 }
                 
                 // Construir el texto formateado final
@@ -293,89 +228,90 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
                 }
                 
                 // Verificar si necesita actualizar
-                // Solo actualizar si el formato es diferente (puntos de miles o estructura)
-                val necesitaActualizar = textoFormateado != texto && textoFormateado.isNotEmpty()
-                
-                if (necesitaActualizar) {
+                if (textoFormateado != textoActual && textoFormateado.isNotEmpty()) {
                     // Marcar que estamos formateando
                     formatoEnProceso[editText] = true
                     
                     // Remover listener temporalmente para evitar loop infinito
                     editText.removeTextChangedListener(this)
                     
-                    // Guardar posición del cursor antes de formatear
-                    val posicionOriginal = editText.selectionStart
+                    // Calcular posición del cursor
+                    val posicionCursor = calcularPosicionCursor(
+                        textoAnterior = textoAnterior,
+                        textoNuevo = textoFormateado,
+                        cursorAnterior = cursorAnterior
+                    )
                     
-                    // Contar cuántos dígitos hay antes del cursor en el texto original
-                    val digitosAntesCursor = texto.substring(0, minOf(posicionOriginal, texto.length))
-                        .replace(Regex("[^0-9]"), "").length
-                    
-                    // Contar si había coma antes del cursor
-                    val comaAntesCursor = texto.substring(0, minOf(posicionOriginal, texto.length)).contains(",")
-                    
-                    // Actualizar el texto directamente en el Editable
+                    // Actualizar el texto
                     s?.replace(0, s.length, textoFormateado)
                     
-                    // Calcular nueva posición del cursor basándose en dígitos
-                    val nuevaPosicion = if (digitosAntesCursor > 0) {
-                        // Encontrar la posición después de N dígitos en el texto formateado
-                        var digitosEncontrados = 0
-                        var posicionCalculada = textoFormateado.length
-                        
-                        for (i in textoFormateado.indices) {
-                            if (textoFormateado[i].isDigit()) {
-                                digitosEncontrados++
-                                if (digitosEncontrados >= digitosAntesCursor) {
-                                    posicionCalculada = i + 1
-                                    break
-                                }
-                            }
-                        }
-                        
-                        // Si hay coma y el cursor estaba después de la coma en el texto original
-                        if (tieneComa && comaAntesCursor) {
-                            val posicionComaFormateado = textoFormateado.indexOf(",")
-                            if (posicionComaFormateado != -1) {
-                                val digitosDecimales = parteDecimal.length
-                                minOf(posicionComaFormateado + 1 + digitosDecimales, textoFormateado.length)
-                            } else {
-                                posicionCalculada
-                            }
-                        } else {
-                            minOf(maxOf(posicionCalculada, 0), textoFormateado.length)
-                        }
-                    } else {
-                        textoFormateado.length
-                    }
-                    
-                    // Establecer posición del cursor de forma segura
+                    // Establecer posición del cursor
                     try {
-                        val posicionFinal = maxOf(0, minOf(nuevaPosicion, textoFormateado.length))
+                        val posicionFinal = maxOf(0, minOf(posicionCursor, textoFormateado.length))
                         editText.setSelection(posicionFinal)
                     } catch (e: Exception) {
-                        // Si falla, poner el cursor al final
                         try {
                             editText.setSelection(textoFormateado.length)
                         } catch (e2: Exception) {
-                            // Si aún falla, no establecer selección
+                            // Si falla, no establecer selección
                         }
                     }
                     
-                    // Volver a agregar el listener ANTES de desmarcar
+                    // Volver a agregar el listener
                     editText.addTextChangedListener(this)
                     
-                    // Desmarcar que terminamos de formatear (usando post para evitar race condition)
+                    // Desmarcar que terminamos de formatear
                     editText.post {
                         formatoEnProceso[editText] = false
                     }
                 } else {
-                    // Si no necesita actualizar, desmarcar inmediatamente
                     formatoEnProceso[editText] = false
                 }
             }
         }
         
         editText.addTextChangedListener(textWatcher)
+    }
+    
+    /**
+     * Calcula la posición correcta del cursor después de formatear el texto
+     */
+    private fun calcularPosicionCursor(
+        textoAnterior: String,
+        textoNuevo: String,
+        cursorAnterior: Int
+    ): Int {
+        // Si el cursor estaba al final, mantenerlo al final
+        if (cursorAnterior >= textoAnterior.length) {
+            return textoNuevo.length
+        }
+        
+        // Contar dígitos antes del cursor en el texto anterior
+        val textoAntesCursor = textoAnterior.substring(0, minOf(cursorAnterior, textoAnterior.length))
+        val digitosAntesCursor = textoAntesCursor.count { it.isDigit() }
+        val hayComa = textoNuevo.contains(",")
+        val comaAntesCursor = textoAntesCursor.contains(",")
+        
+        // Si el cursor estaba después de la coma (parte decimal)
+        if (comaAntesCursor && hayComa) {
+            val posicionComa = textoNuevo.indexOf(",")
+            val digitosDecimalesAntesCursor = textoAntesCursor.substringAfter(",").count { it.isDigit() }
+            return minOf(posicionComa + 1 + digitosDecimalesAntesCursor, textoNuevo.length)
+        }
+        
+        // El cursor está en la parte entera
+        // Encontrar la posición después de N dígitos en el texto nuevo
+        var digitosEncontrados = 0
+        for (i in textoNuevo.indices) {
+            if (textoNuevo[i].isDigit()) {
+                digitosEncontrados++
+                if (digitosEncontrados >= digitosAntesCursor) {
+                    return i + 1
+                }
+            }
+        }
+        
+        return textoNuevo.length
     }
     
     // Función auxiliar para formatear números con puntos de miles
@@ -395,227 +331,6 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
         return resultado.toString().reversed()
     }
 
-    private fun configurarFormatoNumericoSinMiles(editText: EditText) {
-        // Mantener inputType numérico para mostrar teclado numérico
-        editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER or 
-                            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        
-        // Configurar KeyListener personalizado que permita números y coma
-        editText.keyListener = object : android.text.method.DigitsKeyListener() {
-            override fun getInputType(): Int {
-                return android.text.InputType.TYPE_CLASS_NUMBER or 
-                       android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            }
-            
-            override fun filter(
-                source: CharSequence?,
-                start: Int,
-                end: Int,
-                dest: Spanned?,
-                dstart: Int,
-                dend: Int
-            ): CharSequence? {
-                val textoActual = dest?.toString() ?: ""
-                val tieneComa = textoActual.contains(",")
-                
-                // Si el usuario está escribiendo una coma directamente
-                if (source != null && source.toString() == ",") {
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Si el usuario está escribiendo un punto, convertirlo a coma
-                if (source != null && source.toString() == ".") {
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Permitir números usando el filtro base
-                return super.filter(source, start, end, dest, dstart, dend)
-            }
-        }
-        
-        // Agregar filtro adicional para asegurar que funcione correctamente
-        editText.filters = arrayOf(object : InputFilter {
-            override fun filter(
-                source: CharSequence?,
-                start: Int,
-                end: Int,
-                dest: Spanned?,
-                dstart: Int,
-                dend: Int
-            ): CharSequence? {
-                val textoActual = dest?.toString() ?: ""
-                val tieneComa = textoActual.contains(",")
-                
-                // Si el usuario está escribiendo una coma directamente
-                if (source != null && source.toString() == ",") {
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Si el usuario está escribiendo un punto, convertirlo a coma
-                if (source != null && source.toString() == ".") {
-                    if (!tieneComa) {
-                        return ","
-                    }
-                    return ""
-                }
-                
-                // Permitir números
-                if (source != null && source.toString().all { it.isDigit() }) {
-                    return null
-                }
-                
-                return null
-            }
-        })
-        
-        val textWatcher = object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            
-            override fun afterTextChanged(s: Editable?) {
-                // Verificar si ya estamos formateando este campo
-                if (formatoEnProceso[editText] == true) return
-                
-                val texto = s?.toString() ?: ""
-                
-                // Si está vacío, no hacer nada
-                if (texto.isEmpty()) {
-                    formatoEnProceso[editText] = false
-                    return
-                }
-                
-                // NO convertir puntos a comas - solo permitir coma manual para decimales
-                // Separar parte entera y decimal (la coma es el separador decimal)
-                val tieneComa = texto.contains(",")
-                val partes = texto.split(",")
-                
-                // Limpiar parte entera: solo números (sin puntos ni comas)
-                val parteEntera = partes[0].replace(Regex("[^0-9]"), "")
-                
-                // Limpiar parte decimal: solo números, máximo 2 dígitos
-                val parteDecimal = if (partes.size > 1) {
-                    partes[1].replace(Regex("[^0-9]"), "").take(2)
-                } else {
-                    ""
-                }
-                
-                // Si no hay parte entera, permitir solo si hay coma y decimales
-                if (parteEntera.isEmpty()) {
-                    if (tieneComa && parteDecimal.isNotEmpty()) {
-                        // Si solo hay coma y decimales, permitir (ej: ",45")
-                        formatoEnProceso[editText] = false
-                        return
-                    } else if (tieneComa) {
-                        // Si solo hay coma, mantener
-                        formatoEnProceso[editText] = false
-                        return
-                    }
-                    formatoEnProceso[editText] = false
-                    return
-                }
-                
-                // Construir el texto formateado (sin puntos de miles para cantidad)
-                val textoFormateado = when {
-                    parteDecimal.isNotEmpty() -> "$parteEntera,$parteDecimal"
-                    tieneComa && parteEntera.isNotEmpty() -> "$parteEntera,"
-                    parteEntera.isNotEmpty() -> parteEntera
-                    else -> ""
-                }
-                
-                // Solo actualizar si el texto formateado es diferente al actual
-                // Pero siempre preservar la coma si el usuario la escribió
-                val necesitaActualizar = textoFormateado != texto && textoFormateado.isNotEmpty()
-                
-                if (necesitaActualizar) {
-                    // Marcar que estamos formateando
-                    formatoEnProceso[editText] = true
-                    
-                    // Remover listener temporalmente para evitar loop infinito
-                    editText.removeTextChangedListener(this)
-                    
-                    // Guardar posición del cursor antes de formatear
-                    val posicionOriginal = editText.selectionStart
-                    
-                    // Contar cuántos dígitos hay antes del cursor en el texto original
-                    val digitosAntesCursor = texto.substring(0, minOf(posicionOriginal, texto.length))
-                        .replace(Regex("[^0-9]"), "").length
-                    
-                    // Contar si había coma antes del cursor
-                    val comaAntesCursor = texto.substring(0, minOf(posicionOriginal, texto.length)).contains(",")
-                    
-                    // Actualizar el texto directamente en el Editable
-                    s?.replace(0, s.length, textoFormateado)
-                    
-                    // Calcular nueva posición del cursor basándose en dígitos
-                    val nuevaPosicion = if (digitosAntesCursor > 0) {
-                        // Encontrar la posición después de N dígitos en el texto formateado
-                        var digitosEncontrados = 0
-                        var posicionCalculada = textoFormateado.length
-                        
-                        for (i in textoFormateado.indices) {
-                            if (textoFormateado[i].isDigit()) {
-                                digitosEncontrados++
-                                if (digitosEncontrados >= digitosAntesCursor) {
-                                    posicionCalculada = i + 1
-                                    break
-                                }
-                            }
-                        }
-                        
-                        // Si hay coma y el cursor estaba después de la coma en el texto original
-                        if (tieneComa && comaAntesCursor) {
-                            val posicionComaFormateado = textoFormateado.indexOf(",")
-                            if (posicionComaFormateado != -1) {
-                                val digitosDecimales = parteDecimal.length
-                                minOf(posicionComaFormateado + 1 + digitosDecimales, textoFormateado.length)
-                            } else {
-                                posicionCalculada
-                            }
-                        } else {
-                            minOf(maxOf(posicionCalculada, 0), textoFormateado.length)
-                        }
-                    } else {
-                        textoFormateado.length
-                    }
-                    
-                    // Establecer posición del cursor de forma segura
-                    try {
-                        val posicionFinal = maxOf(0, minOf(nuevaPosicion, textoFormateado.length))
-                        editText.setSelection(posicionFinal)
-                    } catch (e: Exception) {
-                        // Si falla, poner el cursor al final
-                        try {
-                            editText.setSelection(textoFormateado.length)
-                        } catch (e2: Exception) {
-                            // Si aún falla, no establecer selección
-                        }
-                    }
-                    
-                    // Volver a agregar el listener ANTES de desmarcar
-                    editText.addTextChangedListener(this)
-                    
-                    // Desmarcar que terminamos de formatear (usando post para evitar race condition)
-                    editText.post {
-                        formatoEnProceso[editText] = false
-                    }
-                } else {
-                    // Si no necesita actualizar, desmarcar inmediatamente
-                    formatoEnProceso[editText] = false
-                }
-            }
-        }
-        
-        editText.addTextChangedListener(textWatcher)
-    }
 
     private fun restaurarDatos() {
         inputKmInicial.setText(prefs.getString("kmInicial", ""))
@@ -820,4 +535,12 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
         }
     }
 }
+
+
+
+
+
+
+
+
 

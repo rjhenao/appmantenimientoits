@@ -35,6 +35,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var tvCombustibleTitle: TextView
     private lateinit var tvCombustibleDescription: TextView
     private lateinit var chipCombustibleCount: Chip
+    private lateinit var btnSincronizarCombustible: MaterialButton
 
     private lateinit var dbHelper: DatabaseHelper // La hacemos variable de la clase
 
@@ -64,6 +65,7 @@ class HomeActivity : AppCompatActivity() {
         tvCombustibleTitle = findViewById(R.id.tvCombustibleTitle)
         tvCombustibleDescription = findViewById(R.id.tvCombustibleDescription)
         chipCombustibleCount = findViewById(R.id.chipCombustibleCount)
+        btnSincronizarCombustible = findViewById(R.id.btnSincronizarCombustible)
 
         dbHelper = DatabaseHelper(this)
 
@@ -80,6 +82,24 @@ class HomeActivity : AppCompatActivity() {
                 // Restaurar botón
                 btnSincronizar.text = "Sincronizar Ahora"
                 btnSincronizar.isEnabled = true
+
+                if (exito) {
+                    // Al terminar, recargamos la lista
+                    cargarYMostrarPendientes()
+                }
+            }
+        }
+
+        // ==== BOTÓN SINCRONIZAR COMBUSTIBLES ====
+        btnSincronizarCombustible.setOnClickListener {
+            // Mostrar estado de carga
+            btnSincronizarCombustible.text = "Sincronizando..."
+            btnSincronizarCombustible.isEnabled = false
+
+            FuncionesGenerales.sincronizarTodosMantenimientos(this) { exito ->
+                // Restaurar botón
+                btnSincronizarCombustible.text = "Sincronizar Combustibles"
+                btnSincronizarCombustible.isEnabled = true
 
                 if (exito) {
                     // Al terminar, recargamos la lista
