@@ -39,7 +39,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 43) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 44) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -517,6 +517,26 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         """
         db.execSQL(createRelFotosMantenimientoPreventivoTable)
 
+        // Tabla combustible
+        val createCombustibleTable = """
+            CREATE TABLE combustible (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_preoperacional INTEGER NOT NULL,
+                id_vehiculo INTEGER NOT NULL,
+                id_usuario INTEGER NOT NULL,
+                kilometraje_inicial REAL NOT NULL,
+                cantidad_galones REAL NOT NULL,
+                valor_galon REAL NOT NULL,
+                valor_total REAL NOT NULL,
+                ruta_foto_ticket TEXT,
+                observacion TEXT,
+                fecha_tanqueo TEXT NOT NULL,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT
+            )
+        """
+        db.execSQL(createCombustibleTable)
+
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -568,6 +588,33 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                 db.execSQL("DROP TABLE IF EXISTS rel_fotos_mantenimiento_preventivo")
                 
                 onCreate(db)
+            }
+        }
+
+        // Migración para versión 44: Agregar tabla combustible
+        if (oldVersion < 44) {
+            try {
+                val createCombustibleTable = """
+                    CREATE TABLE IF NOT EXISTS combustible (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id_preoperacional INTEGER NOT NULL,
+                        id_vehiculo INTEGER NOT NULL,
+                        id_usuario INTEGER NOT NULL,
+                        kilometraje_inicial REAL NOT NULL,
+                        cantidad_galones REAL NOT NULL,
+                        valor_galon REAL NOT NULL,
+                        valor_total REAL NOT NULL,
+                        ruta_foto_ticket TEXT,
+                        observacion TEXT,
+                        fecha_tanqueo TEXT NOT NULL,
+                        sincronizado INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT
+                    )
+                """
+                db.execSQL(createCombustibleTable)
+                Log.d("DB_UPGRADE", "Tabla 'combustible' creada exitosamente")
+            } catch (e: Exception) {
+                Log.e("DB_UPGRADE", "Error creando tabla combustible: ${e.message}")
             }
         }
     }
@@ -4113,5 +4160,183 @@ return insertOk
         }
     }
 
+    // ===================================================================
+    // MÉTODOS PARA COMBUSTIBLE
+    // ===================================================================
+
+    /**
+     * Insertar combustible en la base de datos local
+     */
+    fun insertarCombustible(
+        idPreoperacional: Int,
+        idVehiculo: Int,
+        idUsuario: Int,
+        kilometrajeInicial: Double,
+        cantidadGalones: Double,
+        valorGalon: Double,
+        valorTotal: Double,
+        rutaFotoTicket: String?,
+        observacion: String?,
+        fechaTanqueo: String
+    ): Long {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("id_preoperacional", idPreoperacional)
+            put("id_vehiculo", idVehiculo)
+            put("id_usuario", idUsuario)
+            put("kilometraje_inicial", kilometrajeInicial)
+            put("cantidad_galones", cantidadGalones)
+            put("valor_galon", valorGalon)
+            put("valor_total", valorTotal)
+            put("ruta_foto_ticket", rutaFotoTicket)
+            put("observacion", observacion)
+            put("fecha_tanqueo", fechaTanqueo)
+            put("sincronizado", 0) // 0 = pendiente de sincronizar
+            put("created_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+        }
+
+        val id = db.insert("combustible", null, values)
+        db.close()
+        return id
+    }
+
+    /**
+     * Obtener combustibles pendientes de sincronizar
+     */
+    fun obtenerCombustiblesPendientes(): List<CombustibleLocal> {
+        val lista = mutableListOf<CombustibleLocal>()
+        val db = readableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT * FROM combustible WHERE sincronizado = 0 ORDER BY fecha_tanqueo DESC",
+            null
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val idPreoperacional = cursor.getInt(cursor.getColumnIndexOrThrow("id_preoperacional"))
+                val idVehiculo = cursor.getInt(cursor.getColumnIndexOrThrow("id_vehiculo"))
+                val idUsuario = cursor.getInt(cursor.getColumnIndexOrThrow("id_usuario"))
+                val kilometrajeInicial = cursor.getDouble(cursor.getColumnIndexOrThrow("kilometraje_inicial"))
+                val cantidadGalones = cursor.getDouble(cursor.getColumnIndexOrThrow("cantidad_galones"))
+                val valorGalon = cursor.getDouble(cursor.getColumnIndexOrThrow("valor_galon"))
+                val valorTotal = cursor.getDouble(cursor.getColumnIndexOrThrow("valor_total"))
+                val rutaFotoTicket = cursor.getString(cursor.getColumnIndexOrThrow("ruta_foto_ticket"))
+                val observacion = cursor.getString(cursor.getColumnIndexOrThrow("observacion"))
+                val fechaTanqueo = cursor.getString(cursor.getColumnIndexOrThrow("fecha_tanqueo"))
+
+                lista.add(
+                    CombustibleLocal(
+                        id = id,
+                        idPreoperacional = idPreoperacional,
+                        idVehiculo = idVehiculo,
+                        idUsuario = idUsuario,
+                        kilometrajeInicial = kilometrajeInicial,
+                        cantidadGalones = cantidadGalones,
+                        valorGalon = valorGalon,
+                        valorTotal = valorTotal,
+                        rutaFotoTicket = rutaFotoTicket,
+                        observacion = observacion,
+                        fechaTanqueo = fechaTanqueo
+                    )
+                )
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+        return lista
+    }
+
+    /**
+     * Marcar combustible como sincronizado
+     */
+    fun marcarCombustibleSincronizado(idCombustible: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("sincronizado", 1) // 1 = sincronizado
+        }
+
+        db.update(
+            "combustible",
+            values,
+            "id = ?",
+            arrayOf(idCombustible.toString())
+        )
+
+        db.close()
+    }
+
+    /**
+     * Obtener combustibles pendientes por usuario (para HomeActivity)
+     */
+    fun getCombustiblesPendientesCount(idUsuario: Int? = null): Int {
+        val db = readableDatabase
+        var count = 0
+
+        val query = if (idUsuario != null) {
+            "SELECT COUNT(*) FROM combustible WHERE sincronizado = 0 AND id_usuario = ?"
+        } else {
+            "SELECT COUNT(*) FROM combustible WHERE sincronizado = 0"
+        }
+
+        val cursor = if (idUsuario != null) {
+            db.rawQuery(query, arrayOf(idUsuario.toString()))
+        } else {
+            db.rawQuery(query, null)
+        }
+
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0)
+        }
+
+        cursor.close()
+        return count
+    }
+
+    /**
+     * Obtener tags de combustibles pendientes (para HomeActivity)
+     */
+    fun getCombustiblesPendientesTags(idUsuario: Int? = null): List<String> {
+        val db = readableDatabase
+        val tags = mutableListOf<String>()
+
+        val query = if (idUsuario != null) {
+            "SELECT id FROM combustible WHERE sincronizado = 0 AND id_usuario = ? ORDER BY fecha_tanqueo DESC"
+        } else {
+            "SELECT id FROM combustible WHERE sincronizado = 0 ORDER BY fecha_tanqueo DESC"
+        }
+
+        val cursor = if (idUsuario != null) {
+            db.rawQuery(query, arrayOf(idUsuario.toString()))
+        } else {
+            db.rawQuery(query, null)
+        }
+
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(0)
+                tags.add("Combustible #$id")
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+        return tags
+    }
+
+    // Data class para combustible local
+    data class CombustibleLocal(
+        val id: Int,
+        val idPreoperacional: Int,
+        val idVehiculo: Int,
+        val idUsuario: Int,
+        val kilometrajeInicial: Double,
+        val cantidadGalones: Double,
+        val valorGalon: Double,
+        val valorTotal: Double,
+        val rutaFotoTicket: String?,
+        val observacion: String?,
+        val fechaTanqueo: String
+    )
 
 }

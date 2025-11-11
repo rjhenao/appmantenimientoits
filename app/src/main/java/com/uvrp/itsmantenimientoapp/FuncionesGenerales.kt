@@ -41,9 +41,10 @@ object FuncionesGenerales {
                 val exitoBitacoras = sincronizarPendientesBitacora(context, dbHelper)
                 val exitoInspecciones = sincronizarInspeccionesCompletas(dbHelper)
                 val exitoFotosMasivas = sincronizarFotosMasivas(context, dbHelper)
+                val exitoCombustible = sincronizarCombustiblesPendientes(context, dbHelper)
 
                 // El resultado total es exitoso si CUALQUIERA de los procesos tuvo éxito
-                exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas
+                exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible
             }
 
             progressDialog.dismiss()
@@ -502,6 +503,87 @@ object FuncionesGenerales {
             Log.e("FUNCIONES_GENERALES", "❌ Error en sincronización de fotos masivas: ${e.message}")
             false
         }
+    }
+
+    /**
+     * Sincronizar combustibles pendientes
+     */
+    private suspend fun sincronizarCombustiblesPendientes(context: Context, dbHelper: DatabaseHelper): Boolean {
+        var huboExito = false
+        val combustiblesPendientes = dbHelper.obtenerCombustiblesPendientes()
+
+        if (combustiblesPendientes.isEmpty()) {
+            return false
+        }
+
+        Log.i("SyncCombustible", "🛢️ Iniciando sincronización de ${combustiblesPendientes.size} combustible(s)...")
+
+        for (combustible in combustiblesPendientes) {
+            try {
+                // Crear JSON con los datos del combustible
+                val jsonObject = org.json.JSONObject().apply {
+                    put("id_preoperacional", combustible.idPreoperacional)
+                    put("id_vehiculo", combustible.idVehiculo)
+                    put("id_usuario", combustible.idUsuario)
+                    put("kilometraje_inicial", combustible.kilometrajeInicial)
+                    put("cantidad_galones", combustible.cantidadGalones)
+                    put("valor_galon", combustible.valorGalon)
+                    put("valor_total", combustible.valorTotal)
+                    put("observacion", combustible.observacion ?: "")
+                    put("fecha_tanqueo", combustible.fechaTanqueo)
+                }
+
+                val jsonRequestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+                // Preparar foto del ticket si existe
+                val fotoPart: okhttp3.MultipartBody.Part? = combustible.rutaFotoTicket?.let { ruta ->
+                    val file = File(ruta)
+                    if (file.exists() && file.canRead()) {
+                        val compressedFile = comprimirYRedimensionarImagen(context, file)
+                        MultipartBody.Part.createFormData(
+                            "foto_ticket",
+                            compressedFile.name,
+                            compressedFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                        )
+                    } else {
+                        Log.w("SyncCombustible", "⚠️ Foto del ticket no existe o no se puede leer: $ruta")
+                        null
+                    }
+                }
+
+                // Enviar a la API
+                val response = RetrofitClient.instance
+                    .sincronizarCombustible(jsonRequestBody, fotoPart)
+                    .execute()
+
+                Log.d("SyncCombustible", "📡 Respuesta recibida para combustible ID=${combustible.id}, code=${response.code()}, isSuccessful=${response.isSuccessful}")
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    Log.d("SyncCombustible", "📦 ResponseBody: $responseBody")
+                    
+                    if (responseBody?.success == true) {
+                        // Marcar como sincronizado
+                        dbHelper.marcarCombustibleSincronizado(combustible.id)
+                        huboExito = true
+                        Log.i("SyncCombustible", "✅ Combustible ID ${combustible.id} sincronizado exitosamente")
+                    } else {
+                        val errorMessage = responseBody?.message ?: "Sin mensaje de error"
+                        Log.e("SyncCombustible", "❌ Error en respuesta del servidor para combustible ID ${combustible.id}: $errorMessage")
+                        Log.e("SyncCombustible", "❌ ResponseBody completo: $responseBody")
+                        Log.e("SyncCombustible", "❌ Success value: ${responseBody?.success}")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("SyncCombustible", "❌ Error sincronizando combustible ID=${combustible.id}, code=${response.code()}")
+                    Log.e("SyncCombustible", "❌ Error body: $errorBody")
+                }
+            } catch (e: Exception) {
+                Log.e("SyncCombustible", "❌ Excepción sincronizando combustible ID=${combustible.id}: ${e.message}", e)
+            }
+        }
+
+        return huboExito
     }
 
 }

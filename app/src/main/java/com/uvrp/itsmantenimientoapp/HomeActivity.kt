@@ -30,6 +30,13 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var btnSincronizar: MaterialButton
     private lateinit var tvSubtitle: TextView
 
+    // Referencias para combustible pendiente
+    private lateinit var cardCombustiblePendiente: MaterialCardView
+    private lateinit var tvCombustibleTitle: TextView
+    private lateinit var tvCombustibleDescription: TextView
+    private lateinit var chipCombustibleCount: Chip
+    private lateinit var btnSincronizarCombustible: MaterialButton
+
     private lateinit var dbHelper: DatabaseHelper // La hacemos variable de la clase
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +60,13 @@ class HomeActivity : AppCompatActivity() {
         rvPendientes = findViewById(R.id.rvPendientes)
         btnSincronizar = findViewById(R.id.btnSincronizar)
 
+        // Referencias para combustible pendiente
+        cardCombustiblePendiente = findViewById(R.id.cardCombustiblePendiente)
+        tvCombustibleTitle = findViewById(R.id.tvCombustibleTitle)
+        tvCombustibleDescription = findViewById(R.id.tvCombustibleDescription)
+        chipCombustibleCount = findViewById(R.id.chipCombustibleCount)
+        btnSincronizarCombustible = findViewById(R.id.btnSincronizarCombustible)
+
         dbHelper = DatabaseHelper(this)
 
         // Configurar toolbar + menú hamburguesa + NavigationView
@@ -68,6 +82,24 @@ class HomeActivity : AppCompatActivity() {
                 // Restaurar botón
                 btnSincronizar.text = "Sincronizar Ahora"
                 btnSincronizar.isEnabled = true
+
+                if (exito) {
+                    // Al terminar, recargamos la lista
+                    cargarYMostrarPendientes()
+                }
+            }
+        }
+
+        // ==== BOTÓN SINCRONIZAR COMBUSTIBLES ====
+        btnSincronizarCombustible.setOnClickListener {
+            // Mostrar estado de carga
+            btnSincronizarCombustible.text = "Sincronizando..."
+            btnSincronizarCombustible.isEnabled = false
+
+            FuncionesGenerales.sincronizarTodosMantenimientos(this) { exito ->
+                // Restaurar botón
+                btnSincronizarCombustible.text = "Sincronizar Combustibles"
+                btnSincronizarCombustible.isEnabled = true
 
                 if (exito) {
                     // Al terminar, recargamos la lista
@@ -92,6 +124,22 @@ class HomeActivity : AppCompatActivity() {
     private fun cargarYMostrarPendientes() {
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idRol = sharedPreferences.getInt("idRol", -1)
+        val idUsuario = sharedPreferences.getInt("idUser", -1)
+
+        // ===== COMBUSTIBLES PENDIENTES (PARTE SUPERIOR - PARA TODOS LOS USUARIOS) =====
+        val combustiblesPendientes = if (idUsuario != -1) {
+            dbHelper.getCombustiblesPendientesTags(idUsuario)
+        } else {
+            emptyList()
+        }
+
+        if (combustiblesPendientes.isNotEmpty()) {
+            cardCombustiblePendiente.visibility = View.VISIBLE
+            chipCombustibleCount.text = combustiblesPendientes.size.toString()
+            tvCombustibleDescription.text = "${combustiblesPendientes.size} combustible(s) pendiente(s) por sincronizar"
+        } else {
+            cardCombustiblePendiente.visibility = View.GONE
+        }
 
         val pendientesCorrectivos: List<String>
         val pendientesPreventivos: List<String>

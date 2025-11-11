@@ -12,6 +12,9 @@
         android:id="@+id/nav_preoperacional"
         android:title="Preoperacional" />
     <item
+        android:id="@+id/nav_combustible"
+        android:title="Registrar Combustible" />
+    <item
         android:id="@+id/nav_bitacoras"
         android:title="Bitacoras" />
     <item

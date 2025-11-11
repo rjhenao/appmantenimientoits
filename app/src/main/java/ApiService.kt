@@ -68,6 +68,13 @@ interface ApiService {
         val idUsuario: Int
     )
 
+    data class PreoperacionalResponse(
+        @SerializedName("success")
+        val success: Boolean,
+        @SerializedName("id_preoperacional")
+        val idPreoperacional: Int?
+    )
+
 
 
 
@@ -316,8 +323,8 @@ interface ApiService {
     @GET("api/actividades-formato")
     fun getActividadesFormato(@Query("idVehiculo") idVehiculo: Int): Call<List<ActividadFormato>>
 
-    @POST("api/abrirpreoperacional")
-    fun abrirPreoperacional(@Body datos: PreoperacionalRequest): Call<Void>
+    @POST("/api/abrirpreoperacional")
+    fun abrirPreoperacional(@Body datos: PreoperacionalRequest): Call<PreoperacionalResponse>
 
 
 
@@ -390,5 +397,32 @@ interface ApiService {
     
     @POST("/api/sincronizar-fotos-masivas")
     fun sincronizarFotosMasivas(@Body requestBody: FotosMasivasRequest): Call<FotosMasivasResponse>
+
+    // ===== ENDPOINTS DE COMBUSTIBLE =====
+    
+    data class CombustibleResponse(
+        @SerializedName("success")
+        val success: Boolean,
+        @SerializedName("message")
+        val message: String?,
+        @SerializedName("data")
+        val data: CombustibleData?
+    )
+
+    data class CombustibleData(
+        @SerializedName("id")
+        val id: Int?,
+        @SerializedName("id_preoperacional")
+        val idPreoperacional: Int?,
+        @SerializedName("fecha_tanqueo")
+        val fechaTanqueo: String?
+    )
+
+    @Multipart
+    @POST("/api/sincronizar-combustible")
+    fun sincronizarCombustible(
+        @Part("json") json: RequestBody,
+        @Part foto_ticket: MultipartBody.Part?
+    ): Call<CombustibleResponse>
 
 }
