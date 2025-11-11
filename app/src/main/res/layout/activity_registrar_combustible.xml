@@ -35,7 +35,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="Kilometraje Inicial"
-                app:helperText="Ejemplo: 124.567,89"
+                app:helperText="Ejemplo: 124567 (solo números, sin decimales)"
                 app:helperTextEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -51,7 +51,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="Cantidad (GL)"
-                app:helperText="Ejemplo: 12,45"
+                app:helperText="Ejemplo: 12,45 (solo coma para decimales)"
                 app:helperTextEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -67,7 +67,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="Valor por Galón"
-                app:helperText="Ejemplo: 16.400,00"
+                app:helperText="Ejemplo: 16400,00 (solo coma para decimales)"
                 app:helperTextEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -83,14 +83,17 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="Valor Total Tanqueado"
-                app:helperText="Ejemplo: 210.450,00"
+                app:helperText="Se calcula automáticamente"
                 app:helperTextEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/inputValorTotal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
+                    android:inputType="numberDecimal"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Foto del Ticket -->

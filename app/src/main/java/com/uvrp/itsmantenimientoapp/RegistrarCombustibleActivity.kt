@@ -119,17 +119,45 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        inputValorGalon.addTextChangedListener(object : TextWatcher {
+        // Listener para calcular valor total automáticamente
+        val calcularValorTotal = {
+            val cantidadStr = inputCantidadGalones.text.toString().trim()
+            val valorGalonStr = inputValorGalon.text.toString().trim()
+            
+            if (cantidadStr.isNotEmpty() && valorGalonStr.isNotEmpty()) {
+                try {
+                    val cantidad = convertirANumero(cantidadStr)
+                    val valorGalon = convertirANumero(valorGalonStr)
+                    
+                    if (cantidad != null && valorGalon != null && cantidad > 0 && valorGalon > 0) {
+                        val valorTotal = cantidad * valorGalon
+                        val valorTotalFormateado = formatearNumeroConMiles(valorTotal, true)
+                        inputValorTotal.setText(valorTotalFormateado)
+                        guardarDato("valorTotal", valorTotalFormateado)
+                    } else {
+                        inputValorTotal.setText("")
+                    }
+                } catch (e: Exception) {
+                    inputValorTotal.setText("")
+                }
+            } else {
+                inputValorTotal.setText("")
+            }
+        }
+
+        inputCantidadGalones.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                guardarDato("valorGalon", s.toString())
+                guardarDato("cantidadGalones", s.toString())
+                calcularValorTotal()
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        inputValorTotal.addTextChangedListener(object : TextWatcher {
+        inputValorGalon.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                guardarDato("valorTotal", s.toString())
+                guardarDato("valorGalon", s.toString())
+                calcularValorTotal()
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -145,23 +173,28 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
     }
 
     private fun configurarFormatosNumericos() {
-        // Formato para kilometraje (124.567,89) - con miles y decimales
-        configurarFormatoNumericoConMiles(inputKmInicial, true)
+        // Formato para kilometraje (124567) - sin decimales, solo números
+        configurarFormatoNumericoConMiles(inputKmInicial, false)
         
-        // Formato para galones (15.000,87) - con miles y decimales
+        // Formato para galones (15,87) - con decimales
         configurarFormatoNumericoConMiles(inputCantidadGalones, true)
         
-        // Formato para valores (16.400,00) - con miles y decimales
+        // Formato para valores (16400,00) - con decimales
         configurarFormatoNumericoConMiles(inputValorGalon, true)
         configurarFormatoNumericoConMiles(inputValorTotal, true)
     }
 
     private fun configurarFormatoNumericoConMiles(editText: EditText, permitirDecimales: Boolean) {
-        // Usar inputType TEXT para permitir comas desde el teclado
-        editText.inputType = android.text.InputType.TYPE_CLASS_TEXT
-        
-        // Configurar KeyListener personalizado para teclado numérico con coma
-        editText.keyListener = android.text.method.DigitsKeyListener.getInstance("0123456789,")
+        if (permitirDecimales) {
+            // Usar inputType TEXT para permitir comas desde el teclado
+            editText.inputType = android.text.InputType.TYPE_CLASS_TEXT
+            // Configurar KeyListener personalizado para teclado numérico con coma
+            editText.keyListener = android.text.method.DigitsKeyListener.getInstance("0123456789,")
+        } else {
+            // Para kilómetros sin decimales, solo números
+            editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            editText.keyListener = android.text.method.DigitsKeyListener.getInstance("0123456789")
+        }
         
         val textWatcher = object : TextWatcher {
             private var textoAnterior = ""
@@ -186,6 +219,22 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
                     return
                 }
                 
+                // Si no permite decimales (kilómetros), solo números enteros
+                if (!permitirDecimales) {
+                    val soloNumeros = textoActual.replace(Regex("[^0-9]"), "")
+                    if (soloNumeros != textoActual) {
+                        formatoEnProceso[editText] = true
+                        editText.removeTextChangedListener(this)
+                        s?.replace(0, s.length, soloNumeros)
+                        editText.setSelection(soloNumeros.length)
+                        editText.addTextChangedListener(this)
+                        editText.post {
+                            formatoEnProceso[editText] = false
+                        }
+                    }
+                    return
+                }
+                
                 // Separar parte entera y decimal usando la coma como separador decimal
                 val tieneComa = textoActual.contains(",")
                 val partes = textoActual.split(",", limit = 2)
@@ -194,7 +243,7 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
                 val parteEnteraSinFormato = partes[0].replace(Regex("[^0-9]"), "")
                 
                 // Extraer solo números de la parte decimal (máximo 2 dígitos)
-                val parteDecimal = if (partes.size > 1 && permitirDecimales) {
+                val parteDecimal = if (partes.size > 1) {
                     partes[1].replace(Regex("[^0-9]"), "").take(2)
                 } else {
                     ""
@@ -212,18 +261,11 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
                     return
                 }
                 
-                // Formatear parte entera con puntos de miles automáticamente
-                val parteEnteraFormateada = if (parteEnteraSinFormato.isNotEmpty()) {
-                    formatearConPuntosMiles(parteEnteraSinFormato)
-                } else {
-                    ""
-                }
-                
-                // Construir el texto formateado final
+                // Construir el texto formateado final (sin puntos de miles, solo números y coma)
                 val textoFormateado = when {
-                    parteDecimal.isNotEmpty() -> "$parteEnteraFormateada,$parteDecimal"
-                    tieneComa && parteEnteraFormateada.isNotEmpty() -> "$parteEnteraFormateada,"
-                    parteEnteraFormateada.isNotEmpty() -> parteEnteraFormateada
+                    parteDecimal.isNotEmpty() -> "$parteEnteraSinFormato,$parteDecimal"
+                    tieneComa && parteEnteraSinFormato.isNotEmpty() -> "$parteEnteraSinFormato,"
+                    parteEnteraSinFormato.isNotEmpty() -> parteEnteraSinFormato
                     else -> ""
                 }
                 
@@ -315,6 +357,24 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
     }
     
     // Función auxiliar para formatear números con puntos de miles
+    private fun formatearNumeroConMiles(numero: Double, permitirDecimales: Boolean): String {
+        val formato = if (permitirDecimales) {
+            java.text.DecimalFormat("#,##0.00", java.text.DecimalFormatSymbols(java.util.Locale("es", "ES"))).apply {
+                decimalFormatSymbols = decimalFormatSymbols.apply {
+                    decimalSeparator = ','
+                    groupingSeparator = '.'
+                }
+            }
+        } else {
+            java.text.DecimalFormat("#,##0", java.text.DecimalFormatSymbols(java.util.Locale("es", "ES"))).apply {
+                decimalFormatSymbols = decimalFormatSymbols.apply {
+                    groupingSeparator = '.'
+                }
+            }
+        }
+        return formato.format(numero)
+    }
+
     private fun formatearConPuntosMiles(numero: String): String {
         if (numero.isEmpty()) return ""
         
@@ -375,17 +435,34 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
             return
         }
 
+        // Calcular valor total automáticamente si está vacío
+        var valorTotalStrFinal = valorTotalStr
         if (valorTotalStr.isEmpty()) {
-            inputValorTotal.error = "Campo obligatorio"
-            inputValorTotal.requestFocus()
-            return
+            if (cantidadGalonesStr.isNotEmpty() && valorGalonStr.isNotEmpty()) {
+                val cantidad = convertirANumero(cantidadGalonesStr)
+                val valorGalon = convertirANumero(valorGalonStr)
+                
+                if (cantidad != null && valorGalon != null && cantidad > 0 && valorGalon > 0) {
+                    val valorTotalCalculado = cantidad * valorGalon
+                    valorTotalStrFinal = formatearNumeroConMiles(valorTotalCalculado, true)
+                    inputValorTotal.setText(valorTotalStrFinal)
+                } else {
+                    inputValorTotal.error = "Complete cantidad y valor por galón"
+                    inputValorTotal.requestFocus()
+                    return
+                }
+            } else {
+                inputValorTotal.error = "Complete cantidad y valor por galón"
+                inputValorTotal.requestFocus()
+                return
+            }
         }
 
         // Validar formato numérico
         val kmInicial = convertirANumero(kmInicialStr)
         val cantidadGalones = convertirANumero(cantidadGalonesStr)
         val valorGalon = convertirANumero(valorGalonStr)
-        val valorTotal = convertirANumero(valorTotalStr)
+        val valorTotal = convertirANumero(valorTotalStrFinal)
 
         if (kmInicial == null || cantidadGalones == null || valorGalon == null || valorTotal == null) {
             Toast.makeText(this, "Error: Verifique que los valores numéricos sean correctos", Toast.LENGTH_SHORT).show()

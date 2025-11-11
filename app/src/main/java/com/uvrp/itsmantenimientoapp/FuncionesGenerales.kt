@@ -556,18 +556,27 @@ object FuncionesGenerales {
                     .sincronizarCombustible(jsonRequestBody, fotoPart)
                     .execute()
 
+                Log.d("SyncCombustible", "📡 Respuesta recibida para combustible ID=${combustible.id}, code=${response.code()}, isSuccessful=${response.isSuccessful}")
+
                 if (response.isSuccessful) {
                     val responseBody = response.body()
+                    Log.d("SyncCombustible", "📦 ResponseBody: $responseBody")
+                    
                     if (responseBody?.success == true) {
                         // Marcar como sincronizado
                         dbHelper.marcarCombustibleSincronizado(combustible.id)
                         huboExito = true
                         Log.i("SyncCombustible", "✅ Combustible ID ${combustible.id} sincronizado exitosamente")
                     } else {
-                        Log.e("SyncCombustible", "❌ Error en respuesta del servidor para combustible ID ${combustible.id}")
+                        val errorMessage = responseBody?.message ?: "Sin mensaje de error"
+                        Log.e("SyncCombustible", "❌ Error en respuesta del servidor para combustible ID ${combustible.id}: $errorMessage")
+                        Log.e("SyncCombustible", "❌ ResponseBody completo: $responseBody")
+                        Log.e("SyncCombustible", "❌ Success value: ${responseBody?.success}")
                     }
                 } else {
+                    val errorBody = response.errorBody()?.string()
                     Log.e("SyncCombustible", "❌ Error sincronizando combustible ID=${combustible.id}, code=${response.code()}")
+                    Log.e("SyncCombustible", "❌ Error body: $errorBody")
                 }
             } catch (e: Exception) {
                 Log.e("SyncCombustible", "❌ Excepción sincronizando combustible ID=${combustible.id}: ${e.message}", e)
