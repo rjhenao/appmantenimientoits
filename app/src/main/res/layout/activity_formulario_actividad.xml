@@ -220,7 +220,8 @@
             android:layout_marginBottom="8dp"
             android:backgroundTint="@color/orange_warning"
             android:text="🔧 Llenar Todo con Prueba"
-            android:textColor="@android:color/white" />
+            android:textColor="@android:color/white"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btnIniciarPreoperacional"
