@@ -123,9 +123,14 @@ class FormularioActividadActivity : AppCompatActivity() {
             guardarSeleccionRadio("salud_conductor", valor)
         }
 
-        restaurarSeleccion(radioPortaDocumento, obtenerSeleccionRadio("porta_documento"))
-        restaurarSeleccion(radioPortaLicencia, obtenerSeleccionRadio("porta_licencia"))
-        restaurarSeleccion(radioSaludConductor, obtenerSeleccionRadio("salud_conductor"))
+        // Los radio buttons deben seleccionarse manualmente, no se restauran desde SharedPreferences
+        // Asegurar que todos inicien sin selección
+        radioPortaDocumento.clearCheck()
+        radioPortaLicencia.clearCheck()
+        radioSaludConductor.clearCheck()
+        
+        // Limpiar cualquier valor previo guardado en SharedPreferences para estos campos
+        limpiarSeleccionesRadio()
 
 
         val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar_home)
@@ -418,7 +423,19 @@ class FormularioActividadActivity : AppCompatActivity() {
             .getString("${placa}_$key", "No seleccionado") ?: "No seleccionado"
     }
 
+    private fun limpiarSeleccionesRadio() {
+        // Limpiar las selecciones guardadas en SharedPreferences para que siempre se deban seleccionar
+        getSharedPreferences("preoperacional_prefs", MODE_PRIVATE)
+            .edit()
+            .remove("${placa}_porta_documento")
+            .remove("${placa}_porta_licencia")
+            .remove("${placa}_salud_conductor")
+            .apply()
+    }
+
     private fun restaurarSeleccion(radioGroup: RadioGroup, textoGuardado: String) {
+        // Esta función ya no se usa para los radio buttons de porta documento, licencia y salud
+        // Se mantiene por si se necesita en otro lugar
         for (i in 0 until radioGroup.childCount) {
             val radio = radioGroup.getChildAt(i) as? RadioButton
             if (radio != null && radio.text.toString().equals(textoGuardado, ignoreCase = true)) {
@@ -727,6 +744,14 @@ class FormularioActividadActivity : AppCompatActivity() {
                     getSharedPreferences("observaciones_actividades", MODE_PRIVATE).edit().clear().apply()
                     getSharedPreferences("PreoperacionalPrefs", MODE_PRIVATE).edit().clear().apply()
                     getSharedPreferences("kilometraje_pref", MODE_PRIVATE).edit().clear().apply()
+                    getSharedPreferences("observacionInicial_pref", MODE_PRIVATE).edit().clear().apply()
+                    // Limpiar también los valores de los radio buttons para que siempre se deban seleccionar
+                    getSharedPreferences("preoperacional_prefs", MODE_PRIVATE)
+                        .edit()
+                        .remove("${placa}_porta_documento")
+                        .remove("${placa}_porta_licencia")
+                        .remove("${placa}_salud_conductor")
+                        .apply()
 
 
                     // 👉 Redirigir a otro activity
