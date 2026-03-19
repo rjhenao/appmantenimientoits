@@ -113,24 +113,17 @@ class IniciarCombustibleActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                // Validar offline: Verificar que existe un preoperacional iniciado (Estado = 2) del usuario
+                // Preoperacional opcional (si existe se adjunta; si no, se permite registrar igual)
                 val prefs = getSharedPreferences("PreoperacionalesIniciados", MODE_PRIVATE)
                 val idPreoperacional = prefs.getInt("idPreoperacional_$idUsuario", -1)
                 val idVehiculoGuardado = prefs.getInt("idVehiculo_$idUsuario", -1)
 
-                if (idPreoperacional == -1 || idVehiculoGuardado != idVehiculoSeleccionado) {
-                    AlertDialog.Builder(this)
-                        .setTitle("⚠️ Preoperacional Requerido")
-                        .setMessage("Para registrar combustible, primero debe tener un preoperacional iniciado (Estado = 2) para este vehículo.\n\nEl preoperacional debe estar con el chequeo de actividades completo. Por favor, complete el chequeo de actividades del preoperacional antes de registrar combustible.")
-                        .setPositiveButton("Entendido", null)
-                        .show()
-                    return@setOnClickListener
-                }
+                val idPreoperacionalOpcional =
+                    if (idPreoperacional != -1 && idVehiculoGuardado == idVehiculoSeleccionado) idPreoperacional else 0
 
-                // Si existe preoperacional iniciado, continuar a RegistrarCombustibleActivity
                 val placaGuardada = prefs.getString("placa_$idUsuario", null)
                 val intent = Intent(this, RegistrarCombustibleActivity::class.java)
-                intent.putExtra("idPreoperacional", idPreoperacional)
+                intent.putExtra("idPreoperacional", idPreoperacionalOpcional)
                 intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
                 intent.putExtra("idUsuario", idUsuario)
                 intent.putExtra("placa", placaa ?: placaGuardada ?: "")

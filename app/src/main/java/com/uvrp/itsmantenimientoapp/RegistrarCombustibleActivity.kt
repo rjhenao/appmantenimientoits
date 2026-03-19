@@ -18,7 +18,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import ApiService
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -45,6 +51,7 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
     private lateinit var btnTomarFoto: Button
     private lateinit var imgFotoTicket: ImageView
     private lateinit var btnRegistrarTanqueo: Button
+    private val api: ApiService by lazy { RetrofitClient.instance }
 
     // SharedPreferences para persistencia temporal
     private lateinit var prefs: android.content.SharedPreferences
@@ -62,7 +69,8 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
         idUsuario = intent.getIntExtra("idUsuario", -1)
         placa = intent.getStringExtra("placa") ?: ""
 
-        if (idPreoperacional == -1 || idVehiculo == -1 || idUsuario == -1) {
+        // idPreoperacional es opcional (puede venir 0 si no hay preoperacional asociado)
+        if (idVehiculo == -1 || idUsuario == -1) {
             Toast.makeText(this, "Error: Datos incompletos", Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -119,36 +127,9 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // Listener para calcular valor total automáticamente
-        val calcularValorTotal = {
-            val cantidadStr = inputCantidadGalones.text.toString().trim()
-            val valorGalonStr = inputValorGalon.text.toString().trim()
-            
-            if (cantidadStr.isNotEmpty() && valorGalonStr.isNotEmpty()) {
-                try {
-                    val cantidad = convertirANumero(cantidadStr)
-                    val valorGalon = convertirANumero(valorGalonStr)
-                    
-                    if (cantidad != null && valorGalon != null && cantidad > 0 && valorGalon > 0) {
-                        val valorTotal = cantidad * valorGalon
-                        val valorTotalFormateado = formatearNumeroConMiles(valorTotal, true)
-                        inputValorTotal.setText(valorTotalFormateado)
-                        guardarDato("valorTotal", valorTotalFormateado)
-                    } else {
-                        inputValorTotal.setText("")
-                    }
-                } catch (e: Exception) {
-                    inputValorTotal.setText("")
-                }
-            } else {
-                inputValorTotal.setText("")
-            }
-        }
-
         inputCantidadGalones.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 guardarDato("cantidadGalones", s.toString())
-                calcularValorTotal()
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -157,7 +138,14 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
         inputValorGalon.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 guardarDato("valorGalon", s.toString())
-                calcularValorTotal()
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        inputValorTotal.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                guardarDato("valorTotal", s.toString())
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -435,34 +423,17 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
             return
         }
 
-        // Calcular valor total automáticamente si está vacío
-        var valorTotalStrFinal = valorTotalStr
         if (valorTotalStr.isEmpty()) {
-            if (cantidadGalonesStr.isNotEmpty() && valorGalonStr.isNotEmpty()) {
-                val cantidad = convertirANumero(cantidadGalonesStr)
-                val valorGalon = convertirANumero(valorGalonStr)
-                
-                if (cantidad != null && valorGalon != null && cantidad > 0 && valorGalon > 0) {
-                    val valorTotalCalculado = cantidad * valorGalon
-                    valorTotalStrFinal = formatearNumeroConMiles(valorTotalCalculado, true)
-                    inputValorTotal.setText(valorTotalStrFinal)
-                } else {
-                    inputValorTotal.error = "Complete cantidad y valor por galón"
-                    inputValorTotal.requestFocus()
-                    return
-                }
-            } else {
-                inputValorTotal.error = "Complete cantidad y valor por galón"
-                inputValorTotal.requestFocus()
-                return
-            }
+            inputValorTotal.error = "Campo obligatorio"
+            inputValorTotal.requestFocus()
+            return
         }
 
         // Validar formato numérico
         val kmInicial = convertirANumero(kmInicialStr)
         val cantidadGalones = convertirANumero(cantidadGalonesStr)
         val valorGalon = convertirANumero(valorGalonStr)
-        val valorTotal = convertirANumero(valorTotalStrFinal)
+        val valorTotal = convertirANumero(valorTotalStr)
 
         if (kmInicial == null || cantidadGalones == null || valorGalon == null || valorTotal == null) {
             Toast.makeText(this, "Error: Verifique que los valores numéricos sean correctos", Toast.LENGTH_SHORT).show()
@@ -500,7 +471,7 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
 
         // Guardar en BD local
         val id = dbHelper.insertarCombustible(
-            idPreoperacional = idPreoperacional,
+            idPreoperacional = if (idPreoperacional > 0) idPreoperacional else 0,
             idVehiculo = idVehiculo,
             idUsuario = idUsuario,
             kilometrajeInicial = kmInicial,
@@ -516,11 +487,83 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
             // Limpiar SharedPreferences después de registrar exitosamente
             prefs.edit().clear().apply()
 
-            Toast.makeText(this, "✅ Combustible registrado exitosamente", Toast.LENGTH_SHORT).show()
-            finish()
+            AlertDialog.Builder(this)
+                .setTitle("✅ Combustible guardado")
+                .setMessage("Se guardó el registro de combustible en el celular.\n\n¿Desea enviarlo ahora? Si no hay internet, quedará pendiente para enviarlo después.")
+                .setPositiveButton("Enviar ahora") { _, _ ->
+                    enviarCombustibleAhora(id.toInt())
+                }
+                .setNegativeButton("Más tarde") { _, _ ->
+                    Toast.makeText(this, "Quedó pendiente por enviar.", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+                .show()
         } else {
             Toast.makeText(this, "❌ Error al registrar el combustible", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun enviarCombustibleAhora(idCombustibleLocal: Int) {
+        val registro = dbHelper.obtenerCombustiblePorId(idCombustibleLocal)
+        if (registro == null) {
+            Toast.makeText(this, "No se encontró el registro para enviar.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        val jsonMap = mapOf(
+            "id_preoperacional" to (if (registro.idPreoperacional > 0) registro.idPreoperacional else null),
+            "id_vehiculo" to registro.idVehiculo,
+            "id_usuario" to registro.idUsuario,
+            "kilometraje_inicial" to registro.kilometrajeInicial,
+            "cantidad_galones" to registro.cantidadGalones,
+            "valor_galon" to registro.valorGalon,
+            "valor_total" to registro.valorTotal,
+            "fecha_tanqueo" to registro.fechaTanqueo,
+            "observacion" to registro.observacion
+        )
+
+        val jsonString = com.google.gson.Gson().toJson(jsonMap)
+        val jsonRequestBody: RequestBody = jsonString.toRequestBody("text/plain".toMediaTypeOrNull())
+
+        val fotoPart: MultipartBody.Part? = try {
+            val path = registro.rutaFotoTicket
+            if (path.isNullOrBlank()) null
+            else {
+                val file = File(path)
+                if (!file.exists()) null
+                else {
+                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("foto_ticket", file.name, requestFile)
+                }
+            }
+        } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
+            null
+        }
+
+        api.sincronizarCombustible(jsonRequestBody, fotoPart).enqueue(object : retrofit2.Callback<ApiService.CombustibleResponse> {
+            override fun onResponse(
+                call: retrofit2.Call<ApiService.CombustibleResponse>,
+                response: retrofit2.Response<ApiService.CombustibleResponse>
+            ) {
+                if (response.isSuccessful && response.body()?.success == true) {
+                    dbHelper.marcarCombustibleSincronizado(idCombustibleLocal)
+                    Toast.makeText(this@RegistrarCombustibleActivity, "✅ Enviado correctamente", Toast.LENGTH_SHORT).show()
+                    finish()
+                } else {
+                    val msg = response.body()?.message ?: "No se pudo enviar (código ${response.code()})."
+                    Toast.makeText(this@RegistrarCombustibleActivity, "Quedó pendiente. $msg", Toast.LENGTH_LONG).show()
+                    finish()
+                }
+            }
+
+            override fun onFailure(call: retrofit2.Call<ApiService.CombustibleResponse>, t: Throwable) {
+                FirebaseCrashlytics.getInstance().recordException(t)
+                Toast.makeText(this@RegistrarCombustibleActivity, "Sin internet. Quedó pendiente.", Toast.LENGTH_LONG).show()
+                finish()
+            }
+        })
     }
 
     private fun verificarPermisosCamara() {

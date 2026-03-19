@@ -42,9 +42,9 @@ import java.text.DecimalFormatSymbols
 class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 44) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
-
+        // IF NOT EXISTS evita crash si onCreate se ejecuta dos veces (p. ej. condición de carrera al sincronizar).
         val createRelUserMantenimiento = """
-            CREATE TABLE rel_user_mantenimiento (
+            CREATE TABLE IF NOT EXISTS rel_user_mantenimiento (
                 id INTEGER PRIMARY KEY,
                 id_mantenimiento INTEGER,
                 id_empleado INTEGER,
@@ -54,7 +54,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createRelUserMantenimiento)
 
         val createRelRolesUsuarios = """
-            CREATE TABLE rel_roles_usuarios (
+            CREATE TABLE IF NOT EXISTS rel_roles_usuarios (
                 id INTEGER PRIMARY KEY,
                 idRol INTEGER,
                 idUsuario INTEGER
@@ -63,7 +63,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createRelRolesUsuarios)
 
         val createRelManteninimientoEstado = """
-            CREATE TABLE rel_mantenimiento_estado (
+            CREATE TABLE IF NOT EXISTS rel_mantenimiento_estado (
                 id INTEGER PRIMARY KEY,
                 id_mantenimiento INTEGER,
                 descripcion TEXT,
@@ -76,7 +76,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createRelManteninimientoEstado)
 
         val creteRelMantenimientoActividadTableQuery = """
-            CREATE TABLE rel_mantenimiento_actividad (
+            CREATE TABLE IF NOT EXISTS rel_mantenimiento_actividad (
                 id INTEGER PRIMARY KEY,
                 id_mantenimiento INTEGER,
                 id_actividad INTEGER,
@@ -90,7 +90,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(creteRelMantenimientoActividadTableQuery)
 
         val createRelTecnicoMantenimientoTableQuery = """
-            CREATE TABLE rel_tecnico_mantenimiento (
+            CREATE TABLE IF NOT EXISTS rel_tecnico_mantenimiento (
                 id INTEGER PRIMARY KEY,
                 idUser INTEGER,
                 idMantenimiento INTEGER,
@@ -103,7 +103,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createRelTecnicoMantenimientoTableQuery)
 
         val createActividadesTableQuery = """
-            CREATE TABLE actividades (
+            CREATE TABLE IF NOT EXISTS actividades (
                 id INTEGER PRIMARY KEY,
                 id_equipo INTEGER,
                 id_periodicidad INTEGER,
@@ -115,7 +115,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createActividadesTableQuery)
 
         val createUsersTableQuery  = """
-            CREATE TABLE users (
+            CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
                 documento INTEGER,
@@ -130,7 +130,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createUsersTableQuery )
 
         val createProgramarMantenimientosTableQuery = """
-            CREATE TABLE programar_mantenimientos (
+            CREATE TABLE IF NOT EXISTS programar_mantenimientos (
                 id INTEGER PRIMARY KEY,
                 id_equipo INTEGER,
                 id_periodicidad INTEGER,
@@ -144,7 +144,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createProgramarMantenimientosTableQuery)
 
         val createEquiposTableQuery = """
-            CREATE TABLE equipos (
+            CREATE TABLE IF NOT EXISTS equipos (
                 id INTEGER PRIMARY KEY,
                 id_locacion INTEGER,
                 id_sistemas INTEGER,
@@ -160,7 +160,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createEquiposTableQuery)
 
         val createLocacionesTableQuery = """
-            CREATE TABLE locaciones (
+            CREATE TABLE IF NOT EXISTS locaciones (
                 id INTEGER PRIMARY KEY,
                 nombre TEXT,
                 created_at TEXT,
@@ -170,7 +170,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createLocacionesTableQuery)
 
         val createPeriodicidadTableQuery = """
-            CREATE TABLE periodicidad (
+            CREATE TABLE IF NOT EXISTS periodicidad (
                 id INTEGER PRIMARY KEY,
                 nombre TEXT,
                 dias INTEGER,
@@ -181,7 +181,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createPeriodicidadTableQuery)
 
         val createRelSistemaLocacionTableQuery = """
-            CREATE TABLE rel_sistema_locacion (
+            CREATE TABLE IF NOT EXISTS rel_sistema_locacion (
                 id INTEGER PRIMARY KEY,
                 id_locacion INTEGER,
                 id_sistema INTEGER,
@@ -192,7 +192,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createRelSistemaLocacionTableQuery)
 
         val createRelSubsistemaSistemaTableQuery = """
-            CREATE TABLE rel_subsistema_sistema (
+            CREATE TABLE IF NOT EXISTS rel_subsistema_sistema (
                 id INTEGER PRIMARY KEY,
                 id_subsistema INTEGER,
                 id_sistema INTEGER,
@@ -204,7 +204,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createRelSubsistemaSistemaTableQuery)
 
         val crateSistemasTableQuery = """
-            CREATE TABLE sistemas (
+            CREATE TABLE IF NOT EXISTS sistemas (
                 id INTEGER PRIMARY KEY,
                 nombre TEXT,
                 created_at TEXT,
@@ -214,7 +214,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(crateSistemasTableQuery)
 
         val createSubsitemasTableQuery = """
-            CREATE TABLE subsistemas (
+            CREATE TABLE IF NOT EXISTS subsistemas (
                 id INTEGER PRIMARY KEY,
                 nombre TEXT,
                 created_at TEXT,
@@ -224,7 +224,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createSubsitemasTableQuery)
 
         val createTipoEquiposTableQuery = """
-            CREATE TABLE tipo_equipos (
+            CREATE TABLE IF NOT EXISTS tipo_equipos (
                 id INTEGER PRIMARY KEY,
                 nombre TEXT,
                 created_at TEXT,
@@ -234,7 +234,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createTipoEquiposTableQuery)
 
         val createUfTableQuery = """
-            CREATE TABLE uf (
+            CREATE TABLE IF NOT EXISTS uf (
                 id INTEGER PRIMARY KEY,
                 nombre TEXT,
                 created_at TEXT,
@@ -244,7 +244,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createUfTableQuery)
 
         val createTableRelUsuarios = """
-        CREATE TABLE rel_usuarios_bitacora_actividades (
+        CREATE TABLE IF NOT EXISTS rel_usuarios_bitacora_actividades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             idRelProgramarActividadesBitacora INTEGER NOT NULL,
             idUsuario INTEGER NOT NULL,
@@ -258,7 +258,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         // Tabla mantenimientos_correctivos
         val createMantenimientosCorrectivos = """
-    CREATE TABLE mantenimientos_correctivos (
+    CREATE TABLE IF NOT EXISTS mantenimientos_correctivos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         idEquipo INTEGER NOT NULL,
         estado INTEGER NOT NULL, -- 1. Funcionando | 2. Reparación | 3. Fuera de Servicio
@@ -277,7 +277,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla fotos_mantenimiento_correctivo
         val createFotosMantenimientoCorrectivo = """
-    CREATE TABLE fotos_mantenimiento_correctivo (
+    CREATE TABLE IF NOT EXISTS fotos_mantenimiento_correctivo (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         idMantenimientoCorrectivo INTEGER NOT NULL,
         url_foto TEXT NOT NULL,
@@ -290,7 +290,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 // -------------------------------------------------
 // Tabla usuarios_mantenimiento_correctivo
         val createUsuariosMantenimientoCorrectivo = """
-    CREATE TABLE usuarios_mantenimiento_correctivo (
+    CREATE TABLE IF NOT EXISTS usuarios_mantenimiento_correctivo (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         idMantenimientoCorrectivo INTEGER NOT NULL,
         idUsuario INTEGER NOT NULL,
@@ -303,7 +303,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         // Tabla para almacenar las bitacoras de mantenimiento
         val createBitacoraMantenimientos = """
-    CREATE TABLE bitacora_mantenimientos (
+    CREATE TABLE IF NOT EXISTS bitacora_mantenimientos (
         id INTEGER PRIMARY KEY,
         FechaInicio TEXT NOT NULL,
         FechaFin TEXT NOT NULL,
@@ -318,7 +318,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla para el catálogo de actividades de las bitácoras
         val createActividadesBitacoras = """
-    CREATE TABLE actividades_bitacoras (
+    CREATE TABLE IF NOT EXISTS actividades_bitacoras (
         id INTEGER PRIMARY KEY,
         Descripcion TEXT NOT NULL,
         Estado INTEGER NOT NULL DEFAULT 0,
@@ -332,7 +332,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla para la programación de actividades
         val createProgramarActividadesBitacora = """
-    CREATE TABLE programar_actividades_bitacora (
+    CREATE TABLE IF NOT EXISTS programar_actividades_bitacora (
         id INTEGER PRIMARY KEY,
         idBitacora INTEGER NOT NULL,
         idActividad INTEGER NOT NULL,
@@ -355,7 +355,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla intermedia que relaciona la ejecución de una actividad programada
         val createRelBitacoraActividades = """
-    CREATE TABLE rel_bitacora_actividades (
+    CREATE TABLE IF NOT EXISTS rel_bitacora_actividades (
         id INTEGER PRIMARY KEY,
         idRelProgramarActividadesBitacora INTEGER NOT NULL,
         PrInicial TEXT NOT NULL,
@@ -372,7 +372,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla para almacenar las rutas de las fotos de una actividad
         val createRelFotosBitacoraActividades = """
-    CREATE TABLE rel_fotos_bitacora_actividades (
+    CREATE TABLE IF NOT EXISTS rel_fotos_bitacora_actividades (
         id INTEGER PRIMARY KEY,
         idRelProgramarActividadesBitacora INTEGER NOT NULL,
         ruta TEXT NOT NULL,
@@ -386,7 +386,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla para relacionar usuarios con cuadrillas
         val createRelCuadrillasUsuarios = """
-    CREATE TABLE rel_cuadrillas_usuarios (
+    CREATE TABLE IF NOT EXISTS rel_cuadrillas_usuarios (
         id INTEGER PRIMARY KEY,
         IdCuadrilla INTEGER NOT NULL,
         IdUsuario INTEGER NOT NULL,
@@ -399,7 +399,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla para almacenar las cuadrillas
         val createCuadrillas = """
-    CREATE TABLE cuadrillas (
+    CREATE TABLE IF NOT EXISTS cuadrillas (
         id INTEGER PRIMARY KEY,
         Nombre TEXT NOT NULL,
         Descripcion TEXT,
@@ -412,7 +412,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         // Tabla para registrar las inspecciones por usuario y fecha
         val createInspeccionUsuarios = """
-    CREATE TABLE inspeccion_usuarios (
+    CREATE TABLE IF NOT EXISTS inspeccion_usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         idUsuario INTEGER,
         fecha TEXT,
@@ -424,7 +424,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         db.execSQL(createInspeccionUsuarios)
 // Tabla para el catálogo de actividades de inspección
         val createActividadesInspeccion = """
-    CREATE TABLE actividades_inspeccion (
+    CREATE TABLE IF NOT EXISTS actividades_inspeccion (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         descripcion TEXT,
         estado INTEGER,
@@ -437,7 +437,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
 // Tabla de relación para saber qué actividades se completaron en cada inspección
         val createRelInspeccionActividades = """
-    CREATE TABLE rel_inspeccion_actividades (
+    CREATE TABLE IF NOT EXISTS rel_inspeccion_actividades (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         idInspeccionUsuarios INTEGER,
         idActividadInspeccion INTEGER,
@@ -452,7 +452,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         // ===== TABLAS DE TICKETS =====
         // Tabla principal de tickets
         val createTicketsTable = """
-            CREATE TABLE tickets (
+            CREATE TABLE IF NOT EXISTS tickets (
                 id INTEGER PRIMARY KEY,
                 ticket_number TEXT NOT NULL,
                 title TEXT NOT NULL,
@@ -477,7 +477,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         // Tabla de comentarios de tickets
         val createTicketCommentsTable = """
-            CREATE TABLE ticket_comments (
+            CREATE TABLE IF NOT EXISTS ticket_comments (
                 id INTEGER PRIMARY KEY,
                 ticket_id INTEGER NOT NULL,
                 comment TEXT NOT NULL,
@@ -493,7 +493,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         // Tabla de relación entre tickets y mantenimientos correctivos
         val createRelTicketsCorrectivosTable = """
-            CREATE TABLE rel_tickets_correctivos (
+            CREATE TABLE IF NOT EXISTS rel_tickets_correctivos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 idTicket INTEGER NOT NULL,
                 idMantenimientoCorrectivo INTEGER NOT NULL,
@@ -506,7 +506,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         // Tabla para fotos masivas de mantenimiento preventivo
         val createRelFotosMantenimientoPreventivoTable = """
-            CREATE TABLE rel_fotos_mantenimiento_preventivo (
+            CREATE TABLE IF NOT EXISTS rel_fotos_mantenimiento_preventivo (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_mantenimiento INTEGER NOT NULL,
                 ruta TEXT NOT NULL,
@@ -519,7 +519,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         // Tabla combustible
         val createCombustibleTable = """
-            CREATE TABLE combustible (
+            CREATE TABLE IF NOT EXISTS combustible (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_preoperacional INTEGER NOT NULL,
                 id_vehiculo INTEGER NOT NULL,
@@ -2483,14 +2483,11 @@ return insertOk
         val db = readableDatabase
 
         // Usamos .use para que el cursor se cierre automáticamente, es más seguro.
+        // SQLite no tiene CONCAT(); se usa || para concatenar.
         db.rawQuery(
             """
         SELECT DISTINCT
-            CONCAT(
-                SUBSTR(ab.Descripcion, 1, 10), 
-                ' ', 
-                CAST(rba.Cantidad AS TEXT)
-            ) AS tag
+            (SUBSTR(ab.Descripcion, 1, 10) || ' ' || CAST(rba.Cantidad AS TEXT)) AS tag
         FROM 
             rel_bitacora_actividades rba 
         JOIN 
@@ -4246,6 +4243,49 @@ return insertOk
 
         cursor.close()
         return lista
+    }
+
+    /**
+     * Obtener un combustible por ID (para enviar directo desde la pantalla)
+     */
+    fun obtenerCombustiblePorId(idCombustible: Int): CombustibleLocal? {
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT * FROM combustible WHERE id = ? LIMIT 1",
+            arrayOf(idCombustible.toString())
+        )
+
+        var item: CombustibleLocal? = null
+        if (cursor.moveToFirst()) {
+            val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+            val idPreoperacional = cursor.getInt(cursor.getColumnIndexOrThrow("id_preoperacional"))
+            val idVehiculo = cursor.getInt(cursor.getColumnIndexOrThrow("id_vehiculo"))
+            val idUsuario = cursor.getInt(cursor.getColumnIndexOrThrow("id_usuario"))
+            val kilometrajeInicial = cursor.getDouble(cursor.getColumnIndexOrThrow("kilometraje_inicial"))
+            val cantidadGalones = cursor.getDouble(cursor.getColumnIndexOrThrow("cantidad_galones"))
+            val valorGalon = cursor.getDouble(cursor.getColumnIndexOrThrow("valor_galon"))
+            val valorTotal = cursor.getDouble(cursor.getColumnIndexOrThrow("valor_total"))
+            val rutaFotoTicket = cursor.getString(cursor.getColumnIndexOrThrow("ruta_foto_ticket"))
+            val observacion = cursor.getString(cursor.getColumnIndexOrThrow("observacion"))
+            val fechaTanqueo = cursor.getString(cursor.getColumnIndexOrThrow("fecha_tanqueo"))
+
+            item = CombustibleLocal(
+                id = id,
+                idPreoperacional = idPreoperacional,
+                idVehiculo = idVehiculo,
+                idUsuario = idUsuario,
+                kilometrajeInicial = kilometrajeInicial,
+                cantidadGalones = cantidadGalones,
+                valorGalon = valorGalon,
+                valorTotal = valorTotal,
+                rutaFotoTicket = rutaFotoTicket,
+                observacion = observacion,
+                fechaTanqueo = fechaTanqueo
+            )
+        }
+
+        cursor.close()
+        return item
     }
 
     /**
