@@ -90,21 +90,16 @@ class HomeActivity : AppCompatActivity() {
             }
         }
 
-        // ==== BOTÓN SINCRONIZAR COMBUSTIBLES ====
+        // ==== BOTÓN SINCRONIZAR COMBUSTIBLES (solo sincroniza combustibles) ====
         btnSincronizarCombustible.setOnClickListener {
-            // Mostrar estado de carga
             btnSincronizarCombustible.text = "Sincronizando..."
             btnSincronizarCombustible.isEnabled = false
 
-            FuncionesGenerales.sincronizarTodosMantenimientos(this) { exito ->
-                // Restaurar botón
+            FuncionesGenerales.sincronizarSoloCombustibles(this) { exito ->
                 btnSincronizarCombustible.text = "Sincronizar Combustibles"
                 btnSincronizarCombustible.isEnabled = true
-
-                if (exito) {
-                    // Al terminar, recargamos la lista
-                    cargarYMostrarPendientes()
-                }
+                // Recargar siempre para actualizar la tarjeta de pendientes
+                cargarYMostrarPendientes()
             }
         }
     }

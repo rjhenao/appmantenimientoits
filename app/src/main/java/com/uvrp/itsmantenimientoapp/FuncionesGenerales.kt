@@ -41,7 +41,7 @@ object FuncionesGenerales {
                 val exitoBitacoras = sincronizarPendientesBitacora(context, dbHelper)
                 val exitoInspecciones = sincronizarInspeccionesCompletas(dbHelper)
                 val exitoFotosMasivas = sincronizarFotosMasivas(context, dbHelper)
-                val exitoCombustible = sincronizarCombustiblesPendientes(context, dbHelper)
+                val exitoCombustible = sincronizarCombustiblesPendientes(context, dbHelper).exito
 
                 // El resultado total es exitoso si CUALQUIERA de los procesos tuvo éxito
                 exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible
@@ -75,6 +75,34 @@ object FuncionesGenerales {
                 Toast.makeText(context, "No había elementos nuevos por sincronizar.", Toast.LENGTH_LONG).show()
                 onResult(false)
             }
+        }
+    }
+
+    /**
+     * Sincroniza solo los combustibles pendientes (usado por el botón "Sincronizar Combustibles" en Home).
+     */
+    fun sincronizarSoloCombustibles(context: Context, onResult: (Boolean) -> Unit) {
+        val dbHelper = DatabaseHelper(context)
+        val progressDialog = AlertDialog.Builder(context)
+            .setView(LayoutInflater.from(context).inflate(R.layout.dialog_loading, null))
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+        CoroutineScope(Dispatchers.Main).launch {
+            val hadPendientes = withContext(Dispatchers.IO) {
+                dbHelper.obtenerCombustiblesPendientes().isNotEmpty()
+            }
+            val resultado = withContext(Dispatchers.IO) {
+                sincronizarCombustiblesPendientes(context, dbHelper)
+            }
+            progressDialog.dismiss()
+            val mensaje = when {
+                resultado.exito -> "Combustibles sincronizados correctamente."
+                hadPendientes -> "No se pudo sincronizar. Revisa tu conexión e intenta de nuevo."
+                else -> "No había combustibles pendientes."
+            }
+            Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+            onResult(resultado.exito)
         }
     }
 
@@ -506,21 +534,27 @@ object FuncionesGenerales {
     }
 
     /**
+     * Resultado de la sincronización de combustibles: éxito y mensaje de error si falló.
+     */
+    private data class ResultadoSyncCombustible(val exito: Boolean, val errorServidor: String?)
+
+    /**
      * Sincronizar combustibles pendientes
      */
-    private suspend fun sincronizarCombustiblesPendientes(context: Context, dbHelper: DatabaseHelper): Boolean {
-        var huboExito = false
+    private suspend fun sincronizarCombustiblesPendientes(context: Context, dbHelper: DatabaseHelper): ResultadoSyncCombustible {
         val combustiblesPendientes = dbHelper.obtenerCombustiblesPendientes()
 
         if (combustiblesPendientes.isEmpty()) {
-            return false
+            return ResultadoSyncCombustible(exito = false, errorServidor = null)
         }
+
+        var huboExito = false
+        var ultimoError: String? = null
 
         Log.i("SyncCombustible", "🛢️ Iniciando sincronización de ${combustiblesPendientes.size} combustible(s)...")
 
         for (combustible in combustiblesPendientes) {
             try {
-                // Crear JSON con los datos del combustible
                 val jsonObject = org.json.JSONObject().apply {
                     put("id_preoperacional", combustible.idPreoperacional)
                     put("id_vehiculo", combustible.idVehiculo)
@@ -535,7 +569,6 @@ object FuncionesGenerales {
 
                 val jsonRequestBody = jsonObject.toString().toRequestBody("application/json".toMediaTypeOrNull())
 
-                // Preparar foto del ticket si existe
                 val fotoPart: okhttp3.MultipartBody.Part? = combustible.rutaFotoTicket?.let { ruta ->
                     val file = File(ruta)
                     if (file.exists() && file.canRead()) {
@@ -551,7 +584,6 @@ object FuncionesGenerales {
                     }
                 }
 
-                // Enviar a la API
                 val response = RetrofitClient.instance
                     .sincronizarCombustible(jsonRequestBody, fotoPart)
                     .execute()
@@ -561,29 +593,28 @@ object FuncionesGenerales {
                 if (response.isSuccessful) {
                     val responseBody = response.body()
                     Log.d("SyncCombustible", "📦 ResponseBody: $responseBody")
-                    
+
                     if (responseBody?.success == true) {
-                        // Marcar como sincronizado
                         dbHelper.marcarCombustibleSincronizado(combustible.id)
                         huboExito = true
                         Log.i("SyncCombustible", "✅ Combustible ID ${combustible.id} sincronizado exitosamente")
                     } else {
                         val errorMessage = responseBody?.message ?: "Sin mensaje de error"
+                        ultimoError = "Servidor: $errorMessage"
                         Log.e("SyncCombustible", "❌ Error en respuesta del servidor para combustible ID ${combustible.id}: $errorMessage")
-                        Log.e("SyncCombustible", "❌ ResponseBody completo: $responseBody")
-                        Log.e("SyncCombustible", "❌ Success value: ${responseBody?.success}")
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("SyncCombustible", "❌ Error sincronizando combustible ID=${combustible.id}, code=${response.code()}")
-                    Log.e("SyncCombustible", "❌ Error body: $errorBody")
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    ultimoError = "HTTP ${response.code()}: ${errorBody.take(80)}"
+                    Log.e("SyncCombustible", "❌ Error sincronizando combustible ID=${combustible.id}, code=${response.code()}, body=$errorBody")
                 }
             } catch (e: Exception) {
+                ultimoError = "Error: ${e.message ?: "Sin conexión"}"
                 Log.e("SyncCombustible", "❌ Excepción sincronizando combustible ID=${combustible.id}: ${e.message}", e)
             }
         }
 
-        return huboExito
+        return ResultadoSyncCombustible(exito = huboExito, errorServidor = ultimoError)
     }
 
 }

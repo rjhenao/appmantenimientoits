@@ -83,17 +83,14 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="Valor Total Tanqueado"
-                app:helperText="Se calcula automáticamente"
+                app:helperText="Digite el valor total manualmente"
                 app:helperTextEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/inputValorTotal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="numberDecimal"
-                    android:enabled="false"
-                    android:focusable="false"
-                    android:focusableInTouchMode="false" />
+                    android:inputType="numberDecimal" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Foto del Ticket -->
