@@ -235,6 +235,11 @@ object FuncionesGenerales {
                     put("observaciones", bitacora.observacion)
                     put("usuarios_checkeados", JSONArray(bitacora.usuarios))
                     put("estado", bitacora.estado)
+
+                    // Sentido y Lado también aplican a actividades programadas:
+                    // el backend los guarda en RelBitacoraActividades si vienen en el JSON.
+                    if (bitacora.sentido != null) put("sentido", bitacora.sentido)
+                    if (bitacora.lado != null) put("lado", bitacora.lado)
                     
                     // Campos adicionales para actividades no programadas
                     if (bitacora.estado == 2) {
@@ -242,8 +247,6 @@ object FuncionesGenerales {
                         put("id_actividad", bitacora.idActividad)
                         put("id_cuadrilla", bitacora.idCuadrilla)
                         put("uf", bitacora.uf)
-                        put("sentido", bitacora.sentido)
-                        put("lado", bitacora.lado)
                         put("supervisor_responsable", bitacora.supervisorResponsable)
                     }
                 }

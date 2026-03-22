@@ -395,6 +395,56 @@
 
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <!-- Evidencia fotográfica -->
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Evidencia Fotográfica *"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary_blue"
+                            android:layout_marginBottom="8dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="24dp">
+
+                            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                                android:id="@+id/btnTomarFotoNoProgramada"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="12dp"
+                                android:contentDescription="Tomar foto"
+                                app:backgroundTint="@color/primary_blue"
+                                app:fabSize="normal"
+                                app:srcCompat="@drawable/ic_camera_outline"
+                                app:tint="@android:color/white" />
+
+                            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                                android:id="@+id/btnGaleriaNoProgramada"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="12dp"
+                                android:contentDescription="Seleccionar desde galería"
+                                app:backgroundTint="@color/primary_blue"
+                                app:fabSize="normal"
+                                app:srcCompat="@android:drawable/ic_menu_gallery"
+                                app:tint="@android:color/white" />
+
+                            <androidx.recyclerview.widget.RecyclerView
+                                android:id="@+id/rvFotosNoProgramada"
+                                android:layout_width="0dp"
+                                android:layout_height="80dp"
+                                android:layout_weight="1"
+                                android:orientation="horizontal"
+                                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                                tools:itemCount="3"
+                                tools:listitem="@layout/item_foto_miniatura" />
+                        </LinearLayout>
+
                         <!-- Botón Guardar -->
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnGuardarActividad"

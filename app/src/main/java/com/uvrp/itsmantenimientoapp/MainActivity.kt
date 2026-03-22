@@ -166,6 +166,8 @@ class MainActivity : AppCompatActivity() {
                 async { sincronizarTabla("tipo_equipos", api.getTipoEquipos()) },
                 async { sincronizarTabla("rel_roles_usuarios", api.relRolesUsuarios()) },
                 async { sincronizarTabla("uf", api.getUf()) },
+                async { sincronizarTabla("sentidos_catalogo", api.getSentidosCatalogo()) },
+                async { sincronizarTabla("lados_catalogo", api.getLadosCatalogo()) },
                 async { sincronizarTabla("programar_mantenimientos", api.getProgramarMantenimientos()) }  ,
                 async { sincronizarTabla("bitacora_mantenimientos", api.getBitacoraMantenimientos()) },
                 async { sincronizarTabla("actividades_bitacoras", api.getActividadesBitacoras()) },

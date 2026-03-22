@@ -14,8 +14,8 @@ android {
         applicationId = "com.uvrp.itsmantenimientoapp"
         minSdk = 24
         targetSdk = 35
-        versionCode = 22
-        versionName = "1.0.22"
+        versionCode = 25
+        versionName = "1.0.25"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

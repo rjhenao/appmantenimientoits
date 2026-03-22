@@ -24,6 +24,8 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var fabAgregarActividad: FloatingActionButton
     private var bitacoraId: Int = -1
+    private var esAdminBitacoras: Boolean = false
+    private var puedeCrearNoProgramada: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,12 +49,16 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
         bitacoraId = intent.getIntExtra("NUMERO_BITACORA", -1)
         val prefs = getSharedPreferences("Sesion" , Context.MODE_PRIVATE)
         val idUser = prefs.getInt("idUser" , -1)
+        val idRol = prefs.getInt("idRol" , -1)
+        esAdminBitacoras = idRol == 1 || idRol == 5
+        puedeCrearNoProgramada = idRol == 1 || idRol == 5 || idRol == 6
+        fabAgregarActividad.isEnabled = puedeCrearNoProgramada
         
         // Configurar FAB
         setupFabListener()
 
         if (bitacoraId != -1) {
-            val actividades = dbHelper.getActividadesPorBitacora(bitacoraId , idUser)
+            val actividades = dbHelper.getActividadesPorBitacora(bitacoraId , idUser, esAdminBitacoras)
             val adapter = ActividadesProgramadasAdapter(actividades, this)
             recyclerView.adapter = adapter
         } else {
@@ -98,6 +104,11 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
             Toast.makeText(this, "Error: No se pudo obtener el ID de la bitácora", Toast.LENGTH_SHORT).show()
             return
         }
+
+        if (!puedeCrearNoProgramada) {
+            Toast.makeText(this, "No tienes permisos para crear actividades no programadas.", Toast.LENGTH_LONG).show()
+            return
+        }
         
         val intent = Intent(this, CrearActividadNoProgramadaActivity::class.java)
         intent.putExtra("id_bitacora", bitacoraId)
@@ -111,7 +122,7 @@ class VerActividadesProgramadasActivity : AppCompatActivity(), ActividadesProgra
             // Recargar la lista de actividades
             val prefs = getSharedPreferences("Sesion", Context.MODE_PRIVATE)
             val idUser = prefs.getInt("idUser", -1)
-            val actividades = dbHelper.getActividadesPorBitacora(bitacoraId, idUser)
+            val actividades = dbHelper.getActividadesPorBitacora(bitacoraId, idUser, esAdminBitacoras)
             val adapter = ActividadesProgramadasAdapter(actividades, this)
             recyclerView.adapter = adapter
             

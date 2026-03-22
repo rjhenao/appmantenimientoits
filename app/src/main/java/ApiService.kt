@@ -116,6 +116,17 @@ interface ApiService {
         val aUsuario: List<UsuarioVehiculo>
     )
 
+    // Catálogos para campos Sentido y Lado (evitar hardcode en la app)
+    data class SentidoCatalogo(
+        @SerializedName("nombre")
+        val nombre: String
+    )
+
+    data class LadoCatalogo(
+        @SerializedName("nombre")
+        val nombre: String
+    )
+
     data class BitacoraMantenimiento(
         // Los nombres de las propiedades AHORA coinciden con las columnas de la BD
         @SerializedName("id") val id: Int,
@@ -331,6 +342,12 @@ interface ApiService {
 
     @GET("/api/ufs")
     fun getUf(): Call<List<Uf>>
+
+    @GET("/api/sentidos-catalogo")
+    fun getSentidosCatalogo(): Call<List<SentidoCatalogo>>
+
+    @GET("/api/lados-catalogo")
+    fun getLadosCatalogo(): Call<List<LadoCatalogo>>
 
     @Multipart
     @POST("api/enviarMantenimientosTerminados")
