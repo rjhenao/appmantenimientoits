@@ -38,8 +38,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_margin="16dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_margin="12dp"
+                    android:layout_marginBottom="6dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="2dp"
                     app:strokeColor="@color/stroke_light"
@@ -49,7 +49,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="14dp">
 
                         <TextView
                             android:layout_width="match_parent"
@@ -95,9 +95,9 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="6dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="2dp"
                     app:strokeColor="@color/stroke_light"
@@ -107,7 +107,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="14dp">
 
                         <TextView
                             android:layout_width="match_parent"
@@ -131,7 +131,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Presión Inicial"
+                            android:text="PR Inicial"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp"
                             android:textStyle="bold"
@@ -141,7 +141,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:layout_marginBottom="24dp">
+                            android:layout_marginBottom="14dp">
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="0dp"
@@ -156,7 +156,7 @@
                                     android:id="@+id/input_pr_inicial_1"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 1"
+                                    android:hint="Km"
                                     android:inputType="numberDecimal"
                                     android:textSize="14sp" />
 
@@ -186,7 +186,7 @@
                                     android:id="@+id/input_pr_inicial_2"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 2"
+                                    android:hint="m"
                                     android:inputType="numberDecimal"
                                     android:textSize="14sp" />
 
@@ -194,11 +194,11 @@
 
                         </LinearLayout>
 
-                        <!-- Presión Final -->
+                        <!-- PR Final -->
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Presión Final"
+                            android:text="PR Final"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp"
                             android:textStyle="bold"
@@ -207,7 +207,8 @@
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal">
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="14dp">
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="0dp"
@@ -222,7 +223,7 @@
                                     android:id="@+id/input_pr_final_1"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 1"
+                                    android:hint="Km"
                                     android:inputType="numberDecimal"
                                     android:textSize="14sp" />
 
@@ -252,12 +253,70 @@
                                     android:id="@+id/input_pr_final_2"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Valor 2"
+                                    android:hint="m"
                                     android:inputType="numberDecimal"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
 
+                        </LinearLayout>
+
+                        <!-- Sentido y Lado -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="6dp">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginEnd="8dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Sentido"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginBottom="8dp" />
+
+                                <Spinner
+                                    android:id="@+id/spinner_sentido_registro"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="56dp"
+                                    android:background="@drawable/spinner_background"
+                                    android:paddingHorizontal="10dp"
+                                    android:spinnerMode="dropdown" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginStart="8dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Lado"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginBottom="8dp" />
+
+                                <Spinner
+                                    android:id="@+id/spinner_lado_registro"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="56dp"
+                                    android:background="@drawable/spinner_background"
+                                    android:paddingHorizontal="10dp"
+                                    android:spinnerMode="dropdown" />
+                            </LinearLayout>
                         </LinearLayout>
 
                     </LinearLayout>
@@ -267,9 +326,9 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="6dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="2dp"
                     app:strokeColor="@color/stroke_light"
@@ -279,7 +338,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="14dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -346,9 +405,9 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="6dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="2dp"
                     app:strokeColor="@color/stroke_light"
@@ -358,7 +417,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="14dp">
 
                         <TextView
                             android:layout_width="match_parent"
@@ -406,9 +465,9 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="6dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="2dp"
                     app:strokeColor="@color/stroke_light"
@@ -418,7 +477,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="14dp">
 
                         <TextView
                             android:layout_width="match_parent"
@@ -471,8 +530,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
                     android:layout_marginBottom="16dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="2dp"
@@ -483,7 +542,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="14dp">
 
                         <TextView
                             android:layout_width="match_parent"
@@ -520,6 +579,17 @@
                                 app:srcCompat="@drawable/ic_camera_outline"
                                 app:tint="@android:color/white" />
 
+                            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                                android:id="@+id/button_pick_gallery"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="16dp"
+                                android:contentDescription="Seleccionar desde galería"
+                                app:backgroundTint="@color/primary_blue"
+                                app:fabSize="normal"
+                                app:srcCompat="@android:drawable/ic_menu_gallery"
+                                app:tint="@android:color/white" />
+
                             <androidx.recyclerview.widget.RecyclerView
                                 android:id="@+id/rv_photos"
                                 android:layout_width="0dp"
@@ -540,7 +610,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="12dp">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/button_register"

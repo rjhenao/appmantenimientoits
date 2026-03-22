@@ -73,8 +73,18 @@ class InspectionActivity : AppCompatActivity() {
     }
 
     private fun saveInspection(userId: Int, activities: List<Activity>) {
-        val inspectionId = dbHelper.addInspection(userId)
+        if (activities.isEmpty()) {
+            Toast.makeText(this, "No hay actividades del checklist para inspeccionar.", Toast.LENGTH_LONG).show()
+            return
+        }
 
+        val faltantes = activities.filter { !it.isChecked }
+        if (faltantes.isNotEmpty()) {
+            Toast.makeText(this, "Debes marcar todos los ítems del checklist antes de finalizar.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val inspectionId = dbHelper.addInspection(userId)
 
         if (inspectionId == -1L) {
             Toast.makeText(this, "Error al crear la inspección", Toast.LENGTH_SHORT).show()

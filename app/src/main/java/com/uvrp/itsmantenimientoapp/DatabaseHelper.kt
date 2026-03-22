@@ -39,7 +39,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 44) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 45) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
         // IF NOT EXISTS evita crash si onCreate se ejecuta dos veces (p. ej. condición de carrera al sincronizar).
@@ -242,6 +242,20 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             )
             """
         db.execSQL(createUfTableQuery)
+
+        val createSentidosCatalogoTableQuery = """
+            CREATE TABLE IF NOT EXISTS sentidos_catalogo (
+                nombre TEXT PRIMARY KEY
+            )
+        """
+        db.execSQL(createSentidosCatalogoTableQuery)
+
+        val createLadosCatalogoTableQuery = """
+            CREATE TABLE IF NOT EXISTS lados_catalogo (
+                nombre TEXT PRIMARY KEY
+            )
+        """
+        db.execSQL(createLadosCatalogoTableQuery)
 
         val createTableRelUsuarios = """
         CREATE TABLE IF NOT EXISTS rel_usuarios_bitacora_actividades (
@@ -540,6 +554,23 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        // Asegura tablas agregadas en versiones posteriores.
+        // Si el usuario viene de una versión anterior, esas tablas no existen todavía
+        // porque onCreate() NO se ejecuta cuando la DB ya está creada.
+        val createSentidosCatalogoTableQuery = """
+            CREATE TABLE IF NOT EXISTS sentidos_catalogo (
+                nombre TEXT PRIMARY KEY
+            )
+        """
+        db.execSQL(createSentidosCatalogoTableQuery)
+
+        val createLadosCatalogoTableQuery = """
+            CREATE TABLE IF NOT EXISTS lados_catalogo (
+                nombre TEXT PRIMARY KEY
+            )
+        """
+        db.execSQL(createLadosCatalogoTableQuery)
+
         // Migración incremental desde la versión 40 a la 41
         if (oldVersion < 41) {
             try {
@@ -2483,26 +2514,38 @@ return insertOk
         val db = readableDatabase
 
         // Usamos .use para que el cursor se cierre automáticamente, es más seguro.
+        // Incluye:
+        // 1) avances de actividades programadas sin sincronizar
+        // 2) actividades NO programadas creadas localmente sin sincronizar
         // SQLite no tiene CONCAT(); se usa || para concatenar.
         db.rawQuery(
             """
-        SELECT DISTINCT
-            (SUBSTR(ab.Descripcion, 1, 10) || ' ' || CAST(rba.Cantidad AS TEXT)) AS tag
-        FROM 
-            rel_bitacora_actividades rba 
-        JOIN 
-            programar_actividades_bitacora pab ON (pab.id = rba.idRelProgramarActividadesBitacora)
-        JOIN 
-            actividades_bitacoras ab ON (ab.id = pab.idActividad)
-        WHERE
-            rba.sincronizado = 0
-        AND rba.Programada = 1
-        AND EXISTS (
-            SELECT 1 FROM rel_bitacora_actividades rba_check
-            WHERE rba_check.idRelProgramarActividadesBitacora = pab.id
-            AND rba_check.Programada = 1
-            AND rba_check.sincronizado = 0
-        )
+        SELECT DISTINCT tag
+        FROM (
+            SELECT
+                (SUBSTR(ab.Descripcion, 1, 18) || ' ' || CAST(rba.Cantidad AS TEXT)) AS tag
+            FROM
+                rel_bitacora_actividades rba
+            JOIN
+                programar_actividades_bitacora pab ON (pab.id = rba.idRelProgramarActividadesBitacora)
+            JOIN
+                actividades_bitacoras ab ON (ab.id = pab.idActividad)
+            WHERE
+                rba.sincronizado = 0
+                AND rba.Programada = 1
+
+            UNION ALL
+
+            SELECT
+                ('NP: ' || SUBSTR(ab2.Descripcion, 1, 18) || ' ' || CAST(pab2.Cantidad AS TEXT)) AS tag
+            FROM
+                programar_actividades_bitacora pab2
+            JOIN
+                actividades_bitacoras ab2 ON (ab2.id = pab2.idActividad)
+            WHERE
+                pab2.sincronizado = 0
+                AND pab2.Estado = 2
+        ) t
         """, null
         ).use { cursor ->
             if (cursor.moveToFirst()) {
@@ -2870,37 +2913,64 @@ return insertOk
         }
     }
 
-    fun getActividadesPorBitacora(bitacoraId: Int , idUser:Int): List<ActividadMantenimiento> {
+    fun getActividadesPorBitacora(
+        bitacoraId: Int,
+        idUser: Int,
+        esAdminBitacoras: Boolean = false
+    ): List<ActividadMantenimiento> {
         val actividadesList = mutableListOf<ActividadMantenimiento>()
         val db = this.readableDatabase
 
-        val query = """
-        SELECT
-            pab.id,
-            ab.Descripcion,
-            c.Nombre,
-            pab.UF,
-            pab.Sentido,
-            pab.Lado,
-            pab.PrInicial,
-            pab.PrFinal,
-            pab.Cantidad,
-            ab.TipoUnidad,
-            pab.Observacion,
-            pab.Estado
-        FROM programar_actividades_bitacora pab
-        JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
-        JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
-        JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
-        LEFT JOIN rel_cuadrillas_usuarios rcu on (rcu.IdCuadrilla  = c.id)        
-        WHERE bm.id = ? AND rcu.IdUsuario = ? AND ab.Descripcion != 'No Programada'
-        GROUP BY pab.id
-    """.trimIndent()
+        val cursor = if (esAdminBitacoras) {
+            val query = """
+                SELECT
+                    pab.id,
+                    ab.Descripcion,
+                    c.Nombre,
+                    pab.UF,
+                    pab.Sentido,
+                    pab.Lado,
+                    pab.PrInicial,
+                    pab.PrFinal,
+                    pab.Cantidad,
+                    ab.TipoUnidad,
+                    pab.Observacion,
+                    pab.Estado
+                FROM programar_actividades_bitacora pab
+                JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
+                JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
+                JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
+                WHERE bm.id = ?
+                GROUP BY pab.id
+            """.trimIndent()
+            db.rawQuery(query, arrayOf(bitacoraId.toString()))
+        } else {
+            val query = """
+                SELECT
+                    pab.id,
+                    ab.Descripcion,
+                    c.Nombre,
+                    pab.UF,
+                    pab.Sentido,
+                    pab.Lado,
+                    pab.PrInicial,
+                    pab.PrFinal,
+                    pab.Cantidad,
+                    ab.TipoUnidad,
+                    pab.Observacion,
+                    pab.Estado
+                FROM programar_actividades_bitacora pab
+                JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
+                JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
+                JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
+                LEFT JOIN rel_cuadrillas_usuarios rcu on (rcu.IdCuadrilla  = c.id)
+                WHERE bm.id = ? AND rcu.IdUsuario = ? AND ab.Descripcion != 'No Programada'
+                GROUP BY pab.id
+            """.trimIndent()
+            db.rawQuery(query, arrayOf(bitacoraId.toString(), idUser.toString()))
+        }
 
-        val cursor = db.rawQuery(query, arrayOf(bitacoraId.toString(), idUser.toString()))
-
-
-        cursor?.use {
+        cursor.use {
             if (it.moveToFirst()) {
                 val idIndex = it.getColumnIndexOrThrow("id")
                 val descripcionIndex = it.getColumnIndexOrThrow("Descripcion")
@@ -3212,7 +3282,13 @@ return insertOk
         val db = this.readableDatabase
 
         // 1. Obtenemos los registros principales de bitácora pendientes (actividades programadas)
-        val queryPrincipal = "SELECT * FROM rel_bitacora_actividades WHERE sincronizado = 0 and Programada = 1"
+        val queryPrincipal = """
+            SELECT rba.*, pab.Sentido, pab.Lado
+            FROM rel_bitacora_actividades rba
+            JOIN programar_actividades_bitacora pab 
+                ON pab.id = rba.idRelProgramarActividadesBitacora
+            WHERE rba.sincronizado = 0 AND rba.Programada = 1
+        """.trimIndent()
         db.rawQuery(queryPrincipal, null).use { cursor ->
             while (cursor.moveToNext()) {
                 val idRegistro = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
@@ -3249,7 +3325,9 @@ return insertOk
                         observacion = cursor.getString(cursor.getColumnIndexOrThrow("ObservacionInterna")),
                         usuarios = listaUsuarios,
                         fotos = listaFotos,
-                        estado = 1 // Actividad programada
+                        estado = 1, // Actividad programada
+                        sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
+                        lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado"))
                     )
                 )
             }
@@ -3264,8 +3342,15 @@ return insertOk
                 // Para actividades no programadas, no hay usuarios asociados
                 val listaUsuarios = emptyList<Int>()
                 
-                // Para actividades no programadas, no hay fotos asociadas por ahora
-                val listaFotos = emptyList<File>()
+                // Fotos asociadas a la actividad no programada
+                val listaFotos = mutableListOf<File>()
+                val queryFotosNoProgramada = "SELECT ruta FROM rel_fotos_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+                db.rawQuery(queryFotosNoProgramada, arrayOf(idRegistro.toString())).use { photoCursor ->
+                    while (photoCursor.moveToNext()) {
+                        val path = photoCursor.getString(photoCursor.getColumnIndexOrThrow("ruta"))
+                        listaFotos.add(File(path))
+                    }
+                }
 
                 // Creamos el objeto completo y lo añadimos a la lista (actividad no programada)
                 listaBitacoras.add(
@@ -3859,6 +3944,85 @@ return insertOk
     }
 
     /**
+     * Obtiene los sentidos desde el catálogo local.
+     * Se llena al hacer sincronización en pantalla de login.
+     */
+    fun obtenerSentidosCatalogo(): List<String> {
+        val lista = mutableListOf<String>()
+        val db = this.readableDatabase
+        val query = "SELECT nombre FROM sentidos_catalogo ORDER BY nombre ASC"
+
+        db.rawQuery(query, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                lista.add(cursor.getString(cursor.getColumnIndexOrThrow("nombre")))
+            }
+        }
+        return lista
+    }
+
+    /**
+     * Obtiene los lados desde el catálogo local.
+     * Se llena al hacer sincronización en pantalla de login.
+     */
+    fun obtenerLadosCatalogo(): List<String> {
+        val lista = mutableListOf<String>()
+        val db = this.readableDatabase
+        val query = "SELECT nombre FROM lados_catalogo ORDER BY nombre ASC"
+
+        db.rawQuery(query, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                lista.add(cursor.getString(cursor.getColumnIndexOrThrow("nombre")))
+            }
+        }
+        return lista
+    }
+
+    /**
+     * Obtiene Sentido/Lado actuales para una actividad programada específica.
+     * Se usa para precargar los spinners en "Registrar Mantenimiento".
+     */
+    fun obtenerSentidoLadoActividadProgramada(idActividadProgramada: Int): Pair<String?, String?> {
+        val db = this.readableDatabase
+        val query = "SELECT Sentido, Lado FROM programar_actividades_bitacora WHERE id = ?"
+        var sentido: String? = null
+        var lado: String? = null
+
+        db.rawQuery(query, arrayOf(idActividadProgramada.toString())).use { cursor ->
+            if (cursor.moveToFirst()) {
+                sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido"))
+                lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado"))
+            }
+        }
+        db.close()
+        return Pair(sentido, lado)
+    }
+
+    /**
+     * Actualiza Sentido/Lado en la tabla local de la actividad programada.
+     * Esto hace que al sincronizar se envíen los valores elegidos por el usuario.
+     */
+    fun actualizarSentidoLadoActividadProgramada(
+        idActividadProgramada: Int,
+        sentido: String,
+        lado: String
+    ): Boolean {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("Sentido", sentido)
+            put("Lado", lado)
+        }
+
+        val rows = db.update(
+            "programar_actividades_bitacora",
+            values,
+            "id = ?",
+            arrayOf(idActividadProgramada.toString())
+        )
+        db.close()
+        return rows > 0
+    }
+
+    /**
      * Inserta una nueva actividad no programada
      */
     fun insertarActividadNoProgramada(
@@ -3872,9 +4036,11 @@ return insertOk
         prFinal: String,
         cantidad: Double,
         observacion: String,
-        supervisorResponsable: Int
+        supervisorResponsable: Int,
+        fotos: List<File> = emptyList()
     ): Long {
         val db = this.writableDatabase
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         val values = ContentValues().apply {
             put("idBitacora", idBitacora)
             put("idActividad", idActividad)
@@ -3889,10 +4055,26 @@ return insertOk
             put("Estado", 2) // 2 = No Programada (1 = Programada)
             put("supervisorResponsable", supervisorResponsable)
             put("sincronizado", 0) // 0 = No sincronizado, 1 = Sincronizado
+            put("created_at", timestamp)
+            put("updated_at", timestamp)
         }
         
         val result = db.insert("programar_actividades_bitacora", null, values)
+        if (result > 0 && fotos.isNotEmpty()) {
+            fotos.forEach { file ->
+                val valuesFoto = ContentValues().apply {
+                    put("idRelProgramarActividadesBitacora", result.toInt())
+                    put("ruta", file.absolutePath)
+                    put("estado", 0)
+                    put("sincronizado", 0)
+                    put("created_at", timestamp)
+                    put("updated_at", timestamp)
+                }
+                db.insert("rel_fotos_bitacora_actividades", null, valuesFoto)
+            }
+        }
         Log.d("ACTIVIDAD_NO_PROGRAMADA", "Actividad no programada insertada con ID: $result")
+        db.close()
         return result
     }
 

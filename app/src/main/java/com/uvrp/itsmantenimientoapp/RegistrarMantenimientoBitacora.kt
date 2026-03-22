@@ -21,6 +21,7 @@ import androidx.core.content.FileProvider
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.uvrp.itsmantenimientoapp.adapters.ParticipantesAdapter
 import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper
@@ -44,7 +45,8 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
     private lateinit var inputPrFinal2: EditText
     private lateinit var inputCantidad: EditText
     private lateinit var inputObservacion: EditText
-    private lateinit var buttonTakePhoto: ImageButton
+    private lateinit var buttonTakePhoto: FloatingActionButton
+    private lateinit var buttonPickGallery: FloatingActionButton
     private lateinit var rvPhotos: RecyclerView
     private lateinit var buttonRegister: Button
     private lateinit var buttonAgregarUsuario: Button
@@ -59,9 +61,12 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
     private var numeroActividad: Int = -1
     private var idUser: Int = -1
     private lateinit var dbHelper: DatabaseHelper
+    private lateinit var spinnerSentido: Spinner
+    private lateinit var spinnerLado: Spinner
 
     companion object {
         private const val REQUEST_IMAGE_CAPTURE = 1
+        private const val REQUEST_IMAGE_GALLERY = 2
         private const val REQUEST_CAMERA_PERMISSION = 123
     }
 
@@ -99,6 +104,7 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         // 4. Cargamos TODOS los datos necesarios para la vista
         cargarInfoActividad()
+        setupSentidoLadoSpinners()
         cargarDatosDePrefs()
         cargarFotosDePrefs()
         fotosAdapter.notifyDataSetChanged()
@@ -116,14 +122,18 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         inputCantidad = findViewById(R.id.input_cantidad)
         inputObservacion = findViewById(R.id.input_observacion)
         buttonTakePhoto = findViewById(R.id.button_take_photo)
+        buttonPickGallery = findViewById(R.id.button_pick_gallery)
         rvPhotos = findViewById(R.id.rv_photos)
         buttonRegister = findViewById(R.id.button_register)
         buttonAgregarUsuario = findViewById(R.id.button_agregar_usuario)
         rvParticipantes = findViewById(R.id.recycler_view_participantes)
+        spinnerSentido = findViewById(R.id.spinner_sentido_registro)
+        spinnerLado = findViewById(R.id.spinner_lado_registro)
     }
 
     private fun setupListeners() {
         buttonTakePhoto.setOnClickListener { verificarPermisosCamara() }
+        buttonPickGallery.setOnClickListener { abrirGaleria() }
         buttonRegister.setOnClickListener { registrarMantenimiento() }
         buttonAgregarUsuario.setOnClickListener {
             val idsActuales = participantesList.map { it.id }
@@ -194,6 +204,64 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         }
     }
 
+    private fun setupSentidoLadoSpinners() {
+        try {
+            val sentidosCatalogo = dbHelper.obtenerSentidosCatalogo()
+            val ladosCatalogo = dbHelper.obtenerLadosCatalogo()
+
+            if (sentidosCatalogo.isEmpty() || ladosCatalogo.isEmpty()) {
+                Toast.makeText(this, "No hay catálogos de Sentido/Lado. Ejecuta sincronización.", Toast.LENGTH_LONG).show()
+                return
+            }
+
+            val placeholder = "Seleccione..."
+            val sentidosAdapter = ArrayAdapter(
+                this,
+                android.R.layout.simple_spinner_item,
+                listOf(placeholder) + sentidosCatalogo
+            )
+            sentidosAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            spinnerSentido.adapter = sentidosAdapter
+
+            val ladosAdapter = ArrayAdapter(
+                this,
+                android.R.layout.simple_spinner_item,
+                listOf(placeholder) + ladosCatalogo
+            )
+            ladosAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            spinnerLado.adapter = ladosAdapter
+
+            // Valores actuales desde la actividad programada
+            val (sentidoActual, ladoActual) = dbHelper.obtenerSentidoLadoActividadProgramada(numeroActividad)
+
+            if (!sentidoActual.isNullOrBlank()) setSpinnerToValue(spinnerSentido, sentidoActual)
+            if (!ladoActual.isNullOrBlank()) setSpinnerToValue(spinnerLado, ladoActual)
+
+            val listener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    guardarDatosEnPrefs()
+                }
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+            }
+            spinnerSentido.onItemSelectedListener = listener
+            spinnerLado.onItemSelectedListener = listener
+        } catch (e: Exception) {
+            Log.e("SentidoLado", "Error configurando spinners: ${e.message}", e)
+            Toast.makeText(this, "Error configurando Sentido/Lado.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setSpinnerToValue(spinner: Spinner, value: String) {
+        val adapter = spinner.adapter ?: return
+        for (i in 0 until adapter.count) {
+            val item = spinner.getItemAtPosition(i)?.toString()
+            if (item == value) {
+                spinner.setSelection(i)
+                return
+            }
+        }
+    }
+
     private fun setupRecyclerViewFotos() {
         fotosAdapter = FotoAdapter(fotosList) { file ->
             fotosAdapter.eliminarFoto(file)
@@ -211,6 +279,32 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
         } else {
             abrirCamara()
+        }
+    }
+
+    private fun abrirGaleria() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "image/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        startActivityForResult(intent, REQUEST_IMAGE_GALLERY)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            Toast.makeText(this, "Permiso denegado para acceder a imágenes.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        when (requestCode) {
+            REQUEST_CAMERA_PERMISSION -> abrirCamara()
         }
     }
 
@@ -250,7 +344,52 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
                     Toast.makeText(this, "Error al guardar la foto.", Toast.LENGTH_SHORT).show()
                 }
             }
+        } else if (requestCode == REQUEST_IMAGE_GALLERY && resultCode == RESULT_OK) {
+            val selectedUris = mutableListOf<Uri>()
+            data?.clipData?.let { clip ->
+                for (i in 0 until clip.itemCount) {
+                    clip.getItemAt(i)?.uri?.let { selectedUris.add(it) }
+                }
+            }
+            data?.data?.let { selectedUris.add(it) }
+
+            if (selectedUris.isEmpty()) {
+                Toast.makeText(this, "No se seleccionaron imágenes.", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            for (uri in selectedUris) {
+                try {
+                    val tempFile = copiarUriAArchivo(uri)
+                    if (tempFile.exists() && tempFile.length() > 0) {
+                        val compressedFile = comprimirImagen(tempFile)
+                        fotosList.add(compressedFile)
+                    }
+                } catch (e: Exception) {
+                    Log.e("Galeria", "Error procesando imagen uri=$uri: ${e.message}", e)
+                }
+            }
+
+            guardarFotosEnPrefs()
+            fotosAdapter.notifyDataSetChanged()
         }
+    }
+
+    private fun copiarUriAArchivo(uri: Uri): File {
+        val storageDir: File = getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val outputFile = File(storageDir, "GALLERY_${timeStamp}_.jpg")
+
+        contentResolver.openInputStream(uri).use { input ->
+            if (input == null) {
+                throw IOException("No se pudo abrir el stream de la imagen seleccionada.")
+            }
+            FileOutputStream(outputFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        return outputFile
     }
 
     // --- INICIO DE LA MODIFICACIÓN ---
@@ -317,6 +456,8 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         prefs.putString(getPrefKey("pr_final_2"), inputPrFinal2.text.toString())
         prefs.putString(getPrefKey("cantidad"), inputCantidad.text.toString())
         prefs.putString(getPrefKey("observacion"), inputObservacion.text.toString())
+        prefs.putString(getPrefKey("sentido"), spinnerSentido.selectedItem?.toString().orEmpty())
+        prefs.putString(getPrefKey("lado"), spinnerLado.selectedItem?.toString().orEmpty())
 
         if (::participantesAdapter.isInitialized) {
             val selectedUserIds = participantesAdapter.getSelectedUserIds().map { it.toString() }.toSet()
@@ -334,6 +475,16 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         inputPrFinal2.setText(prefs.getString(getPrefKey("pr_final_2"), ""))
         inputCantidad.setText(prefs.getString(getPrefKey("cantidad"), ""))
         inputObservacion.setText(prefs.getString(getPrefKey("observacion"), ""))
+
+        val sentidoGuardado = prefs.getString(getPrefKey("sentido"), null)
+        val ladoGuardado = prefs.getString(getPrefKey("lado"), null)
+
+        if (!sentidoGuardado.isNullOrBlank() && spinnerSentido.adapter != null) {
+            setSpinnerToValue(spinnerSentido, sentidoGuardado)
+        }
+        if (!ladoGuardado.isNullOrBlank() && spinnerLado.adapter != null) {
+            setSpinnerToValue(spinnerLado, ladoGuardado)
+        }
     }
 
     private fun cargarSeleccionUsuariosDePrefs(): Set<String> {
@@ -367,6 +518,8 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
             .remove(getPrefKey("pr_final_2"))
             .remove(getPrefKey("cantidad"))
             .remove(getPrefKey("observacion"))
+            .remove(getPrefKey("sentido"))
+            .remove(getPrefKey("lado"))
             .remove(getPrefKey("usuarios_seleccionados"))
             .apply()
 
@@ -386,6 +539,8 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         val rangoInicial = parseStationingToComparableLong(ranges.prInicialStr)
         val rangoFinal = parseStationingToComparableLong(ranges.prFinalStr)
+        val rangoMin = minOf(rangoInicial, rangoFinal)
+        val rangoMax = maxOf(rangoInicial, rangoFinal)
 
         val prInicialUsuario = parseStationingToComparableLong(
             "${inputPrInicial1.text.toString()}+${inputPrInicial2.text.toString()}"
@@ -397,10 +552,10 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         val errores = mutableListOf<String>()
 
-        if (prInicialUsuario !in rangoInicial..rangoFinal) {
+        if (prInicialUsuario !in rangoMin..rangoMax) {
             errores.add("• El Pr. Inicial (${inputPrInicial1.text}+${inputPrInicial2.text}) está fuera del rango de trabajo (${ranges.prInicialStr} - ${ranges.prFinalStr}).")
         }
-        if (prFinalUsuario !in rangoInicial..rangoFinal) {
+        if (prFinalUsuario !in rangoMin..rangoMax) {
             errores.add("• El Pr. Final (${inputPrFinal1.text}+${inputPrFinal2.text}) está fuera del rango de trabajo (${ranges.prInicialStr} - ${ranges.prFinalStr}).")
         }
 
@@ -418,6 +573,19 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         val prInicialFusionado = "${inputPrInicial1.text}+${inputPrInicial2.text}"
         val prFinalFusionado = "${inputPrFinal1.text}+${inputPrFinal2.text}"
+
+        val sentidoSeleccionado = spinnerSentido.selectedItem?.toString().orEmpty()
+        val ladoSeleccionado = spinnerLado.selectedItem?.toString().orEmpty()
+
+        val actualizado = dbHelper.actualizarSentidoLadoActividadProgramada(
+            idActividadProgramada = numeroActividad,
+            sentido = sentidoSeleccionado,
+            lado = ladoSeleccionado
+        )
+        if (!actualizado) {
+            Toast.makeText(this, "Error al actualizar Sentido/Lado de la actividad.", Toast.LENGTH_LONG).show()
+            return
+        }
 
         val usuariosSeleccionadosIds = participantesAdapter.getSelectedUserIds().toList()
         val exito = dbHelper.insertarRegistroBitacora(
@@ -493,6 +661,24 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         }
         if (inputObservacion.text.isBlank()) {
             marcarError(inputObservacion, "Por favor, ingrese una observación")
+        }
+
+        if (!::spinnerSentido.isInitialized ||
+            spinnerSentido.adapter == null ||
+            spinnerSentido.selectedItem == null ||
+            spinnerSentido.selectedItemPosition == 0
+        ) {
+            Toast.makeText(this, "Debes seleccionar Sentido", Toast.LENGTH_SHORT).show()
+            esValido = false
+        }
+
+        if (!::spinnerLado.isInitialized ||
+            spinnerLado.adapter == null ||
+            spinnerLado.selectedItem == null ||
+            spinnerLado.selectedItemPosition == 0
+        ) {
+            Toast.makeText(this, "Debes seleccionar Lado", Toast.LENGTH_SHORT).show()
+            esValido = false
         }
 
         if (!::participantesAdapter.isInitialized || participantesAdapter.getSelectedUserIds().isEmpty()) {

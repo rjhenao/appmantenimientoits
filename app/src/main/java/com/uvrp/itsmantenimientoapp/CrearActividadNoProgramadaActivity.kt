@@ -1,7 +1,14 @@
 package com.uvrp.itsmantenimientoapp
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.AdapterView
@@ -10,13 +17,25 @@ import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper
 import com.uvrp.itsmantenimientoapp.DatabaseHelper.ActividadBitacora
 import com.uvrp.itsmantenimientoapp.DatabaseHelper.Cuadrilla
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
@@ -45,6 +64,18 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
     private lateinit var tilPrFinalM: TextInputLayout
     private lateinit var tilCantidad: TextInputLayout
     private lateinit var tvUnidadMedida: TextView
+    private lateinit var btnTomarFotoNoProgramada: FloatingActionButton
+    private lateinit var btnGaleriaNoProgramada: FloatingActionButton
+    private lateinit var rvFotosNoProgramada: RecyclerView
+    private lateinit var fotosAdapter: FotoAdapter
+    private val fotosList = mutableListOf<File>()
+    private var currentPhotoFile: File? = null
+
+    companion object {
+        private const val REQUEST_IMAGE_CAPTURE = 11
+        private const val REQUEST_IMAGE_GALLERY = 12
+        private const val REQUEST_CAMERA_PERMISSION = 131
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,8 +92,16 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
         // Obtener ID del usuario logueado
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         idUsuarioLogueado = sharedPreferences.getInt("idUser", -1)
+        val idRol = sharedPreferences.getInt("idRol", -1)
         if (idUsuarioLogueado == -1) {
             Toast.makeText(this, "Error: Usuario no logueado", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        // Permiso: cualquiera con acceso a bitácoras puede crear no programadas
+        if (idRol != 1 && idRol != 5 && idRol != 6) {
+            Toast.makeText(this, "No tienes permisos para crear actividades no programadas.", Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -86,6 +125,8 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
         btnGuardarActividad.setOnClickListener {
             guardarActividad()
         }
+
+        setupFotos()
     }
 
     private fun initViews() {
@@ -107,6 +148,143 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
         tilPrFinalM = findViewById(R.id.tilPrFinalM)
         tilCantidad = findViewById(R.id.tilCantidad)
         tvUnidadMedida = findViewById(R.id.tvUnidadMedida)
+        btnTomarFotoNoProgramada = findViewById(R.id.btnTomarFotoNoProgramada)
+        btnGaleriaNoProgramada = findViewById(R.id.btnGaleriaNoProgramada)
+        rvFotosNoProgramada = findViewById(R.id.rvFotosNoProgramada)
+    }
+
+    private fun setupFotos() {
+        fotosAdapter = FotoAdapter(fotosList) { file ->
+            fotosAdapter.eliminarFoto(file)
+            if (!file.delete()) {
+                Log.e("ACTIVIDAD_NO_PROGRAMADA", "No se pudo borrar foto: ${file.absolutePath}")
+            }
+        }
+        rvFotosNoProgramada.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        rvFotosNoProgramada.adapter = fotosAdapter
+
+        btnTomarFotoNoProgramada.setOnClickListener { verificarPermisosCamara() }
+        btnGaleriaNoProgramada.setOnClickListener { abrirGaleria() }
+    }
+
+    private fun verificarPermisosCamara() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
+        } else {
+            abrirCamara()
+        }
+    }
+
+    private fun abrirCamara() {
+        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+            takePictureIntent.resolveActivity(packageManager)?.also {
+                try {
+                    val photoFile: File = crearArchivoImagen()
+                    currentPhotoFile = photoFile
+                    val photoURI: Uri = FileProvider.getUriForFile(this, "$packageName.provider", photoFile)
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
+                } catch (ex: IOException) {
+                    Toast.makeText(this, "Error al crear el archivo de la foto.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun abrirGaleria() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "image/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        startActivityForResult(intent, REQUEST_IMAGE_GALLERY)
+    }
+
+    @Throws(IOException::class)
+    private fun crearArchivoImagen(): File {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir: File = getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
+        return File.createTempFile("BITACORA_NP_${timeStamp}_", ".jpg", storageDir)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            Toast.makeText(this, "Permiso denegado para acceder a imágenes.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        when (requestCode) {
+            REQUEST_CAMERA_PERMISSION -> abrirCamara()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            currentPhotoFile?.let { file ->
+                if (file.exists() && file.length() > 0) {
+                    val compressedFile = comprimirImagen(file)
+                    fotosList.add(compressedFile)
+                    fotosAdapter.notifyDataSetChanged()
+                }
+            }
+        } else if (requestCode == REQUEST_IMAGE_GALLERY && resultCode == RESULT_OK) {
+            val selectedUris = mutableListOf<Uri>()
+            data?.clipData?.let { clip ->
+                for (i in 0 until clip.itemCount) {
+                    clip.getItemAt(i)?.uri?.let { selectedUris.add(it) }
+                }
+            }
+            data?.data?.let { selectedUris.add(it) }
+            selectedUris.forEach { uri ->
+                try {
+                    val tempFile = copiarUriAArchivo(uri)
+                    if (tempFile.exists() && tempFile.length() > 0) {
+                        val compressedFile = comprimirImagen(tempFile)
+                        fotosList.add(compressedFile)
+                    }
+                } catch (e: Exception) {
+                    Log.e("ACTIVIDAD_NO_PROGRAMADA", "Error procesando imagen de galería: ${e.message}", e)
+                }
+            }
+            fotosAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun copiarUriAArchivo(uri: Uri): File {
+        val storageDir: File = getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val outputFile = File(storageDir, "GALLERY_NP_${timeStamp}_.jpg")
+
+        contentResolver.openInputStream(uri).use { input ->
+            if (input == null) throw IOException("No se pudo abrir la imagen seleccionada.")
+            FileOutputStream(outputFile).use { output -> input.copyTo(output) }
+        }
+        return outputFile
+    }
+
+    private fun comprimirImagen(originalFile: File): File {
+        val bitmapOriginal = BitmapFactory.decodeFile(originalFile.absolutePath)
+        val maxLado = 1024
+        val scale = if (bitmapOriginal.width >= bitmapOriginal.height) {
+            maxLado.toFloat() / bitmapOriginal.width
+        } else {
+            maxLado.toFloat() / bitmapOriginal.height
+        }
+        val nuevoAncho = (bitmapOriginal.width * scale).toInt()
+        val nuevoAlto = (bitmapOriginal.height * scale).toInt()
+        val bitmapEscalado = Bitmap.createScaledBitmap(bitmapOriginal, nuevoAncho, nuevoAlto, true)
+        val compressedFile = File(originalFile.parent, "COMP_${originalFile.name}")
+        FileOutputStream(compressedFile).use { out ->
+            bitmapEscalado.compress(Bitmap.CompressFormat.JPEG, 80, out)
+            out.flush()
+        }
+        originalFile.delete()
+        return compressedFile
     }
 
     private fun setupSpinners() {
@@ -170,19 +348,29 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             spinnerUF.adapter = ufAdapter
 
             // Configurar spinner de sentido (CUPA y PACU como en el formulario web)
+            val sentidosCatalogo = dbHelper.obtenerSentidosCatalogo()
+            if (sentidosCatalogo.isEmpty()) {
+                Toast.makeText(this, "No hay sentidos configurados. Ejecuta sincronización.", Toast.LENGTH_LONG).show()
+                return
+            }
             val sentidoAdapter = ArrayAdapter(
                 this,
                 android.R.layout.simple_spinner_item,
-                listOf("CUPA", "PACU")
+                sentidosCatalogo
             )
             sentidoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spinnerSentido.adapter = sentidoAdapter
 
             // Configurar spinner de lado (exactamente como en el formulario web)
+            val ladosCatalogo = dbHelper.obtenerLadosCatalogo()
+            if (ladosCatalogo.isEmpty()) {
+                Toast.makeText(this, "No hay lados configurados. Ejecuta sincronización.", Toast.LENGTH_LONG).show()
+                return
+            }
             val ladoAdapter = ArrayAdapter(
                 this,
                 android.R.layout.simple_spinner_item,
-                listOf("Derecha", "Izquierda", "Derecha e Izquierda", "Eje", "Retorno")
+                ladosCatalogo
             )
             ladoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spinnerLado.adapter = ladoAdapter
@@ -206,8 +394,6 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             val selectedActividad = spinnerActividad.selectedItemPosition - 1
             val selectedCuadrilla = spinnerCuadrilla.selectedItemPosition - 1
             val selectedUF = spinnerUF.selectedItemPosition
-            val selectedSentido = spinnerSentido.selectedItemPosition
-            val selectedLado = spinnerLado.selectedItemPosition
 
             if (selectedActividad < 0 || selectedCuadrilla < 0) {
                 Toast.makeText(this, "Por favor seleccione actividad y cuadrilla", Toast.LENGTH_SHORT).show()
@@ -223,9 +409,13 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             val actividad = actividadesList[selectedActividad]
             val cuadrilla = cuadrillasList[selectedCuadrilla]
             val uf = selectedUF // Ya viene como 1, 2, 3, 4, 5, 6
-            val sentido = if (selectedSentido == 0) "CUPA" else "PACU"
-            val ladoOpciones = listOf("Derecha", "Izquierda", "Derecha e Izquierda", "Eje", "Retorno")
-            val lado = ladoOpciones[selectedLado]
+            val sentido = spinnerSentido.selectedItem?.toString().orEmpty()
+            val lado = spinnerLado.selectedItem?.toString().orEmpty()
+
+            if (sentido.isBlank() || lado.isBlank()) {
+                Toast.makeText(this, "Por favor seleccione Sentido y Lado", Toast.LENGTH_SHORT).show()
+                return
+            }
             
             // Combinar Km + m en formato "XX+YYY" para PR Inicial y PR Final
             val prInicialKm = etPrInicialKm.text.toString().trim()
@@ -264,7 +454,8 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
                 prFinal = prFinal,
                 cantidad = cantidad,
                 observacion = observacion,
-                supervisorResponsable = idUsuarioLogueado
+                supervisorResponsable = idUsuarioLogueado,
+                fotos = fotosList
             )
 
             if (resultado > 0) {
@@ -330,6 +521,11 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
             esValido = false
         } else {
             tilCantidad.error = null
+        }
+
+        if (fotosList.isEmpty()) {
+            Toast.makeText(this, "Debes agregar al menos una foto de evidencia", Toast.LENGTH_SHORT).show()
+            esValido = false
         }
 
         return esValido
