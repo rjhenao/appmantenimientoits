@@ -23,6 +23,7 @@ import com.uvrp.itsmantenimientoapp.models.FotosMasivasResponse
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -386,7 +387,7 @@ interface ApiService {
     fun finalizarMantenimientoBitacora(
         @Part("json") json: RequestBody, // <-- CAMBIA @PartMap POR @Part("json")
         @Part imagenes: List<MultipartBody.Part>
-    ): Call<Void>
+    ): Call<ResponseBody>
 
 
 

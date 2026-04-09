@@ -22,6 +22,12 @@ import java.io.FileOutputStream
 
 object FuncionesGenerales {
 
+    private data class SyncBatchOutcome(
+        val anySuccess: Boolean,
+        val pendBitacoraAntes: Int,
+        val exitoBitacoras: Boolean
+    )
+
     fun sincronizarTodosMantenimientos(context: Context, onResult: (Boolean) -> Unit) {
         val dbHelper = DatabaseHelper(context)
 
@@ -33,7 +39,10 @@ object FuncionesGenerales {
         progressDialog.show()
 
         CoroutineScope(Dispatchers.Main).launch {
-            val resultado = withContext(Dispatchers.IO) {
+            val outcome = withContext(Dispatchers.IO) {
+                val idSesion = context.getSharedPreferences("Sesion", Context.MODE_PRIVATE).getInt("idUser", -1)
+                val pendBitacoraAntes =
+                    if (idSesion > 0) dbHelper.obtenerBitacorasPendientes(idSesion).size else 0
 
                 // Ejecutamos cada proceso de sincronización por separado
                 val exitoTerminados = dbHelper.sincronizarManteninimientosTerminados() == 1
@@ -45,37 +54,57 @@ object FuncionesGenerales {
                 val exitoInvPend = InventarioOfflineSync.sincronizarPendientes(context)
                 val exitoInvCat = InventarioOfflineSync.sincronizarCatalogo(context)
 
-                // El resultado total es exitoso si CUALQUIERA de los procesos tuvo éxito
-                exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible || exitoInvPend || exitoInvCat
+                val anySuccess = exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible || exitoInvPend || exitoInvCat
+                SyncBatchOutcome(anySuccess, pendBitacoraAntes, exitoBitacoras)
             }
 
             progressDialog.dismiss()
 
-            if (resultado) {
-                // Si la sincronización fue exitosa, sincronizar también los tickets
-                withContext(Dispatchers.IO) {
-                    try {
-                        val api = RetrofitClient.instance
-                        val response = api.getTickets().execute()
-                        
-                        if (response.isSuccessful) {
-                            val ticketResponse = response.body()
-                            if (ticketResponse != null && ticketResponse.success) {
-                                dbHelper.insertarOActualizarTickets(ticketResponse.data)
-                                Log.i("SyncTickets", "Tickets sincronizados exitosamente después de mantenimientos")
+            val bitacoraFallo = outcome.pendBitacoraAntes > 0 && !outcome.exitoBitacoras
+
+            when {
+                outcome.anySuccess -> {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val api = RetrofitClient.instance
+                            val response = api.getTickets().execute()
+
+                            if (response.isSuccessful) {
+                                val ticketResponse = response.body()
+                                if (ticketResponse != null && ticketResponse.success) {
+                                    dbHelper.insertarOActualizarTickets(ticketResponse.data)
+                                    Log.i("SyncTickets", "Tickets sincronizados exitosamente después de mantenimientos")
+                                }
                             }
+                        } catch (e: Exception) {
+                            Log.e("SyncTickets", "Error sincronizando tickets después de mantenimientos: ${e.message}", e)
                         }
-                    } catch (e: Exception) {
-                        Log.e("SyncTickets", "Error sincronizando tickets después de mantenimientos: ${e.message}", e)
+                        Unit
                     }
-                    Unit // Retorno explícito para evitar que el if sea interpretado como expresión
+
+                    if (bitacoraFallo) {
+                        Toast.makeText(
+                            context,
+                            "Sincronización parcial: la bitácora pendiente no se pudo enviar. Revise conexión o Logcat (tag SyncBitacora).",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        Toast.makeText(context, "Sincronización completada.", Toast.LENGTH_LONG).show()
+                    }
+                    onResult(true)
                 }
-                
-                Toast.makeText(context, "Sincronización completada.", Toast.LENGTH_LONG).show()
-                onResult(true)
-            } else {
-                Toast.makeText(context, "No había elementos nuevos por sincronizar.", Toast.LENGTH_LONG).show()
-                onResult(false)
+                bitacoraFallo -> {
+                    Toast.makeText(
+                        context,
+                        "No se pudo sincronizar la bitácora pendiente. Revise Logcat (SyncBitacora, SyncDebug).",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    onResult(false)
+                }
+                else -> {
+                    Toast.makeText(context, "No había elementos nuevos por sincronizar.", Toast.LENGTH_LONG).show()
+                    onResult(false)
+                }
             }
         }
     }
@@ -246,11 +275,10 @@ object FuncionesGenerales {
     }
 
     private suspend fun sincronizarPendientesBitacora(context: Context, dbHelper: DatabaseHelper): Boolean {
-        var huboExito = false
         val idUsuario = context.getSharedPreferences("Sesion", Context.MODE_PRIVATE).getInt("idUser", -1)
         if (idUsuario <= 0) {
             Log.w("SyncBitacora", "Sin idUser en sesión; no se sincronizan bitácoras NP.")
-            return true
+            return false
         }
         val bitacorasPendientes = dbHelper.obtenerBitacorasPendientes(idUsuario)
 
@@ -260,6 +288,7 @@ object FuncionesGenerales {
 
         Log.i("SyncBitacora", "Iniciando sincronización de ${bitacorasPendientes.size} bitácoras...")
 
+        var exitos = 0
         for (bitacora in bitacorasPendientes) {
             try {
                 // ... (Creación del jsonObject)
@@ -316,11 +345,37 @@ object FuncionesGenerales {
                     .finalizarMantenimientoBitacora(jsonRequestBody, imagenesParts)
                     .execute()
 
-                // ... (resto del código para procesar la respuesta)
                 if (response.isSuccessful) {
-                    Log.i("SyncBitacora", "✅ Bitácora ID=${bitacora.id} sincronizada.")
-                    dbHelper.marcarBitacoraSincronizada(bitacora.id, bitacora.estado == 2)
-                    huboExito = true
+                    val bodyString: String = response.body()?.string().orEmpty()
+                    var idServidorPab: Int? = null
+                    if (bodyString.isNotBlank()) {
+                        try {
+                            val jo = JSONObject(bodyString)
+                            if (jo.has("id_programar_actividades_bitacora") && !jo.isNull("id_programar_actividades_bitacora")) {
+                                idServidorPab = jo.getInt("id_programar_actividades_bitacora")
+                            }
+                        } catch (e: Exception) {
+                            Log.w("SyncBitacora", "Respuesta OK sin JSON esperado: ${e.message}")
+                        }
+                    }
+
+                    var idParaMarcar = bitacora.id
+                    if (bitacora.estado == 2) {
+                        if (idServidorPab != null && idServidorPab != bitacora.id) {
+                            val okRemap = dbHelper.remapearIdProgramarActividadesBitacoraTrasSyncNp(bitacora.id, idServidorPab)
+                            if (okRemap) {
+                                idParaMarcar = idServidorPab
+                            } else {
+                                Log.e("SyncBitacora", "Remapeo NP falló (local=${bitacora.id} → servidor=$idServidorPab); se marca con id local.")
+                            }
+                        } else if (idServidorPab != null) {
+                            idParaMarcar = idServidorPab
+                        }
+                    }
+
+                    Log.i("SyncBitacora", "✅ Bitácora ID=${bitacora.id} sincronizada (marcar como sincronizado: id=$idParaMarcar).")
+                    dbHelper.marcarBitacoraSincronizada(idParaMarcar, bitacora.estado == 2)
+                    exitos++
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("SyncBitacora", "❌ Error del servidor al sincronizar bitácora ID=${bitacora.id}. Código: ${response.code()}. Body: $errorBody")
@@ -331,7 +386,14 @@ object FuncionesGenerales {
             }
         }
 
-        return huboExito
+        val todoOk = exitos == bitacorasPendientes.size
+        if (!todoOk) {
+            Log.e(
+                "SyncBitacora",
+                "Sincronización de bitácora incompleta: $exitos/${bitacorasPendientes.size} correctas."
+            )
+        }
+        return todoOk
     }
 
 

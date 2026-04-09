@@ -3616,6 +3616,98 @@ return insertOk
         db.close()
     }
 
+    /**
+     * Tras sincronizar una NP, el servidor asigna el PK real en [programar_actividades_bitacora].
+     * Reemplaza el id local por el id remoto y re-enlaza fotos / rels que apuntaban al id local.
+     */
+    fun remapearIdProgramarActividadesBitacoraTrasSyncNp(idLocal: Int, idServidor: Int): Boolean {
+        if (idLocal == idServidor) return true
+        val db = this.writableDatabase
+        return try {
+            db.beginTransaction()
+            val curExists = db.rawQuery(
+                "SELECT 1 FROM programar_actividades_bitacora WHERE id = ?",
+                arrayOf(idServidor.toString())
+            )
+            val yaExisteServidor = curExists.moveToFirst()
+            curExists.close()
+
+            if (yaExisteServidor) {
+                db.execSQL(
+                    "UPDATE rel_fotos_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_usuarios_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL("DELETE FROM programar_actividades_bitacora WHERE id = ?", arrayOf(idLocal.toString()))
+                Log.d("SyncBitacora", "Remapeo NP: id servidor ya existía; eliminada fila local duplicada id=$idLocal")
+            } else {
+                val cursor = db.rawQuery(
+                    "SELECT * FROM programar_actividades_bitacora WHERE id = ?",
+                    arrayOf(idLocal.toString())
+                )
+                if (!cursor.moveToFirst()) {
+                    cursor.close()
+                    db.endTransaction()
+                    return false
+                }
+                val cv = ContentValues()
+                for (i in 0 until cursor.columnCount) {
+                    val col = cursor.getColumnName(i)
+                    if (col == "id") {
+                        cv.put("id", idServidor)
+                        continue
+                    }
+                    if (cursor.isNull(i)) {
+                        cv.putNull(col)
+                    } else {
+                        when (cursor.getType(i)) {
+                            Cursor.FIELD_TYPE_INTEGER -> cv.put(col, cursor.getLong(i))
+                            Cursor.FIELD_TYPE_FLOAT -> cv.put(col, cursor.getDouble(i))
+                            Cursor.FIELD_TYPE_STRING -> cv.put(col, cursor.getString(i))
+                            Cursor.FIELD_TYPE_BLOB -> cv.put(col, cursor.getBlob(i))
+                            else -> { }
+                        }
+                    }
+                }
+                cursor.close()
+                val ins = db.insert("programar_actividades_bitacora", null, cv)
+                if (ins == -1L) {
+                    db.endTransaction()
+                    return false
+                }
+                db.execSQL(
+                    "UPDATE rel_fotos_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_usuarios_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL("DELETE FROM programar_actividades_bitacora WHERE id = ?", arrayOf(idLocal.toString()))
+            }
+            db.setTransactionSuccessful()
+            true
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "remapearIdProgramarActividadesBitacoraTrasSyncNp: ${e.message}", e)
+            false
+        } finally {
+            try {
+                db.endTransaction()
+            } catch (_: Exception) { }
+        }
+    }
+
 
     // Obtiene las cabeceras de inspección pendientes de sincronizar
     fun obtenerInspeccionUsuariosPendientes(): List<InspeccionUsuario> {

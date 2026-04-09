@@ -17,7 +17,7 @@ object RetrofitClient {
     // private const val BASE_URL = "http://192.168.1.15:8009/"
     // pruebas
     private const val BASE_URL = "http://181.225.65.82:8196/"
-    //private const val BASE_URL = "http://192.168.1.139:8000/"   
+    //private const val BASE_URL = "http://10.200.221.103:8000/"   
     
 
     @Volatile
