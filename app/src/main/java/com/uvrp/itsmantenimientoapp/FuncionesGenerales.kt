@@ -42,9 +42,11 @@ object FuncionesGenerales {
                 val exitoInspecciones = sincronizarInspeccionesCompletas(dbHelper)
                 val exitoFotosMasivas = sincronizarFotosMasivas(context, dbHelper)
                 val exitoCombustible = sincronizarCombustiblesPendientes(context, dbHelper).exito
+                val exitoInvPend = InventarioOfflineSync.sincronizarPendientes(context)
+                val exitoInvCat = InventarioOfflineSync.sincronizarCatalogo(context)
 
                 // El resultado total es exitoso si CUALQUIERA de los procesos tuvo éxito
-                exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible
+                exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible || exitoInvPend || exitoInvCat
             }
 
             progressDialog.dismiss()
@@ -103,6 +105,35 @@ object FuncionesGenerales {
             }
             Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
             onResult(resultado.exito)
+        }
+    }
+
+    /**
+     * Solo cola de inventario (entradas/salidas offline). Usado desde Inicio cuando no hay tarjeta de mantenimientos o para sincronizar más rápido.
+     */
+    fun sincronizarSoloInventarioPendientes(context: Context, onResult: (Boolean) -> Unit) {
+        val dbHelper = DatabaseHelper(context)
+        val progressDialog = AlertDialog.Builder(context)
+            .setView(LayoutInflater.from(context).inflate(R.layout.dialog_loading, null))
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+        CoroutineScope(Dispatchers.Main).launch {
+            val hadPendientes = withContext(Dispatchers.IO) {
+                dbHelper.obtenerPendientesCargarStock().isNotEmpty() ||
+                    dbHelper.obtenerPendientesSalida().isNotEmpty()
+            }
+            val resultado = withContext(Dispatchers.IO) {
+                InventarioOfflineSync.sincronizarPendientes(context)
+            }
+            progressDialog.dismiss()
+            val mensaje = when {
+                resultado -> "Inventario sincronizado correctamente."
+                hadPendientes -> "No se pudo sincronizar el inventario. Revise la conexión e intente de nuevo."
+                else -> "No había movimientos de inventario pendientes."
+            }
+            Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+            onResult(resultado)
         }
     }
 
@@ -216,7 +247,12 @@ object FuncionesGenerales {
 
     private suspend fun sincronizarPendientesBitacora(context: Context, dbHelper: DatabaseHelper): Boolean {
         var huboExito = false
-        val bitacorasPendientes = dbHelper.obtenerBitacorasPendientes()
+        val idUsuario = context.getSharedPreferences("Sesion", Context.MODE_PRIVATE).getInt("idUser", -1)
+        if (idUsuario <= 0) {
+            Log.w("SyncBitacora", "Sin idUser en sesión; no se sincronizan bitácoras NP.")
+            return true
+        }
+        val bitacorasPendientes = dbHelper.obtenerBitacorasPendientes(idUsuario)
 
         if (bitacorasPendientes.isEmpty()) {
             return true

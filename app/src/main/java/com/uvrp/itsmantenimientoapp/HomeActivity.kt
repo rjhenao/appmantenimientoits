@@ -37,10 +37,17 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var chipCombustibleCount: Chip
     private lateinit var btnSincronizarCombustible: MaterialButton
 
+    private lateinit var cardInventarioPendiente: MaterialCardView
+    private lateinit var tvInventarioDescription: TextView
+    private lateinit var chipInventarioCount: Chip
+    private lateinit var rvInventarioPendientes: RecyclerView
+    private lateinit var btnSincronizarInventario: MaterialButton
+
     private lateinit var dbHelper: DatabaseHelper // La hacemos variable de la clase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        RetrofitClient.init(applicationContext)
         setContentView(R.layout.activity_home)
 
         // ==== INICIALIZAR COMPONENTES Y HELPERS ====
@@ -66,6 +73,12 @@ class HomeActivity : AppCompatActivity() {
         tvCombustibleDescription = findViewById(R.id.tvCombustibleDescription)
         chipCombustibleCount = findViewById(R.id.chipCombustibleCount)
         btnSincronizarCombustible = findViewById(R.id.btnSincronizarCombustible)
+
+        cardInventarioPendiente = findViewById(R.id.cardInventarioPendiente)
+        tvInventarioDescription = findViewById(R.id.tvInventarioDescription)
+        chipInventarioCount = findViewById(R.id.chipInventarioCount)
+        rvInventarioPendientes = findViewById(R.id.rvInventarioPendientes)
+        btnSincronizarInventario = findViewById(R.id.btnSincronizarInventario)
 
         dbHelper = DatabaseHelper(this)
 
@@ -99,6 +112,16 @@ class HomeActivity : AppCompatActivity() {
                 btnSincronizarCombustible.text = "Sincronizar Combustibles"
                 btnSincronizarCombustible.isEnabled = true
                 // Recargar siempre para actualizar la tarjeta de pendientes
+                cargarYMostrarPendientes()
+            }
+        }
+
+        btnSincronizarInventario.setOnClickListener {
+            btnSincronizarInventario.text = getString(R.string.home_inv_btn_sync) + "…"
+            btnSincronizarInventario.isEnabled = false
+            FuncionesGenerales.sincronizarSoloInventarioPendientes(this) { _ ->
+                btnSincronizarInventario.text = getString(R.string.home_inv_btn_sync)
+                btnSincronizarInventario.isEnabled = true
                 cargarYMostrarPendientes()
             }
         }
@@ -136,10 +159,22 @@ class HomeActivity : AppCompatActivity() {
             cardCombustiblePendiente.visibility = View.GONE
         }
 
+        val lineasInventarioPendiente = dbHelper.getInventarioPendienteLineasDescripcion()
+        if (lineasInventarioPendiente.isNotEmpty()) {
+            cardInventarioPendiente.visibility = View.VISIBLE
+            chipInventarioCount.text = lineasInventarioPendiente.size.toString()
+            tvInventarioDescription.text = getString(R.string.home_inv_pendiente_sync_hint)
+            rvInventarioPendientes.layoutManager = LinearLayoutManager(this)
+            rvInventarioPendientes.adapter = PendientesAdapter(lineasInventarioPendiente)
+        } else {
+            cardInventarioPendiente.visibility = View.GONE
+        }
+
+        val puedeVerMantenimientos = idRol in intArrayOf(1, 2, 5, 6, 7)
+
         val pendientesCorrectivos: List<String>
         val pendientesPreventivos: List<String>
 
-        // 1. Decidimos qué datos cargar según el rol (sin cambios aquí)
         when (idRol) {
             1, 2 -> {
                 pendientesCorrectivos = dbHelper.getMantenimientosPendientes()
@@ -147,34 +182,28 @@ class HomeActivity : AppCompatActivity() {
             }
             5, 6, 7 -> {
                 pendientesCorrectivos = dbHelper.getMantenimientosPendientes()
-                pendientesPreventivos = dbHelper.getMantenimientosPendientesBicatacoras()
+                pendientesPreventivos = dbHelper.getMantenimientosPendientesBicatacoras(idUsuario)
             }
             else -> {
-                // Para roles no reconocidos, mostramos la tarjeta de "Sin Novedades"
-                cardNotifications.visibility = View.VISIBLE
-                chipPendingCount.visibility = View.GONE // Ocultamos el contador
-                btnSincronizar.visibility = View.GONE   // y el botón de sincronizar
-                rvPendientes.visibility = View.GONE     // y la lista.
-
-                tvNotificationTitle.text = "Sin Novedades"
-                tvNotificationDescription.text = "Está al día, no se registran actividades ni sincronizaciones pendientes."
-                return
+                pendientesCorrectivos = emptyList()
+                pendientesPreventivos = emptyList()
             }
         }
 
         val todosLosPendientes = pendientesCorrectivos + pendientesPreventivos
 
-        // 2. Lógica común para actualizar la UI (aquí están los cambios)
         if (todosLosPendientes.isEmpty()) {
-            // ---- CAMBIO 1: Mostrar tarjeta de "Sin Novedades" ----
-            // En lugar de ocultar todo, mostramos un estado informativo.
-            cardNotifications.visibility = View.VISIBLE
-            chipPendingCount.visibility = View.GONE
-            btnSincronizar.visibility = View.GONE
-            rvPendientes.visibility = View.GONE
+            if (puedeVerMantenimientos) {
+                cardNotifications.visibility = View.VISIBLE
+                chipPendingCount.visibility = View.GONE
+                btnSincronizar.visibility = View.GONE
+                rvPendientes.visibility = View.GONE
 
-            tvNotificationTitle.text = "¡Todo al día! ✨"
-            tvNotificationDescription.text = "No se encontraron mantenimientos pendientes por sincronizar."
+                tvNotificationTitle.text = "¡Todo al día! ✨"
+                tvNotificationDescription.text = "No se encontraron mantenimientos pendientes por sincronizar."
+            } else {
+                cardNotifications.visibility = View.GONE
+            }
 
         } else {
             // Hay pendientes, mostrar la tarjeta con toda la información

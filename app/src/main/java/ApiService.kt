@@ -442,4 +442,103 @@ interface ApiService {
         @Part foto_ticket: MultipartBody.Part?
     ): Call<CombustibleResponse>
 
+    // ===== LOGIN MÓVIL (SANCTUM) + INVENTARIO =====
+
+    data class MobileLoginRequest(
+        val documento: String,
+        val password: String
+    )
+
+    data class MobileLoginResponse(
+        val token: String?,
+        @SerializedName("token_type") val tokenType: String?,
+        val user: MobileUserInfo?,
+        val roles: List<Int>?,
+        @SerializedName("puede_inventario") val puedeInventario: Boolean?
+    )
+
+    data class MobileUserInfo(
+        val id: Int,
+        val nombre: String?,
+        val documento: Long?
+    )
+
+    data class InvUnidadDto(
+        val id: Int,
+        val codigo: String,
+        val nombre: String
+    )
+
+    data class InvProductoDto(
+        val id: Int,
+        @SerializedName("codigo_etiqueta") val codigoEtiqueta: String,
+        val nombre: String,
+        val tipo: String,
+        @SerializedName("inv_unidad_id") val invUnidadId: Int,
+        @SerializedName("unidad_codigo") val unidadCodigo: String?,
+        val descripcion: String?
+    )
+
+    data class InvUbicacionDto(
+        val id: Int,
+        @SerializedName("codigo_unico_global") val codigoUnicoGlobal: String,
+        val label: String
+    )
+
+    data class InventarioCatalogoResponse(
+        val unidades: List<InvUnidadDto>?,
+        val productos: List<InvProductoDto>?,
+        val ubicaciones: List<InvUbicacionDto>?,
+        val meta: Map<String, Any>?
+    )
+
+    data class ExistenciaItemDto(
+        @SerializedName("inv_ubicacion_id") val invUbicacionId: Int,
+        val label: String,
+        val cantidad: String
+    )
+
+    data class ExistenciasInventarioResponse(
+        val data: List<ExistenciaItemDto>?
+    )
+
+    data class InventarioMensajeResponse(
+        val message: String?
+    )
+
+    data class InventarioAjusteRequest(
+        @SerializedName("inv_producto_id") val invProductoId: Int,
+        @SerializedName("inv_ubicacion_id") val invUbicacionId: Int,
+        val cantidad: String,
+        val nota: String?
+    )
+
+    data class InventarioSalidaRequest(
+        @SerializedName("inv_producto_id") val invProductoId: Int,
+        @SerializedName("inv_ubicacion_id") val invUbicacionId: Int,
+        val cantidad: String,
+        @SerializedName("tipo_movimiento") val tipoMovimiento: String,
+        @SerializedName("responsable_recibe_nombre") val responsableRecibeNombre: String? = null,
+        @SerializedName("responsable_recibe_documento") val responsableRecibeDocumento: String? = null,
+        @SerializedName("destino_uso") val destinoUso: String? = null,
+        @SerializedName("prestado_a_nombre") val prestadoANombre: String? = null,
+        @SerializedName("prestado_a_documento") val prestadoADocumento: String? = null,
+        @SerializedName("observacion_salida") val observacionSalida: String? = null
+    )
+
+    @POST("api/mobile/login")
+    fun mobileLogin(@Body body: MobileLoginRequest): Call<MobileLoginResponse>
+
+    @GET("api/inventario/sync/catalogo")
+    fun inventarioCatalogoOffline(): Call<InventarioCatalogoResponse>
+
+    @GET("api/inventario/productos/{id}/existencias")
+    fun inventarioExistencias(@retrofit2.http.Path("id") productoId: Int): Call<ExistenciasInventarioResponse>
+
+    @POST("api/inventario/stock/ajuste-entrada")
+    fun inventarioAjusteEntrada(@Body body: InventarioAjusteRequest): Call<InventarioMensajeResponse>
+
+    @POST("api/inventario/movimientos/salida")
+    fun inventarioSalida(@Body body: InventarioSalidaRequest): Call<InventarioMensajeResponse>
+
 }

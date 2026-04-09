@@ -20,4 +20,34 @@
         <item>Crítica</item>
     </string-array>
 
+    <string name="inv_ubicacion_qr_ayuda">La celda se identifica con el código único del catálogo (mismo dato que en el QR). Sincronice desde Inicio tras el login para tener las celdas offline.</string>
+    <string name="inv_escanear_qr_celda">Escanear QR de celda</string>
+    <string name="inv_scan_prompt_celda">Enfoque el QR de la celda</string>
+    <string name="inv_qr_celda_no_encontrada">QR no reconocido: no coincide con ninguna celda del catálogo. Sincronice inventario desde Inicio o verifique el código.</string>
+    <string name="inv_qr_celda_sin_stock_producto">Esa celda no tiene stock del producto elegido. Elija otra celda o verifique el QR.</string>
+    <string name="inv_celda_no_aplica_producto">La celda seleccionada no aplica para este producto. Elija otra celda.</string>
+    <string name="inv_salida_stock_sin_datos">No se pudo validar el stock en esta celda. Elija de nuevo el producto con conexión o sincronice inventario desde Inicio.</string>
+    <string name="inv_salida_stock_excede">La cantidad supera lo disponible en esta celda (máximo %1$s, incluye salidas pendientes por enviar).</string>
+    <string name="inv_salida_cantidad_invalida">Indique una cantidad numérica válida.</string>
+
+    <string name="inv_cantidad_seleccione_producto">Seleccione un producto para ver la unidad de medida.</string>
+    <string name="inv_cantidad_unidad_suffix">Unidad: %1$s</string>
+
+    <string name="home_inv_pendiente_sync_hint">Movimientos guardados en el celular. Pulse el botón para enviarlos al servidor, o use «Sincronizar Ahora» si también tiene mantenimientos pendientes.</string>
+    <string name="home_inv_btn_sync">Sincronizar inventario</string>
+
+    <string name="inv_salida_tipo_titulo">Tipo de salida</string>
+    <string name="inv_salida_tipo_sin_producto">Seleccione un producto. El tipo (consumible o préstamo) se define al crear el producto en el sistema.</string>
+    <string name="inv_salida_tipo_consumo">Consumo — el producto está catalogado como consumible (no se devuelve).</string>
+    <string name="inv_salida_tipo_prestamo">Préstamo — el producto está catalogado como préstamo (debe poder devolverse).</string>
+    <string name="inv_salida_hint_usuario">Buscar usuario (lista de la app)</string>
+    <string name="inv_salida_hint_usuario_consumo">Usuario que recibe el material</string>
+    <string name="inv_salida_hint_usuario_prestamo">Usuario a quien se presta</string>
+    <string name="inv_salida_destino_uso">¿Para qué se despacha? (opcional)</string>
+
+    <string name="inv_cargar_ayuda_compact">Escanee la celda o busque (2+ letras). Sin red el movimiento queda pendiente.</string>
+    <string name="inv_hint_act_producto">Escriba para ver sugerencias y elija</string>
+    <string name="inv_hint_act_ubicacion">Opcional: buscar celda si no usa QR</string>
+    <string name="inv_salida_ayuda_compact">Escanee la celda o búsquela. Producto: sugerencias al escribir.</string>
+
 </resources>

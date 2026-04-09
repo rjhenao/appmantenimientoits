@@ -13,6 +13,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -64,6 +65,18 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
     private lateinit var spinnerSentido: Spinner
     private lateinit var spinnerLado: Spinner
 
+    /**
+     * Evita que el guardado automático se ejecute durante la carga inicial (los listeners de los
+     * Spinners dispararían guardado con campos vacíos y borrarían lo guardado).
+     */
+    private var suprimirGuardadoPrefs = true
+
+    /**
+     * Tras registrar el mantenimiento con éxito llamamos a [limpiarPrefs]. Si no se omite el guardado
+     * en [onPause], ese ciclo volvería a escribir texto/fotos en SharedPreferences y anularía la limpieza.
+     */
+    private var omitirPersistenciaPrefsPorRegistroExitoso = false
+
     companion object {
         private const val REQUEST_IMAGE_CAPTURE = 1
         private const val REQUEST_IMAGE_GALLERY = 2
@@ -108,6 +121,24 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         cargarDatosDePrefs()
         cargarFotosDePrefs()
         fotosAdapter.notifyDataSetChanged()
+
+        // Tras restaurar, permitir guardado automático (post = tras listeners de setText/setSelection)
+        window.decorView.post {
+            suprimirGuardadoPrefs = false
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (omitirPersistenciaPrefsPorRegistroExitoso) {
+            return
+        }
+        // Sin foco, TextInputLayout suele reflejar bien el texto en todos los campos (evita guardar solo el que estaba enfocado).
+        currentFocus?.clearFocus()
+        // forzar=true: aunque el usuario salga antes del post de onCreate, se persisten spinners/participantes y texto.
+        guardarSelectoresYParticipantesPrefs(forzar = true)
+        persistirTodosLosTextosDesdeVista(forzar = true)
+        guardarFotosEnPrefs()
     }
 
     private fun initViews() {
@@ -141,24 +172,23 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
             dialogo.show(supportFragmentManager, "SeleccionarUsuarioDialog")
         }
 
-        val textWatcher = object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                guardarDatosEnPrefs()
-            }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        // Un TextWatcher compartido que lee todos los EditText falla con TextInputLayout: los que no tienen foco
+        // a menudo devuelven "" al guardar. Se persiste cada tecla con el Editable de ese campo.
+        fun attachPersistTexto(fieldKey: String, editText: EditText) {
+            editText.addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(s: Editable?) {
+                    guardarCampoTextoPrefs(fieldKey, s?.toString().orEmpty())
+                }
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            })
         }
-
-        listOf(
-            inputPrInicial1,
-            inputPrInicial2,
-            inputPrFinal1,
-            inputPrFinal2,
-            inputCantidad,
-            inputObservacion
-        ).forEach { editText ->
-            editText.addTextChangedListener(textWatcher)
-        }
+        attachPersistTexto("pr_inicial_1", inputPrInicial1)
+        attachPersistTexto("pr_inicial_2", inputPrInicial2)
+        attachPersistTexto("pr_final_1", inputPrFinal1)
+        attachPersistTexto("pr_final_2", inputPrFinal2)
+        attachPersistTexto("cantidad", inputCantidad)
+        attachPersistTexto("observacion", inputObservacion)
     }
 
     private fun setupParticipantesRecyclerView() {
@@ -168,7 +198,7 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         participantesList.addAll(dbHelper.getUsuariosPorActividad(numeroActividad))
 
         participantesAdapter = ParticipantesAdapter(participantesList, empleadosSeleccionados) {
-            guardarDatosEnPrefs()
+            guardarSelectoresYParticipantesPrefs()
         }
 
         rvParticipantes.layoutManager = LinearLayoutManager(this)
@@ -239,7 +269,7 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
             val listener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    guardarDatosEnPrefs()
+                    guardarSelectoresYParticipantesPrefs()
                 }
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
             }
@@ -263,7 +293,10 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
     }
 
     private fun setupRecyclerViewFotos() {
-        fotosAdapter = FotoAdapter(fotosList) { file ->
+        fotosAdapter = FotoAdapter(
+            fotosList,
+            onFotoClick = { file -> mostrarFotoAmpliada(file) }
+        ) { file ->
             fotosAdapter.eliminarFoto(file)
             if (!file.delete()) {
                 Log.e("FileDeletionError", "No se pudo borrar el archivo: ${file.absolutePath}")
@@ -272,6 +305,36 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         }
         rvPhotos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         rvPhotos.adapter = fotosAdapter
+    }
+
+    /** Muestra la evidencia en grande al tocar la miniatura. */
+    private fun mostrarFotoAmpliada(file: File) {
+        if (!file.exists()) {
+            Toast.makeText(this, "No se encontró la imagen.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val dialogView = layoutInflater.inflate(R.layout.dialog_foto_preview, null)
+        val imageView = dialogView.findViewById<ImageView>(R.id.image_preview_full)
+        val bitmap = try {
+            BitmapFactory.decodeFile(file.absolutePath)
+        } catch (oom: OutOfMemoryError) {
+            Log.e("FotoPreview", "OOM al decodificar: ${file.absolutePath}", oom)
+            null
+        }
+        if (bitmap == null) {
+            Toast.makeText(this, "No se pudo cargar la imagen.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        imageView.setImageBitmap(bitmap)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton("Cerrar", null)
+            .create()
+        dialog.show()
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
     }
 
     private fun verificarPermisosCamara() {
@@ -351,14 +414,18 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
                     clip.getItemAt(i)?.uri?.let { selectedUris.add(it) }
                 }
             }
-            data?.data?.let { selectedUris.add(it) }
-
+            // Si ya vino multi-selección en clipData, no añadir data (evita duplicar la 1.ª imagen)
             if (selectedUris.isEmpty()) {
+                data?.data?.let { selectedUris.add(it) }
+            }
+            val urisUnicos = selectedUris.distinctBy { it.toString() }
+
+            if (urisUnicos.isEmpty()) {
                 Toast.makeText(this, "No se seleccionaron imágenes.", Toast.LENGTH_SHORT).show()
                 return
             }
 
-            for (uri in selectedUris) {
+            for (uri in urisUnicos) {
                 try {
                     val tempFile = copiarUriAArchivo(uri)
                     if (tempFile.exists() && tempFile.length() > 0) {
@@ -378,7 +445,8 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
     private fun copiarUriAArchivo(uri: Uri): File {
         val storageDir: File = getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outputFile = File(storageDir, "GALLERY_${timeStamp}_.jpg")
+        // Nombre único: varias fotos en el mismo segundo sobrescribían el mismo archivo (misma imagen repetida)
+        val outputFile = File(storageDir, "GALLERY_${timeStamp}_${System.nanoTime()}.jpg")
 
         contentResolver.openInputStream(uri).use { input ->
             if (input == null) {
@@ -448,23 +516,40 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
     private fun getPrefKey(fieldName: String): String = "${fieldName}_${numeroActividad}_${idUser}"
 
-    private fun guardarDatosEnPrefs() {
+    /** Guarda un solo campo de texto desde el [Editable] del watcher (fiable con TextInputLayout). */
+    private fun guardarCampoTextoPrefs(fieldKey: String, value: String) {
+        if (suprimirGuardadoPrefs) return
+        getSharedPreferences("DatosBitacora", MODE_PRIVATE).edit()
+            .putString(getPrefKey(fieldKey), value)
+            .apply()
+    }
+
+    /** Sentido, lado y participantes (no incluye los textos; esos van por [guardarCampoTextoPrefs]). */
+    private fun guardarSelectoresYParticipantesPrefs(forzar: Boolean = false) {
+        if (!forzar && suprimirGuardadoPrefs) return
         val prefs = getSharedPreferences("DatosBitacora", MODE_PRIVATE).edit()
-        prefs.putString(getPrefKey("pr_inicial_1"), inputPrInicial1.text.toString())
-        prefs.putString(getPrefKey("pr_inicial_2"), inputPrInicial2.text.toString())
-        prefs.putString(getPrefKey("pr_final_1"), inputPrFinal1.text.toString())
-        prefs.putString(getPrefKey("pr_final_2"), inputPrFinal2.text.toString())
-        prefs.putString(getPrefKey("cantidad"), inputCantidad.text.toString())
-        prefs.putString(getPrefKey("observacion"), inputObservacion.text.toString())
         prefs.putString(getPrefKey("sentido"), spinnerSentido.selectedItem?.toString().orEmpty())
         prefs.putString(getPrefKey("lado"), spinnerLado.selectedItem?.toString().orEmpty())
-
         if (::participantesAdapter.isInitialized) {
             val selectedUserIds = participantesAdapter.getSelectedUserIds().map { it.toString() }.toSet()
             prefs.putStringSet(getPrefKey("usuarios_seleccionados"), selectedUserIds)
         }
-
         prefs.apply()
+    }
+
+    /**
+     * Respaldo al salir: tras [clearFocus] los EditText suelen devolver el texto completo.
+     */
+    private fun persistirTodosLosTextosDesdeVista(forzar: Boolean = false) {
+        if (!forzar && suprimirGuardadoPrefs) return
+        val ed = getSharedPreferences("DatosBitacora", MODE_PRIVATE).edit()
+        ed.putString(getPrefKey("pr_inicial_1"), inputPrInicial1.text?.toString().orEmpty())
+        ed.putString(getPrefKey("pr_inicial_2"), inputPrInicial2.text?.toString().orEmpty())
+        ed.putString(getPrefKey("pr_final_1"), inputPrFinal1.text?.toString().orEmpty())
+        ed.putString(getPrefKey("pr_final_2"), inputPrFinal2.text?.toString().orEmpty())
+        ed.putString(getPrefKey("cantidad"), inputCantidad.text?.toString().orEmpty())
+        ed.putString(getPrefKey("observacion"), inputObservacion.text?.toString().orEmpty())
+        ed.apply()
     }
 
     private fun cargarDatosDePrefs() {
@@ -521,11 +606,11 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
             .remove(getPrefKey("sentido"))
             .remove(getPrefKey("lado"))
             .remove(getPrefKey("usuarios_seleccionados"))
-            .apply()
+            .commit()
 
         getSharedPreferences("FotosBitacora", MODE_PRIVATE).edit()
             .remove(getPrefKey("fotos_guardadas"))
-            .apply()
+            .commit()
     }
 
     private fun registrarMantenimiento() {
@@ -600,6 +685,7 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         if (exito) {
             Toast.makeText(this, "Mantenimiento registrado localmente", Toast.LENGTH_LONG).show()
+            omitirPersistenciaPrefsPorRegistroExitoso = true
             limpiarPrefs()
             val intent = Intent(this, HomeActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP

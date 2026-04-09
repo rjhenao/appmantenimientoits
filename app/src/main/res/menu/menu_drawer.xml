@@ -21,6 +21,12 @@
         android:id="@+id/nav_tickets"
         android:title="Tickets" />
     <item
+        android:id="@+id/nav_inv_cargar_stock"
+        android:title="Inventario — Cargar stock" />
+    <item
+        android:id="@+id/nav_inv_salida"
+        android:title="Inventario — Salida" />
+    <item
         android:id="@+id/nav_cerrarsesion"
         android:title="Cerrar Sesión" />
 </menu>

@@ -22,9 +22,11 @@ import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Call
+import retrofit2.Response
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -47,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        RetrofitClient.init(applicationContext)
         setContentView(R.layout.activity_main)
 
         FirebaseApp.initializeApp(this)
@@ -98,8 +101,35 @@ class MainActivity : AppCompatActivity() {
                 editor.putInt("idUser", userId)
                 editor.putInt("idRol", idRol)
                 editor.putString("nombre", nombreUsu)
+                editor.putString("documento", username)
+                editor.remove("api_token")
+                editor.putBoolean("puede_inventario", idRol == 1 || idRol == 2)
                 editor.apply()
 
+                // Token Sanctum para API de inventario (y futuros módulos protegidos)
+                CoroutineScope(Dispatchers.Main).launch {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val loginResp = api.mobileLogin(
+                                ApiService.MobileLoginRequest(username, password)
+                            ).execute()
+                            if (loginResp.isSuccessful) {
+                                val body = loginResp.body()
+                                val token = body?.token?.trim().orEmpty()
+                                if (token.isNotEmpty()) {
+                                    getSharedPreferences("Sesion", MODE_PRIVATE).edit().apply {
+                                        putString("api_token", token)
+                                        putBoolean("puede_inventario", body?.puedeInventario == true)
+                                        apply()
+                                    }
+                                    InventarioOfflineSync.sincronizarCatalogo(this@MainActivity)
+                                }
+                            }
+                        } catch (_: Exception) {
+                            // Sin red: el usuario sigue con credenciales locales; inventario offline si ya hubo sync antes
+                        }
+                    }
+                }
 
                 // Redirigir a HomeActivity independientemente del rol (siempre que el rol sea válido para el login)
                 // La lógica de qué mostrar dentro de HomeActivity se puede manejar allí basado en idRol
@@ -151,45 +181,60 @@ class MainActivity : AppCompatActivity() {
 
     suspend fun sincronizarDatos(): Int {
         var errorBD = 0
-
-        coroutineScope {
-            val jobs = listOf(
-                async { sincronizarTabla("users", api.getUsers()) },
-                async { sincronizarTabla("rel_subsistema_sistema", api.getRelSubsistemaSistema()) },
-                async { sincronizarTabla("rel_sistema_locacion", api.getRelSistemaLocacion()) },
-                async { sincronizarTabla("periodicidad", api.getPeriodicidad()) },
-                async { sincronizarTabla("locaciones", api.getLocaciones()) },
-                async { sincronizarTabla("equipos", api.getEquipos()) },
-                async { sincronizarTabla("actividades", api.getActividades()) },
-                async { sincronizarTabla("sistemas", api.getSistemas()) },
-                async { sincronizarTabla("subsistemas", api.getSubSistemas()) },
-                async { sincronizarTabla("tipo_equipos", api.getTipoEquipos()) },
-                async { sincronizarTabla("rel_roles_usuarios", api.relRolesUsuarios()) },
-                async { sincronizarTabla("uf", api.getUf()) },
-                async { sincronizarTabla("sentidos_catalogo", api.getSentidosCatalogo()) },
-                async { sincronizarTabla("lados_catalogo", api.getLadosCatalogo()) },
-                async { sincronizarTabla("programar_mantenimientos", api.getProgramarMantenimientos()) }  ,
-                async { sincronizarTabla("bitacora_mantenimientos", api.getBitacoraMantenimientos()) },
-                async { sincronizarTabla("actividades_bitacoras", api.getActividadesBitacoras()) },
-                async { sincronizarTabla("programar_actividades_bitacora", api.getProgramarActividadesBitacora()) },
-                //async { sincronizarTabla("rel_bitacora_actividades", api.getRelBitacoraActividades()) },
-                //async { sincronizarTabla("rel_fotos_bitacora_actividades", api.getRelFotosBitacoraActividades()) },
-                async { sincronizarTabla("rel_cuadrillas_usuarios", api.getRelCuadrillasUsuarios()) },
-                async { sincronizarTabla("cuadrillas", api.getCuadrillas()) },
-                async { sincronizarTabla("actividades_inspeccion", api.getActividadesInspeccion()) },
-                async { sincronizarTickets() },
-
-            )
-
-            val results = jobs.awaitAll()
-            errorBD = results.count { !it }
+        // Secuencial + pequeña pausa: evita HTTP 429 (Too Many Requests) al disparar ~20 llamadas en paralelo.
+        val pasos: List<suspend () -> Boolean> = listOf(
+            { sincronizarTabla("users", api.getUsers()) },
+            { sincronizarTabla("rel_subsistema_sistema", api.getRelSubsistemaSistema()) },
+            { sincronizarTabla("rel_sistema_locacion", api.getRelSistemaLocacion()) },
+            { sincronizarTabla("periodicidad", api.getPeriodicidad()) },
+            { sincronizarTabla("locaciones", api.getLocaciones()) },
+            { sincronizarTabla("equipos", api.getEquipos()) },
+            { sincronizarTabla("actividades", api.getActividades()) },
+            { sincronizarTabla("sistemas", api.getSistemas()) },
+            { sincronizarTabla("subsistemas", api.getSubSistemas()) },
+            { sincronizarTabla("tipo_equipos", api.getTipoEquipos()) },
+            { sincronizarTabla("rel_roles_usuarios", api.relRolesUsuarios()) },
+            { sincronizarTabla("uf", api.getUf()) },
+            { sincronizarTabla("sentidos_catalogo", api.getSentidosCatalogo()) },
+            { sincronizarTabla("lados_catalogo", api.getLadosCatalogo()) },
+            { sincronizarTabla("programar_mantenimientos", api.getProgramarMantenimientos()) },
+            { sincronizarTabla("bitacora_mantenimientos", api.getBitacoraMantenimientos()) },
+            { sincronizarTabla("actividades_bitacoras", api.getActividadesBitacoras()) },
+            { sincronizarTabla("programar_actividades_bitacora", api.getProgramarActividadesBitacora()) },
+            { sincronizarTabla("rel_cuadrillas_usuarios", api.getRelCuadrillasUsuarios()) },
+            { sincronizarTabla("cuadrillas", api.getCuadrillas()) },
+            { sincronizarTabla("actividades_inspeccion", api.getActividadesInspeccion()) },
+            { sincronizarTickets() },
+        )
+        for (paso in pasos) {
+            try {
+                if (!paso()) errorBD++
+            } catch (e: Exception) {
+                Log.e("Sincronizacion", "Error en paso de sync: ${e.message}", e)
+                errorBD++
+            }
+            delay(80)
         }
-
         return errorBD
     }
 
 
     val mutex = Mutex()
+
+    /**
+     * El servidor puede responder 429 si hay demasiadas peticiones; se reintenta con espera progresiva.
+     */
+    private suspend fun <T> ejecutarCallConReintentoGenerico(call: Call<T>, tag: String): Response<T> {
+        var ultima: Response<T>? = null
+        repeat(4) { intento ->
+            val c = if (intento == 0) call else call.clone()
+            ultima = c.execute()
+            if (ultima!!.code() != 429) return ultima!!
+            Log.w(tag, "HTTP 429 Too Many Requests — reintento ${intento + 1}/4 tras espera...")
+            delay(1000L * (intento + 1))
+        }
+        return ultima!!
+    }
 
     suspend fun <T : Any> sincronizarTabla(nombreTabla: String, call: Call<List<T>>): Boolean {
         val dbHelper = DatabaseHelper(this)
@@ -198,8 +243,8 @@ class MainActivity : AppCompatActivity() {
 
         return withContext(Dispatchers.IO) {
             try {
-                // 1. Ejecutamos la llamada a la API
-                val response = call.execute()
+                // 1. Llamada con reintentos si el servidor limita por tasa (429)
+                val response = ejecutarCallConReintentoGenerico(call, tag)
 
                 // 2. Verificamos si la respuesta del servidor fue exitosa (código 200-299)
                 if (response.isSuccessful) {
@@ -214,11 +259,12 @@ class MainActivity : AppCompatActivity() {
                         mutex.withLock {
                             db.beginTransaction()
                             try {
-                                // PROTECCIÓN: No eliminar actividades no programadas pendientes de sincronización
+                                // PROTECCIÓN NP: conservar TODAS las filas Estado=2 (no programadas).
+                                // Antes se borraban las NP ya sincronizadas (sincronizado=1) y al reinsertar desde la API
+                                // el modelo no trae "sincronizado", quedaba 0 y volvían a salir "por sincronizar".
                                 if (nombreTabla == "programar_actividades_bitacora") {
-                                    // Solo eliminar actividades programadas (Estado != 2) o ya sincronizadas (sincronizado = 1)
-                                    db.execSQL("DELETE FROM $nombreTabla WHERE NOT (Estado = 2 AND sincronizado = 0)")
-                                    Log.d(tag, "Tabla $nombreTabla limpiada (preservando actividades no programadas pendientes)")
+                                    db.execSQL("DELETE FROM $nombreTabla WHERE IFNULL(Estado, 0) != 2")
+                                    Log.d(tag, "Tabla $nombreTabla: eliminadas solo programadas; NP (Estado=2) preservadas")
                                 } else {
                                     db.execSQL("DELETE FROM $nombreTabla") // Limpia la tabla local
                                 }
@@ -232,7 +278,11 @@ class MainActivity : AppCompatActivity() {
                                             put(fieldName, field.get(item)?.toString())
                                         }
                                     }
-                                    
+                                    // Filas descargadas del servidor: no son "pendientes de subir" (la API no envía sincronizado).
+                                    if (nombreTabla == "programar_actividades_bitacora") {
+                                        values.put("sincronizado", 1)
+                                    }
+
                                     // 4. Verificamos si la inserción en la BD fue exitosa
                                     // Para programar_actividades_bitacora, usamos INSERT OR IGNORE para no sobrescribir IDs locales
                                     if (nombreTabla == "programar_actividades_bitacora") {
@@ -278,8 +328,7 @@ class MainActivity : AppCompatActivity() {
 
         return withContext(Dispatchers.IO) {
             try {
-                // 1. Ejecutamos la llamada a la API
-                val response = api.getTickets().execute()
+                val response = ejecutarCallConReintentoGenerico(api.getTickets(), tag)
 
                 // 2. Verificamos si la respuesta del servidor fue exitosa
                 if (response.isSuccessful) {

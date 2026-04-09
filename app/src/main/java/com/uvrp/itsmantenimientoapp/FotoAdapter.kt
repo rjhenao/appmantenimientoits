@@ -15,6 +15,8 @@ import java.util.*
 
 class FotoAdapter(
     private val fotos: MutableList<File>,
+    /** Al tocar la miniatura (no el botón eliminar). Opcional. Debe ir antes del lambda de eliminar para no interferir con la sintaxis de lambda final. */
+    private val onFotoClick: ((File) -> Unit)? = null,
     private val onEliminarClick: (File) -> Unit
 ) : RecyclerView.Adapter<FotoAdapter.FotoViewHolder>() {
 
@@ -45,6 +47,12 @@ class FotoAdapter(
             holder.btnEliminar.setOnClickListener {
                 onEliminarClick(foto)
             }
+
+            holder.imgFoto.setOnClickListener {
+                onFotoClick?.invoke(foto)
+            }
+            holder.imgFoto.isClickable = onFotoClick != null
+            holder.imgFoto.isFocusable = onFotoClick != null
             
         } catch (e: Exception) {
             Log.e("FotoAdapter", "Error al cargar foto: ${e.message}", e)
