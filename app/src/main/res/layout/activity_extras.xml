@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <include layout="@layout/header_global" />
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Horas extra"
+                    android:textColor="@color/primary_blue"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="16dp"
+                    android:text="@string/extras_ayuda_principal"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="13sp" />
+
+                <!-- Período -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
+                            android:text="Período"
+                            android:textColor="@color/primary_blue"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilFechaInicial"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Fecha inicial (AAAA-MM-DD)"
+                            app:boxStrokeColor="@color/primary_blue"
+                            app:helperText="Digite la fecha"
+                            app:helperTextEnabled="true"
+                            app:hintTextColor="@color/primary_blue">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etFechaInicial"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:digits="0123456789-"
+                                android:inputType="text"
+                                android:maxLength="10" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilFechaFinal"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="Fecha final (AAAA-MM-DD)"
+                            app:boxStrokeColor="@color/primary_blue"
+                            app:helperText="Digite la fecha"
+                            app:helperTextEnabled="true"
+                            app:hintTextColor="@color/primary_blue">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etFechaFinal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:digits="0123456789-"
+                                android:inputType="text"
+                                android:maxLength="10" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Turno -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Turno"
+                            android:textColor="@color/primary_blue"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <Spinner
+                            android:id="@+id/spTurno"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@drawable/spinner_background"
+                            android:padding="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Antes de entrada -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <CheckBox
+                            android:id="@+id/cbAntes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Antes de la entrada"
+                            android:textColor="@color/primary_blue"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:id="@+id/layoutAntesDetalle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="8dp"
+                                android:text="Indique desde qué hora hasta qué hora (formato 24 h, ej. 06:30 o 22:15)."
+                                android:textSize="12sp"
+                                android:textColor="@android:color/darker_gray" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <com.google.android.material.textfield.TextInputLayout
+                                    android:id="@+id/tilHoraIniAntes"
+                                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:hint="Hora inicial"
+                                    app:boxStrokeColor="@color/primary_blue"
+                                    app:hintTextColor="@color/primary_blue">
+
+                                    <com.google.android.material.textfield.TextInputEditText
+                                        android:id="@+id/etHoraIniAntes"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:inputType="time"
+                                        android:maxLength="5" />
+                                </com.google.android.material.textfield.TextInputLayout>
+
+                                <com.google.android.material.textfield.TextInputLayout
+                                    android:id="@+id/tilHoraFinAntes"
+                                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="10dp"
+                                    android:layout_weight="1"
+                                    android:hint="Hora final"
+                                    app:boxStrokeColor="@color/primary_blue"
+                                    app:hintTextColor="@color/primary_blue">
+
+                                    <com.google.android.material.textfield.TextInputEditText
+                                        android:id="@+id/etHoraFinAntes"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:inputType="time"
+                                        android:maxLength="5" />
+                                </com.google.android.material.textfield.TextInputLayout>
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/tvResumenAntes"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:padding="10dp"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:visibility="gone" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Después de salida -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <CheckBox
+                            android:id="@+id/cbDespues"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Después de la salida"
+                            android:textColor="@color/primary_blue"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:id="@+id/layoutDespuesDetalle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="8dp"
+                                android:text="Mismo criterio: hora inicial y hora final del tramo."
+                                android:textSize="12sp"
+                                android:textColor="@android:color/darker_gray" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <com.google.android.material.textfield.TextInputLayout
+                                    android:id="@+id/tilHoraIniDespues"
+                                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:hint="Hora inicial"
+                                    app:boxStrokeColor="@color/primary_blue"
+                                    app:hintTextColor="@color/primary_blue">
+
+                                    <com.google.android.material.textfield.TextInputEditText
+                                        android:id="@+id/etHoraIniDespues"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:inputType="time"
+                                        android:maxLength="5" />
+                                </com.google.android.material.textfield.TextInputLayout>
+
+                                <com.google.android.material.textfield.TextInputLayout
+                                    android:id="@+id/tilHoraFinDespues"
+                                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="10dp"
+                                    android:layout_weight="1"
+                                    android:hint="Hora final"
+                                    app:boxStrokeColor="@color/primary_blue"
+                                    app:hintTextColor="@color/primary_blue">
+
+                                    <com.google.android.material.textfield.TextInputEditText
+                                        android:id="@+id/etHoraFinDespues"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:inputType="time"
+                                        android:maxLength="5" />
+                                </com.google.android.material.textfield.TextInputLayout>
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/tvResumenDespues"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:padding="10dp"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:visibility="gone" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Autorización y observación -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Autorizó"
+                            android:textColor="@color/primary_blue"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <Spinner
+                            android:id="@+id/spAutorizo"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@drawable/spinner_background"
+                            android:padding="8dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilObservacion"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:hint="Observación (obligatoria)"
+                            app:boxStrokeColor="@color/primary_blue"
+                            app:hintTextColor="@color/primary_blue">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etObservacion"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="top"
+                                android:inputType="textMultiLine|textCapSentences"
+                                android:minLines="3" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/tvEstadoEnvio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="—"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="13sp"
+                    android:lineSpacingExtra="2dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGuardarYEnviarExtra"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:text="@string/extras_btn_guardar_enviar"
+                    app:backgroundTint="@color/primary_blue" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:menu="@menu/menu_drawer" />
+</androidx.drawerlayout.widget.DrawerLayout>

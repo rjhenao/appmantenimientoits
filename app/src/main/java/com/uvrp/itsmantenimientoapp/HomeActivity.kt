@@ -174,23 +174,31 @@ class HomeActivity : AppCompatActivity() {
 
         val pendientesCorrectivos: List<String>
         val pendientesPreventivos: List<String>
+        val pendientesBitacora: List<String>
 
         when (idRol) {
             1, 2 -> {
                 pendientesCorrectivos = dbHelper.getMantenimientosPendientes()
                 pendientesPreventivos = dbHelper.getMantenimientosPendientesActividad()
+                pendientesBitacora = if (idUsuario > 0) {
+                    dbHelper.getMantenimientosPendientesBicatacoras(idUsuario)
+                } else {
+                    emptyList()
+                }
             }
             5, 6, 7 -> {
                 pendientesCorrectivos = dbHelper.getMantenimientosPendientes()
                 pendientesPreventivos = dbHelper.getMantenimientosPendientesBicatacoras(idUsuario)
+                pendientesBitacora = emptyList()
             }
             else -> {
                 pendientesCorrectivos = emptyList()
                 pendientesPreventivos = emptyList()
+                pendientesBitacora = emptyList()
             }
         }
 
-        val todosLosPendientes = pendientesCorrectivos + pendientesPreventivos
+        val todosLosPendientes = pendientesCorrectivos + pendientesPreventivos + pendientesBitacora
 
         if (todosLosPendientes.isEmpty()) {
             if (puedeVerMantenimientos) {
@@ -222,12 +230,16 @@ class HomeActivity : AppCompatActivity() {
 
             // Actualizar el título
             val tituloMantenimientos = when {
-                pendientesCorrectivos.isNotEmpty() && pendientesPreventivos.isNotEmpty() ->
+                pendientesCorrectivos.isNotEmpty() && (pendientesPreventivos.isNotEmpty() || pendientesBitacora.isNotEmpty()) ->
                     "Mantenimientos Pendientes"
                 pendientesCorrectivos.isNotEmpty() ->
                     "Mantenimientos $textoCorrectivo Pendientes"
+                pendientesPreventivos.isNotEmpty() && pendientesBitacora.isNotEmpty() ->
+                    "Mantenimientos Pendientes"
                 pendientesPreventivos.isNotEmpty() ->
                     "Mantenimientos $textoPreventivo Pendientes"
+                pendientesBitacora.isNotEmpty() ->
+                    "Bitácora Pendiente"
                 else -> "Mantenimientos Pendientes"
             }
             tvNotificationTitle.text = tituloMantenimientos
@@ -244,7 +256,10 @@ class HomeActivity : AppCompatActivity() {
                     append("• $textoCorrectivo: ${pendientesCorrectivos.size}\n")
                 }
                 if (pendientesPreventivos.isNotEmpty()) {
-                    append("• $textoPreventivo: ${pendientesPreventivos.size}")
+                    append("• $textoPreventivo: ${pendientesPreventivos.size}\n")
+                }
+                if (pendientesBitacora.isNotEmpty()) {
+                    append("• Bitácora: ${pendientesBitacora.size}")
                 }
             }
             tvNotificationDescription.text = descripcion.trim()

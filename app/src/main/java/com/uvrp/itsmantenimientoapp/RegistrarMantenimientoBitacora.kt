@@ -76,6 +76,7 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
      * en [onPause], ese ciclo volvería a escribir texto/fotos en SharedPreferences y anularía la limpieza.
      */
     private var omitirPersistenciaPrefsPorRegistroExitoso = false
+    private var registroEnProceso = false
 
     companion object {
         private const val REQUEST_IMAGE_CAPTURE = 1
@@ -614,11 +615,20 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
     }
 
     private fun registrarMantenimiento() {
+        if (registroEnProceso) return
         if (!validarCampos()) return
+
+        registroEnProceso = true
+        val textoBotonOriginal = buttonRegister.text
+        buttonRegister.isEnabled = false
+        buttonRegister.text = "Guardando..."
 
         val ranges = dbHelper.getValidationRanges(numeroActividad)
         if (ranges == null) {
             Toast.makeText(this, "Error: No se encontraron los rangos de validación.", Toast.LENGTH_LONG).show()
+            registroEnProceso = false
+            buttonRegister.isEnabled = true
+            buttonRegister.text = textoBotonOriginal
             return
         }
 
@@ -653,6 +663,9 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
 
         if (errores.isNotEmpty()) {
             mostrarErrorDeValidacion(errores.joinToString("\n\n"))
+            registroEnProceso = false
+            buttonRegister.isEnabled = true
+            buttonRegister.text = textoBotonOriginal
             return
         }
 
@@ -669,6 +682,9 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
         )
         if (!actualizado) {
             Toast.makeText(this, "Error al actualizar Sentido/Lado de la actividad.", Toast.LENGTH_LONG).show()
+            registroEnProceso = false
+            buttonRegister.isEnabled = true
+            buttonRegister.text = textoBotonOriginal
             return
         }
 
@@ -692,7 +708,14 @@ class RegistrarMantenimientoBitacora : AppCompatActivity() {
             startActivity(intent)
             finish()
         } else {
-            Toast.makeText(this, "Error al guardar en la base de datos local", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "No se guardó el registro. Si ya lo envió, espere la sincronización o revise duplicados.",
+                Toast.LENGTH_LONG
+            ).show()
+            registroEnProceso = false
+            buttonRegister.isEnabled = true
+            buttonRegister.text = textoBotonOriginal
         }
     }
 

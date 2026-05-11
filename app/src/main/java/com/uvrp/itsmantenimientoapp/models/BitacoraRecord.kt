@@ -19,5 +19,12 @@ data class BitacoraRecord(
     val uf: Int? = null,
     val sentido: String? = null,
     val lado: String? = null,
-    val supervisorResponsable: Int? = null
+    val supervisorResponsable: Int? = null,
+    val registroPrInicial: String? = null,
+    val registroPrFinal: String? = null,
+    val registroCantidad: Double? = null,
+    val registroObservacion: String? = null,
+    val registroSentido: String? = null,
+    val registroLado: String? = null,
+    val idRegistroNpLocal: Int? = null
 )

@@ -1,32 +1,78 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:id="@+id/nav_home"
-        android:title="Inicio" />
-    <item
-        android:id="@+id/nav_its"
-        android:title="Preventivo ITS" />
-    <item
-        android:id="@+id/nav_correctivo"
-        android:title="Correctivo ITS" />
-    <item
-        android:id="@+id/nav_preoperacional"
-        android:title="Preoperacional" />
-    <item
-        android:id="@+id/nav_combustible"
-        android:title="Registrar Combustible" />
-    <item
-        android:id="@+id/nav_bitacoras"
-        android:title="Bitacoras" />
-    <item
-        android:id="@+id/nav_tickets"
-        android:title="Tickets" />
-    <item
-        android:id="@+id/nav_inv_cargar_stock"
-        android:title="Inventario — Cargar stock" />
-    <item
-        android:id="@+id/nav_inv_salida"
-        android:title="Inventario — Salida" />
-    <item
-        android:id="@+id/nav_cerrarsesion"
-        android:title="Cerrar Sesión" />
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group
+        android:id="@+id/nav_group_inicio"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_home"
+            android:title="@string/drawer_inicio" />
+    </group>
+
+    <!-- Un solo bloque: ITS + campo (menos encabezados que antes) -->
+    <item android:title="@string/drawer_seccion_trabajo">
+        <menu>
+            <group
+                android:id="@+id/nav_group_mantenimiento"
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/nav_its"
+                    android:title="@string/drawer_preventivo_its" />
+                <item
+                    android:id="@+id/nav_correctivo"
+                    android:title="@string/drawer_correctivo_its" />
+                <item
+                    android:id="@+id/nav_bitacoras"
+                    android:title="@string/drawer_bitacoras" />
+                <item
+                    android:id="@+id/nav_tickets"
+                    android:title="@string/drawer_tickets" />
+                <item
+                    android:id="@+id/nav_reporte_qr"
+                    android:title="@string/nav_reporte_qr" />
+                <item
+                    android:id="@+id/nav_preoperacional"
+                    android:title="@string/drawer_preoperacional" />
+                <item
+                    android:id="@+id/nav_combustible"
+                    android:title="@string/drawer_combustible" />
+            </group>
+        </menu>
+    </item>
+
+    <item android:title="@string/drawer_seccion_inventario">
+        <menu>
+            <group
+                android:id="@+id/nav_group_inventario"
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/nav_inv_cargar_stock"
+                    android:title="@string/drawer_inv_cargar" />
+                <item
+                    android:id="@+id/nav_inv_salida"
+                    android:title="@string/drawer_inv_salida" />
+                <item
+                    android:id="@+id/nav_inv_consulta_ubicacion"
+                    android:title="@string/drawer_inv_consulta_ubicacion" />
+            </group>
+        </menu>
+    </item>
+
+    <group
+        android:id="@+id/nav_group_extras"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_extras"
+            android:title="@string/drawer_extras" />
+    </group>
+
+    <group
+        android:id="@+id/nav_group_sesion"
+        android:checkableBehavior="none">
+        <item
+            android:id="@+id/nav_cerrarsesion"
+            android:title="@string/drawer_cerrar_sesion" />
+    </group>
 </menu>

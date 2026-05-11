@@ -40,7 +40,7 @@ import java.text.DecimalFormatSymbols
 import java.math.BigDecimal
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 47) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 48) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
         // IF NOT EXISTS evita crash si onCreate se ejecuta dos veces (p. ej. condición de carrera al sincronizar).
@@ -552,6 +552,31 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         """
         db.execSQL(createCombustibleTable)
 
+        // Tabla Extras (horas extras) — offline first
+        val createExtrasHoursTable = """
+            CREATE TABLE IF NOT EXISTS extras_hours (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_uuid TEXT NOT NULL UNIQUE,
+                fecha_inicial TEXT NOT NULL,
+                fecha_final TEXT NOT NULL,
+                turno_codigo INTEGER NOT NULL,
+                aplica_antes INTEGER NOT NULL DEFAULT 0,
+                horas_antes REAL,
+                hora_inicio_antes TEXT,
+                hora_fin_antes TEXT,
+                aplica_despues INTEGER NOT NULL DEFAULT 0,
+                horas_despues REAL,
+                hora_inicio_despues TEXT,
+                hora_fin_despues TEXT,
+                autorizo_nombre TEXT NOT NULL,
+                observacion TEXT NOT NULL,
+                cargado_en TEXT,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT
+            )
+        """
+        db.execSQL(createExtrasHoursTable)
+
         val invUnidad = """
             CREATE TABLE IF NOT EXISTS inv_unidad_local (
                 id INTEGER PRIMARY KEY,
@@ -682,6 +707,32 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             )
             """.trimIndent()
         )
+
+        // Extras (horas extras) — agregar tabla si el usuario viene de versión anterior
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS extras_hours (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_uuid TEXT NOT NULL UNIQUE,
+                fecha_inicial TEXT NOT NULL,
+                fecha_final TEXT NOT NULL,
+                turno_codigo INTEGER NOT NULL,
+                aplica_antes INTEGER NOT NULL DEFAULT 0,
+                horas_antes REAL,
+                hora_inicio_antes TEXT,
+                hora_fin_antes TEXT,
+                aplica_despues INTEGER NOT NULL DEFAULT 0,
+                horas_despues REAL,
+                hora_inicio_despues TEXT,
+                hora_fin_despues TEXT,
+                autorizo_nombre TEXT NOT NULL,
+                observacion TEXT NOT NULL,
+                cargado_en TEXT,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT
+            )
+            """.trimIndent()
+        )
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS inv_pendiente_salida (
@@ -778,6 +829,30 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                 Log.d("DB_UPGRADE", "Tabla 'combustible' creada exitosamente")
             } catch (e: Exception) {
                 Log.e("DB_UPGRADE", "Error creando tabla combustible: ${e.message}")
+            }
+        }
+
+        // v48: rangos horarios en extras (hora inicio/fin por tramo)
+        if (oldVersion < 48) {
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_inicio_antes TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_inicio_antes: ${e.message}")
+            }
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_fin_antes TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_fin_antes: ${e.message}")
+            }
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_inicio_despues TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_inicio_despues: ${e.message}")
+            }
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_fin_despues TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_fin_despues: ${e.message}")
             }
         }
     }
@@ -2449,6 +2524,25 @@ return insertOk
         ))
     }
 
+    /**
+     * Equipos (fila `equipos.id`) para tickets / reporte por locación.
+     */
+    fun getEquiposPorSubsistema(locacionId: Int, sistemaId: Int, subsistemaId: Int): List<Pair<Int, String>> {
+        return obtenerLista(
+            """
+        SELECT e.id, e.tag
+        FROM equipos e
+        WHERE e.id_locacion = ? AND e.id_sistemas = ? AND e.id_subsistemas = ?
+        ORDER BY e.tag
+            """.trimIndent(),
+            arrayOf(
+                locacionId.toString(),
+                sistemaId.toString(),
+                subsistemaId.toString(),
+            ),
+        )
+    }
+
 
     private fun obtenerLista(query: String, args: Array<String>? = null): List<Pair<Int, String>> {
         val lista = mutableListOf<Pair<Int, String>>()
@@ -2682,8 +2776,26 @@ return insertOk
                 pab2.sincronizado = 0
                 AND pab2.Estado = 2
                 AND pab2.supervisorResponsable = ?
+
+            UNION ALL
+
+            SELECT
+                ('Reg. NP: ' || SUBSTR(ab3.Descripcion, 1, 18) || ' ' || CAST(rba3.Cantidad AS TEXT)) AS tag
+            FROM
+                rel_bitacora_actividades rba3
+            JOIN
+                programar_actividades_bitacora pab3 ON (pab3.id = rba3.idRelProgramarActividadesBitacora)
+            JOIN
+                actividades_bitacoras ab3 ON (ab3.id = pab3.idActividad)
+            JOIN
+                bitacora_mantenimientos bm3 ON (bm3.id = pab3.idBitacora AND bm3.estado = 1)
+            WHERE
+                rba3.sincronizado = 0
+                AND rba3.Programada = 0
+                AND pab3.Estado = 2
+                AND pab3.supervisorResponsable = ?
         ) t
-        """, arrayOf(idUsuario.toString())
+        """, arrayOf(idUsuario.toString(), idUsuario.toString())
         ).use { cursor ->
             if (cursor.moveToFirst()) {
                 do {
@@ -3304,6 +3416,97 @@ return insertOk
 
 
 
+    fun esActividadNoProgramada(idProgramarActividadesBitacora: Int): Boolean {
+        val db = this.readableDatabase
+        db.rawQuery(
+            "SELECT Estado FROM programar_actividades_bitacora WHERE id = ? LIMIT 1",
+            arrayOf(idProgramarActividadesBitacora.toString())
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                return cursor.getInt(cursor.getColumnIndexOrThrow("Estado")) == 2
+            }
+        }
+        return false
+    }
+
+    fun existeRegistroBitacoraPendienteDuplicado(
+        numeroActividad: Int,
+        prInicial: String,
+        prFinal: String,
+        cantidad: Double,
+        observacion: String
+    ): Boolean {
+        val db = this.readableDatabase
+        db.rawQuery(
+            """
+            SELECT 1 FROM rel_bitacora_actividades
+            WHERE idRelProgramarActividadesBitacora = ?
+              AND PrInicial = ?
+              AND PrFinal = ?
+              AND Cantidad = ?
+              AND IFNULL(ObservacionInterna, '') = ?
+              AND sincronizado = 0
+            LIMIT 1
+            """.trimIndent(),
+            arrayOf(
+                numeroActividad.toString(),
+                prInicial,
+                prFinal,
+                cantidad.toString(),
+                observacion
+            )
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
+    fun existeActividadNpPendienteDuplicada(
+        idBitacora: Int,
+        idActividad: Int,
+        idCuadrilla: Int,
+        uf: Int,
+        sentido: String,
+        lado: String,
+        prInicial: String,
+        prFinal: String,
+        cantidad: Double,
+        observacion: String
+    ): Boolean {
+        val db = this.readableDatabase
+        db.rawQuery(
+            """
+            SELECT 1 FROM programar_actividades_bitacora
+            WHERE idBitacora = ?
+              AND idActividad = ?
+              AND IdCuadrilla = ?
+              AND UF = ?
+              AND Sentido = ?
+              AND Lado = ?
+              AND PrInicial = ?
+              AND PrFinal = ?
+              AND Cantidad = ?
+              AND IFNULL(Observacion, '') = ?
+              AND Estado = 2
+              AND sincronizado = 0
+            LIMIT 1
+            """.trimIndent(),
+            arrayOf(
+                idBitacora.toString(),
+                idActividad.toString(),
+                idCuadrilla.toString(),
+                uf.toString(),
+                sentido,
+                lado,
+                prInicial,
+                prFinal,
+                cantidad.toString(),
+                observacion
+            )
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
     fun insertarRegistroBitacora(
         numeroActividad: Int,
         prInicial: String,
@@ -3313,8 +3516,24 @@ return insertOk
         idUsuarios: List<Int>, // <-- Ahora se recibe la lista de usuarios
         fotos: List<File>       // <-- Y la lista de fotos
     ): Boolean {
+        if (existeRegistroBitacoraPendienteDuplicado(
+                numeroActividad,
+                prInicial,
+                prFinal,
+                cantidad,
+                observacion
+            )
+        ) {
+            Log.w(
+                "DatabaseHelper",
+                "Registro de bitácora duplicado pendiente ignorado para actividad $numeroActividad"
+            )
+            return false
+        }
+
         val db = this.writableDatabase
         var exito = false
+        val esNoProgramada = esActividadNoProgramada(numeroActividad)
 
         // INICIAMOS LA TRANSACCIÓN
         db.beginTransaction()
@@ -3327,7 +3546,7 @@ return insertOk
                 put("PrInicial", prInicial)
                 put("PrFinal", prFinal)
                 put("Cantidad", cantidad)
-                put("Programada", 1)
+                put("Programada", if (esNoProgramada) 0 else 1)
                 put("ObservacionInterna", observacion)
                 put("created_at", timestamp)
                 put("updated_at", timestamp)
@@ -3464,6 +3683,68 @@ return insertOk
 
     // Dentro de la clase DatabaseHelper.kt
 
+    private data class RegistroNpPendienteLocal(
+        val idRba: Int,
+        val prInicial: String,
+        val prFinal: String,
+        val cantidad: Double,
+        val observacion: String,
+        val sentido: String?,
+        val lado: String?
+    )
+
+    private fun obtenerRegistroNpPendiente(db: SQLiteDatabase, idPab: Int): RegistroNpPendienteLocal? {
+        val sql = """
+            SELECT rba.id, rba.PrInicial, rba.PrFinal, rba.Cantidad, rba.ObservacionInterna, pab.Sentido, pab.Lado
+            FROM rel_bitacora_actividades rba
+            JOIN programar_actividades_bitacora pab ON pab.id = rba.idRelProgramarActividadesBitacora
+            WHERE rba.idRelProgramarActividadesBitacora = ? AND rba.sincronizado = 0
+            ORDER BY rba.id DESC
+            LIMIT 1
+        """.trimIndent()
+        db.rawQuery(sql, arrayOf(idPab.toString())).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                return null
+            }
+            return RegistroNpPendienteLocal(
+                idRba = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                prInicial = cursor.getString(cursor.getColumnIndexOrThrow("PrInicial")),
+                prFinal = cursor.getString(cursor.getColumnIndexOrThrow("PrFinal")),
+                cantidad = cursor.getDouble(cursor.getColumnIndexOrThrow("Cantidad")),
+                observacion = cursor.getString(cursor.getColumnIndexOrThrow("ObservacionInterna")) ?: "",
+                sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
+                lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado"))
+            )
+        }
+    }
+
+    private fun obtenerUsuariosRegistroNp(db: SQLiteDatabase, idRba: Int): List<Int> {
+        val usuarios = mutableListOf<Int>()
+        val queryUsuarios =
+            "SELECT idUsuario FROM rel_usuarios_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+        db.rawQuery(queryUsuarios, arrayOf(idRba.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                usuarios.add(cursor.getInt(cursor.getColumnIndexOrThrow("idUsuario")))
+            }
+        }
+        return usuarios
+    }
+
+    private fun obtenerFotosRegistroNp(db: SQLiteDatabase, idRba: Int): List<File> {
+        val fotos = mutableListOf<File>()
+        val queryFotos =
+            "SELECT ruta FROM rel_fotos_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+        db.rawQuery(queryFotos, arrayOf(idRba.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                val path = cursor.getString(cursor.getColumnIndexOrThrow("ruta"))
+                if (path.isNotBlank()) {
+                    fotos.add(File(path))
+                }
+            }
+        }
+        return fotos
+    }
+
     /**
      * Obtiene todos los registros de bitácora pendientes de sincronizar (sincronizado = 0),
      * incluyendo sus listas de usuarios y fotos asociadas.
@@ -3477,12 +3758,13 @@ return insertOk
 
         // 1. Obtenemos los registros principales de bitácora pendientes (actividades programadas)
         val queryPrincipal = """
-            SELECT rba.*, pab.Sentido, pab.Lado
+            SELECT rba.*, pab.Sentido, pab.Lado, pab.Estado AS pabEstado
             FROM rel_bitacora_actividades rba
             JOIN programar_actividades_bitacora pab 
                 ON pab.id = rba.idRelProgramarActividadesBitacora
             JOIN bitacora_mantenimientos bm ON bm.id = pab.idBitacora AND bm.estado = 1
-            WHERE rba.sincronizado = 0 AND rba.Programada = 1
+            WHERE rba.sincronizado = 0
+              AND NOT (IFNULL(pab.Estado, 1) = 2 AND pab.sincronizado = 0)
         """.trimIndent()
         db.rawQuery(queryPrincipal, null).use { cursor ->
             while (cursor.moveToNext()) {
@@ -3538,30 +3820,30 @@ return insertOk
             while (cursor.moveToNext()) {
                 val idRegistro = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
                 
-                // Para actividades no programadas, no hay usuarios asociados
-                val listaUsuarios = emptyList<Int>()
-                
-                // Fotos NP: (1) legacy pegadas al id de programar; (2) las del registro en rel_bitacora_actividades
-                // (al "Registrar actividad" las fotos se guardan con FK = id de rel, no de pab).
+                val registroPendiente = obtenerRegistroNpPendiente(db, idRegistro)
+                val listaUsuarios = if (registroPendiente != null) {
+                    obtenerUsuariosRegistroNp(db, registroPendiente.idRba)
+                } else {
+                    emptyList()
+                }
+
                 val listaFotos = mutableListOf<File>()
                 val pathsVistos = mutableSetOf<String>()
-                fun agregarRutas(photoCursor: Cursor) {
-                    while (photoCursor.moveToNext()) {
-                        val path = photoCursor.getString(photoCursor.getColumnIndexOrThrow("ruta"))
-                        if (path.isNotBlank() && pathsVistos.add(path)) {
-                            listaFotos.add(File(path))
-                        }
+                fun agregarFoto(path: String) {
+                    if (path.isNotBlank() && pathsVistos.add(path)) {
+                        listaFotos.add(File(path))
                     }
                 }
                 val sqlFotosPab =
                     "SELECT ruta FROM rel_fotos_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
-                db.rawQuery(sqlFotosPab, arrayOf(idRegistro.toString())).use { agregarRutas(it) }
-                val sqlFotosDesdeRel = """
-                    SELECT f.ruta FROM rel_fotos_bitacora_actividades f
-                    INNER JOIN rel_bitacora_actividades rba ON rba.id = f.idRelProgramarActividadesBitacora
-                    WHERE rba.idRelProgramarActividadesBitacora = ?
-                """.trimIndent()
-                db.rawQuery(sqlFotosDesdeRel, arrayOf(idRegistro.toString())).use { agregarRutas(it) }
+                db.rawQuery(sqlFotosPab, arrayOf(idRegistro.toString())).use { photoCursor ->
+                    while (photoCursor.moveToNext()) {
+                        agregarFoto(photoCursor.getString(photoCursor.getColumnIndexOrThrow("ruta")))
+                    }
+                }
+                if (registroPendiente != null) {
+                    obtenerFotosRegistroNp(db, registroPendiente.idRba).forEach { agregarFoto(it.absolutePath) }
+                }
 
                 // Creamos el objeto completo y lo añadimos a la lista (actividad no programada)
                 listaBitacoras.add(
@@ -3582,13 +3864,35 @@ return insertOk
                         uf = cursor.getInt(cursor.getColumnIndexOrThrow("UF")),
                         sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
                         lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado")),
-                        supervisorResponsable = cursor.getInt(cursor.getColumnIndexOrThrow("supervisorResponsable"))
+                        supervisorResponsable = cursor.getInt(cursor.getColumnIndexOrThrow("supervisorResponsable")),
+                        registroPrInicial = registroPendiente?.prInicial,
+                        registroPrFinal = registroPendiente?.prFinal,
+                        registroCantidad = registroPendiente?.cantidad,
+                        registroObservacion = registroPendiente?.observacion,
+                        registroSentido = registroPendiente?.sentido,
+                        registroLado = registroPendiente?.lado,
+                        idRegistroNpLocal = registroPendiente?.idRba
                     )
                 )
             }
         }
 
         return listaBitacoras
+    }
+
+    fun marcarRegistrosNpDependientesSincronizados(idPab: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("sincronizado", 1)
+        }
+        val filas = db.update(
+            "rel_bitacora_actividades",
+            values,
+            "idRelProgramarActividadesBitacora = ? AND sincronizado = 0",
+            arrayOf(idPab.toString())
+        )
+        Log.d("SyncBitacora", "Registros NP dependientes marcados como sincronizados para pab=$idPab (filas=$filas)")
+        db.close()
     }
 
     /**
@@ -4342,6 +4646,26 @@ return insertOk
         supervisorResponsable: Int,
         fotos: List<File> = emptyList()
     ): Long {
+        if (existeActividadNpPendienteDuplicada(
+                idBitacora,
+                idActividad,
+                idCuadrilla,
+                uf,
+                sentido,
+                lado,
+                prInicial,
+                prFinal,
+                cantidad,
+                observacion
+            )
+        ) {
+            Log.w(
+                "ACTIVIDAD_NO_PROGRAMADA",
+                "Actividad NP duplicada pendiente ignorada para bitácora $idBitacora"
+            )
+            return -1L
+        }
+
         val db = this.writableDatabase
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         val values = ContentValues().apply {
@@ -4792,6 +5116,134 @@ return insertOk
         db.close()
     }
 
+    // ===================================================================
+    // MÉTODOS PARA EXTRAS (HORAS EXTRAS) — OFFLINE FIRST
+    // ===================================================================
+
+    data class ExtraHourLocal(
+        val id: Int,
+        val clientUuid: String,
+        val fechaInicial: String,
+        val fechaFinal: String,
+        val turnoCodigo: Int,
+        val aplicaAntes: Int,
+        val horasAntes: Double?,
+        val horaInicioAntes: String?,
+        val horaFinAntes: String?,
+        val aplicaDespues: Int,
+        val horasDespues: Double?,
+        val horaInicioDespues: String?,
+        val horaFinDespues: String?,
+        val autorizoNombre: String,
+        val observacion: String,
+        val cargadoEn: String?
+    )
+
+    fun insertarExtraHourLocal(
+        clientUuid: String,
+        fechaInicial: String,
+        fechaFinal: String,
+        turnoCodigo: Int,
+        aplicaAntes: Boolean,
+        horasAntes: Double?,
+        horaInicioAntes: String?,
+        horaFinAntes: String?,
+        aplicaDespues: Boolean,
+        horasDespues: Double?,
+        horaInicioDespues: String?,
+        horaFinDespues: String?,
+        autorizoNombre: String,
+        observacion: String,
+        cargadoEn: String?
+    ): Long {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("client_uuid", clientUuid)
+            put("fecha_inicial", fechaInicial)
+            put("fecha_final", fechaFinal)
+            put("turno_codigo", turnoCodigo)
+            put("aplica_antes", if (aplicaAntes) 1 else 0)
+            put("horas_antes", horasAntes)
+            put("hora_inicio_antes", horaInicioAntes)
+            put("hora_fin_antes", horaFinAntes)
+            put("aplica_despues", if (aplicaDespues) 1 else 0)
+            put("horas_despues", horasDespues)
+            put("hora_inicio_despues", horaInicioDespues)
+            put("hora_fin_despues", horaFinDespues)
+            put("autorizo_nombre", autorizoNombre)
+            put("observacion", observacion)
+            put("cargado_en", cargadoEn)
+            put("sincronizado", 0)
+            put("created_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+        }
+        val id = db.insertWithOnConflict("extras_hours", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        db.close()
+        return id
+    }
+
+    fun obtenerExtrasPendientes(): List<ExtraHourLocal> {
+        val lista = mutableListOf<ExtraHourLocal>()
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT * FROM extras_hours WHERE sincronizado = 0 ORDER BY created_at DESC",
+            null
+        )
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val clientUuid = cursor.getString(cursor.getColumnIndexOrThrow("client_uuid"))
+                val fechaInicial = cursor.getString(cursor.getColumnIndexOrThrow("fecha_inicial"))
+                val fechaFinal = cursor.getString(cursor.getColumnIndexOrThrow("fecha_final"))
+                val turnoCodigo = cursor.getInt(cursor.getColumnIndexOrThrow("turno_codigo"))
+                val aplicaAntes = cursor.getInt(cursor.getColumnIndexOrThrow("aplica_antes"))
+                val horasAntes = if (cursor.isNull(cursor.getColumnIndexOrThrow("horas_antes"))) null else cursor.getDouble(cursor.getColumnIndexOrThrow("horas_antes"))
+                val idxHia = cursor.getColumnIndex("hora_inicio_antes")
+                val horaInicioAntes = if (idxHia < 0 || cursor.isNull(idxHia)) null else cursor.getString(idxHia)
+                val idxHfa = cursor.getColumnIndex("hora_fin_antes")
+                val horaFinAntes = if (idxHfa < 0 || cursor.isNull(idxHfa)) null else cursor.getString(idxHfa)
+                val aplicaDespues = cursor.getInt(cursor.getColumnIndexOrThrow("aplica_despues"))
+                val horasDespues = if (cursor.isNull(cursor.getColumnIndexOrThrow("horas_despues"))) null else cursor.getDouble(cursor.getColumnIndexOrThrow("horas_despues"))
+                val idxHid = cursor.getColumnIndex("hora_inicio_despues")
+                val horaInicioDespues = if (idxHid < 0 || cursor.isNull(idxHid)) null else cursor.getString(idxHid)
+                val idxHfd = cursor.getColumnIndex("hora_fin_despues")
+                val horaFinDespues = if (idxHfd < 0 || cursor.isNull(idxHfd)) null else cursor.getString(idxHfd)
+                val autorizoNombre = cursor.getString(cursor.getColumnIndexOrThrow("autorizo_nombre"))
+                val observacion = cursor.getString(cursor.getColumnIndexOrThrow("observacion"))
+                val cargadoEn = if (cursor.isNull(cursor.getColumnIndexOrThrow("cargado_en"))) null else cursor.getString(cursor.getColumnIndexOrThrow("cargado_en"))
+
+                lista.add(
+                    ExtraHourLocal(
+                        id = id,
+                        clientUuid = clientUuid,
+                        fechaInicial = fechaInicial,
+                        fechaFinal = fechaFinal,
+                        turnoCodigo = turnoCodigo,
+                        aplicaAntes = aplicaAntes,
+                        horasAntes = horasAntes,
+                        horaInicioAntes = horaInicioAntes,
+                        horaFinAntes = horaFinAntes,
+                        aplicaDespues = aplicaDespues,
+                        horasDespues = horasDespues,
+                        horaInicioDespues = horaInicioDespues,
+                        horaFinDespues = horaFinDespues,
+                        autorizoNombre = autorizoNombre,
+                        observacion = observacion,
+                        cargadoEn = cargadoEn
+                    )
+                )
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return lista
+    }
+
+    fun marcarExtraSincronizado(idExtra: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply { put("sincronizado", 1) }
+        db.update("extras_hours", values, "id = ?", arrayOf(idExtra.toString()))
+        db.close()
+    }
+
     /**
      * Obtener combustibles pendientes por usuario (para HomeActivity)
      */
@@ -5104,6 +5556,62 @@ return insertOk
             if (c.moveToFirst()) return c.getString(0)?.trim()?.takeIf { it.isNotEmpty() }
         }
         return null
+    }
+
+    fun upsertExistenciaEnCache(invProductoId: Int, invUbicacionId: Int, cantidad: String) {
+        val cv = ContentValues().apply {
+            put("inv_producto_id", invProductoId)
+            put("inv_ubicacion_id", invUbicacionId)
+            put("cantidad", cantidad.trim())
+        }
+        writableDatabase.insertWithOnConflict(
+            "inv_existencia_local",
+            null,
+            cv,
+            SQLiteDatabase.CONFLICT_REPLACE
+        )
+    }
+
+    data class InvUbicacionProductoRow(
+        val invProductoId: Int,
+        val codigoEtiqueta: String,
+        val nombre: String,
+        val tipo: String,
+        val unidadCodigo: String?,
+        val cantidad: String
+    )
+
+    fun listarExistenciasUbicacionLocal(invUbicacionId: Int): List<InvUbicacionProductoRow> {
+        val sql = """
+            SELECT p.id, p.codigo_etiqueta, p.nombre, p.tipo, p.unidad_codigo, e.cantidad
+            FROM inv_existencia_local e
+            INNER JOIN inv_producto_local p ON p.id = e.inv_producto_id
+            WHERE e.inv_ubicacion_id = ?
+            ORDER BY p.nombre COLLATE NOCASE
+        """.trimIndent()
+        val out = mutableListOf<InvUbicacionProductoRow>()
+        readableDatabase.rawQuery(sql, arrayOf(invUbicacionId.toString())).use { c ->
+            while (c.moveToNext()) {
+                val productoId = c.getInt(0)
+                val cantidadRaw = c.getString(5)?.trim().orEmpty()
+                if (cantidadRaw.isEmpty()) continue
+                val cantidadBd = parseCantidadInventarioBigDecimal(cantidadRaw) ?: continue
+                val pendiente = sumaPendienteSalidaMismaCelda(productoId, invUbicacionId)
+                val disponible = cantidadBd.subtract(pendiente)
+                if (disponible <= BigDecimal.ZERO) continue
+                out.add(
+                    InvUbicacionProductoRow(
+                        invProductoId = productoId,
+                        codigoEtiqueta = c.getString(1) ?: "",
+                        nombre = c.getString(2) ?: "",
+                        tipo = c.getString(3) ?: "",
+                        unidadCodigo = c.getString(4),
+                        cantidad = disponible.stripTrailingZeros().toPlainString()
+                    )
+                )
+            }
+        }
+        return out
     }
 
     /** Suma salidas de inventario aún no sincronizadas para la misma celda y producto. */

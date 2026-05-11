@@ -3,6 +3,7 @@ package com.uvrp.itsmantenimientoapp
 import ApiService
 import android.content.Context
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -14,10 +15,10 @@ object RetrofitClient {
      * Descomente UNA línea según entorno — igual que antes; todo el proyecto sigue usando [instance].
      */
     // producción
-    // private const val BASE_URL = "http://192.168.1.15:8009/"
+    //private const val BASE_URL = "http://192.168.0.188:8003/"
     // pruebas
     private const val BASE_URL = "http://181.225.65.82:8196/"
-    //private const val BASE_URL = "http://10.200.221.103:8000/"   
+    //private const val BASE_URL = "http://10.208.83.148:8000/"   
     
 
     @Volatile
@@ -32,24 +33,32 @@ object RetrofitClient {
     }
 
     private val okHttp: OkHttpClient by lazy {
-        OkHttpClient.Builder()
+        val b = OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                val ctx = appContext
-                val reqBuilder = chain.request().newBuilder()
-                if (ctx != null) {
-                    val token = ctx.getSharedPreferences("Sesion", Context.MODE_PRIVATE)
-                        .getString("api_token", null)?.trim().orEmpty()
-                    if (token.isNotEmpty()) {
-                        reqBuilder.header("Authorization", "Bearer $token")
-                        reqBuilder.header("Accept", "application/json")
-                    }
-                }
-                chain.proceed(reqBuilder.build())
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
+
+        if (BuildConfig.DEBUG) {
+            val log = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BASIC
             }
-            .build()
+            b.addInterceptor(log)
+        }
+
+        b.addInterceptor { chain ->
+            val ctx = appContext
+            val reqBuilder = chain.request().newBuilder()
+            reqBuilder.header("Accept", "application/json")
+            if (ctx != null) {
+                val token = ctx.getSharedPreferences("Sesion", Context.MODE_PRIVATE)
+                    .getString("api_token", null)?.trim().orEmpty()
+                if (token.isNotEmpty()) {
+                    reqBuilder.header("Authorization", "Bearer $token")
+                }
+            }
+            chain.proceed(reqBuilder.build())
+        }
+        b.build()
     }
 
     val instance: ApiService by lazy {

@@ -94,6 +94,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
     private lateinit var etObservacion: EditText
 
     private lateinit var btnGuardarActividad: MaterialButton
+    private var guardadoEnProceso = false
 
     private lateinit var tilPrInicialKm: TextInputLayout
 
@@ -425,14 +426,17 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
 
     private fun guardarActividad() {
+        if (guardadoEnProceso) return
 
         try {
-
             if (!validarCampos()) {
-
                 return
-
             }
+
+            guardadoEnProceso = true
+            val textoBotonOriginal = btnGuardarActividad.text
+            btnGuardarActividad.isEnabled = false
+            btnGuardarActividad.text = "Guardando..."
 
 
 
@@ -443,21 +447,21 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
 
             if (selectedCuadrilla < 0) {
-
                 Toast.makeText(this, "Por favor seleccione cuadrilla", Toast.LENGTH_SHORT).show()
-
+                guardadoEnProceso = false
+                btnGuardarActividad.isEnabled = true
+                btnGuardarActividad.text = textoBotonOriginal
                 return
-
             }
 
 
 
             if (selectedUF == 0) {
-
                 Toast.makeText(this, "Por favor seleccione UF", Toast.LENGTH_SHORT).show()
-
+                guardadoEnProceso = false
+                btnGuardarActividad.isEnabled = true
+                btnGuardarActividad.text = textoBotonOriginal
                 return
-
             }
 
 
@@ -473,21 +477,16 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
                 }
 
             if (actividad == null) {
-
                 tilActividad.error = "Seleccione una actividad de la lista o escriba el texto exacto"
-
                 Toast.makeText(
-
                     this,
-
                     "Elija una actividad de la lista desplegable (texto largo: use búsqueda con 3+ letras)",
-
                     Toast.LENGTH_LONG
-
                 ).show()
-
+                guardadoEnProceso = false
+                btnGuardarActividad.isEnabled = true
+                btnGuardarActividad.text = textoBotonOriginal
                 return
-
             }
 
             tilActividad.error = null
@@ -503,11 +502,11 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
 
             if (sentido.isBlank() || lado.isBlank()) {
-
                 Toast.makeText(this, "Por favor seleccione Sentido y Lado", Toast.LENGTH_SHORT).show()
-
+                guardadoEnProceso = false
+                btnGuardarActividad.isEnabled = true
+                btnGuardarActividad.text = textoBotonOriginal
                 return
-
             }
 
 
@@ -585,17 +584,22 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
                 finish()
 
             } else {
-
-                Toast.makeText(this, "Error al crear la actividad", Toast.LENGTH_SHORT).show()
-
+                Toast.makeText(
+                    this,
+                    "No se creó la actividad. Si ya existe una igual pendiente, espere la sincronización.",
+                    Toast.LENGTH_LONG
+                ).show()
+                guardadoEnProceso = false
+                btnGuardarActividad.isEnabled = true
+                btnGuardarActividad.text = textoBotonOriginal
             }
 
         } catch (e: Exception) {
-
             Log.e("ACTIVIDAD_NO_PROGRAMADA", "Error guardando actividad: ${e.message}", e)
-
             Toast.makeText(this, "Error al guardar: ${e.message}", Toast.LENGTH_SHORT).show()
-
+            guardadoEnProceso = false
+            btnGuardarActividad.isEnabled = true
+            btnGuardarActividad.text = "Guardar actividad"
         }
 
     }

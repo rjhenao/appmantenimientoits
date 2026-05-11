@@ -17,8 +17,11 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.FirebaseApp
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -35,6 +38,22 @@ import retrofit2.http.GET
 
 
 class MainActivity : AppCompatActivity() {
+
+    private val scanQrLoginLauncher = registerForActivityResult(ScanContract()) { result ->
+        val raw = result?.contents?.trim().orEmpty()
+        if (raw.isEmpty()) return@registerForActivityResult
+        val p = QrReporteParser.parse(raw)
+        if (p == null) {
+            Toast.makeText(this, getString(R.string.reporte_qr_invalido), Toast.LENGTH_LONG).show()
+            return@registerForActivityResult
+        }
+        startActivity(
+            Intent(this, ReporteQrActivity::class.java).apply {
+                putExtra(ReporteQrActivity.EXTRA_LOCACION_ID, p.first)
+                putExtra(ReporteQrActivity.EXTRA_QR_TOKEN, p.second)
+            },
+        )
+    }
 
     lateinit var usernameInput : EditText
     lateinit var passswordInput : EditText
@@ -79,6 +98,37 @@ class MainActivity : AppCompatActivity() {
         loginbtn = findViewById(R.id.login_btn)
         val sincronizarbtn: FloatingActionButton = findViewById(R.id.sincronizar_btn)
 
+        findViewById<FloatingActionButton>(R.id.fab_scan_reporte_qr).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.reporte_scan_opcion_titulo)
+                .setItems(
+                    arrayOf(
+                        getString(R.string.reporte_scan_opcion_escanear),
+                        getString(R.string.reporte_scan_opcion_sin_escanear),
+                    ),
+                ) { _, which ->
+                    when (which) {
+                        0 -> {
+                            val options = ScanOptions()
+                            options.setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            options.setPrompt(getString(R.string.reporte_qr_scan_prompt))
+                            options.setBeepEnabled(true)
+                            options.setBarcodeImageEnabled(false)
+                            options.setOrientationLocked(true)
+                            scanQrLoginLauncher.launch(options)
+                        }
+                        1 -> {
+                            startActivity(
+                                Intent(this, ReporteQrActivity::class.java).putExtra(
+                                    ReporteQrActivity.EXTRA_OPEN_LOCACION_PICKER,
+                                    true,
+                                ),
+                            )
+                        }
+                    }
+                }
+                .show()
+        }
 
         loginbtn.setOnClickListener {
 
@@ -106,7 +156,11 @@ class MainActivity : AppCompatActivity() {
                 editor.putBoolean("puede_inventario", idRol == 1 || idRol == 2)
                 editor.apply()
 
-                // Token Sanctum para API de inventario (y futuros módulos protegidos)
+                if (idRol !in 1..10) {
+                    Toast.makeText(this, "Rol de usuario no válido para iniciar sesión.", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
                 CoroutineScope(Dispatchers.Main).launch {
                     withContext(Dispatchers.IO) {
                         try {
@@ -126,22 +180,12 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         } catch (_: Exception) {
-                            // Sin red: el usuario sigue con credenciales locales; inventario offline si ya hubo sync antes
+                            // Sin red: credenciales locales
                         }
                     }
-                }
 
-                // Redirigir a HomeActivity independientemente del rol (siempre que el rol sea válido para el login)
-                // La lógica de qué mostrar dentro de HomeActivity se puede manejar allí basado en idRol
-                if (idRol in 1..10) { // Asumiendo que los roles 1, 2, 3, 4 son válidos para ingresar
-                    //val intent = Intent(this, HomeActivity::class.java)
-                    val intent = Intent(this, HomeActivity::class.java)
-                    startActivity(intent)
-                    finish() // Cierra la actividad de login para que no pueda volver atrás
-                } else {
-                    // Opcional: manejar roles no válidos para el login aquí, aunque si userId != -1, el rol debería ser válido.
-                    // Esto podría ser un caso de error en la lógica de obtenerRolUsuario.
-                    Toast.makeText(this, "Rol de usuario no válido para iniciar sesión.", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this@MainActivity, HomeActivity::class.java))
+                    finish()
                 }
             } else {
                 Toast.makeText(this, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
