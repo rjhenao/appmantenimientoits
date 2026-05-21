@@ -22,11 +22,12 @@
             android:elevation="4dp"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-        <ScrollView
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/scrollConsultaUbicacion"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:fillViewport="false"
+            android:fillViewport="true"
             android:scrollbars="vertical">
 
             <LinearLayout
@@ -208,9 +209,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
+                    android:clipToPadding="false"
                     android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
                     android:visibility="gone"
-                    tools:itemCount="2"
+                    tools:itemCount="4"
                     tools:listitem="@layout/item_inv_ubicacion_producto"
                     tools:visibility="visible" />
 
@@ -225,7 +228,7 @@
                     android:textSize="13sp"
                     android:visibility="gone" />
             </LinearLayout>
-        </ScrollView>
+        </androidx.core.widget.NestedScrollView>
     </LinearLayout>
 
     <com.google.android.material.navigation.NavigationView

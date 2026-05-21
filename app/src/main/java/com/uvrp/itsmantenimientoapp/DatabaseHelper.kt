@@ -38,9 +38,10 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.math.BigDecimal
+import java.util.UUID
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 48) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 49) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
         // IF NOT EXISTS evita crash si onCreate se ejecuta dos veces (p. ej. condición de carrera al sincronizar).
@@ -362,11 +363,15 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         Observacion TEXT,
         supervisorResponsable INTEGER NOT NULL,
         sincronizado INTEGER NOT NULL DEFAULT 0,
+        client_uuid TEXT,
         created_at TEXT,
         updated_at TEXT
     )
 """
         db.execSQL(createProgramarActividadesBitacora)
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_pab_client_uuid ON programar_actividades_bitacora(client_uuid) WHERE client_uuid IS NOT NULL"
+        )
 
 // Tabla intermedia que relaciona la ejecución de una actividad programada
         val createRelBitacoraActividades = """
@@ -753,6 +758,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             )
             """.trimIndent()
         )
+
+        if (oldVersion < 49) {
+            migrarClientUuidActividadesNp(db)
+        }
 
         // Migración incremental desde la versión 40 a la 41
         if (oldVersion < 41) {
@@ -3819,7 +3828,8 @@ return insertOk
         db.rawQuery(queryNoProgramadas, arrayOf(idUsuarioActivo.toString())).use { cursor ->
             while (cursor.moveToNext()) {
                 val idRegistro = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
-                
+                val clientUuidNp = leerClientUuidDesdeCursor(cursor)
+
                 val registroPendiente = obtenerRegistroNpPendiente(db, idRegistro)
                 val listaUsuarios = if (registroPendiente != null) {
                     obtenerUsuariosRegistroNp(db, registroPendiente.idRba)
@@ -3871,13 +3881,23 @@ return insertOk
                         registroObservacion = registroPendiente?.observacion,
                         registroSentido = registroPendiente?.sentido,
                         registroLado = registroPendiente?.lado,
-                        idRegistroNpLocal = registroPendiente?.idRba
+                        idRegistroNpLocal = registroPendiente?.idRba,
+                        clientUuid = clientUuidNp
                     )
                 )
             }
         }
 
         return listaBitacoras
+    }
+
+    private fun leerClientUuidDesdeCursor(cursor: Cursor): String? {
+        val idx = cursor.getColumnIndex("client_uuid")
+        if (idx < 0 || cursor.isNull(idx)) {
+            return null
+        }
+        val value = cursor.getString(idx)?.trim()
+        return if (value.isNullOrEmpty()) null else value
     }
 
     fun marcarRegistrosNpDependientesSincronizados(idPab: Int) {
@@ -4629,6 +4649,36 @@ return insertOk
         return rows > 0
     }
 
+    private fun migrarClientUuidActividadesNp(db: SQLiteDatabase) {
+        try {
+            db.execSQL("ALTER TABLE programar_actividades_bitacora ADD COLUMN client_uuid TEXT")
+            Log.d("DB_UPGRADE", "Columna client_uuid agregada a programar_actividades_bitacora")
+        } catch (e: Exception) {
+            Log.d("DB_UPGRADE", "client_uuid ya existe o no se pudo agregar: ${e.message}")
+        }
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_pab_client_uuid ON programar_actividades_bitacora(client_uuid) WHERE client_uuid IS NOT NULL"
+        )
+        db.rawQuery(
+            """
+            SELECT id FROM programar_actividades_bitacora
+            WHERE Estado = 2 AND sincronizado = 0
+              AND (client_uuid IS NULL OR TRIM(client_uuid) = '')
+            """.trimIndent(),
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getInt(0)
+                val uuid = UUID.randomUUID().toString()
+                db.execSQL(
+                    "UPDATE programar_actividades_bitacora SET client_uuid = ? WHERE id = ?",
+                    arrayOf(uuid, id.toString())
+                )
+            }
+        }
+        Log.d("DB_UPGRADE", "UUID asignados a NP pendientes sin client_uuid")
+    }
+
     /**
      * Inserta una nueva actividad no programada
      */
@@ -4668,6 +4718,7 @@ return insertOk
 
         val db = this.writableDatabase
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        val clientUuid = UUID.randomUUID().toString()
         val values = ContentValues().apply {
             put("idBitacora", idBitacora)
             put("idActividad", idActividad)
@@ -4682,6 +4733,7 @@ return insertOk
             put("Estado", 2) // 2 = No Programada (1 = Programada)
             put("supervisorResponsable", supervisorResponsable)
             put("sincronizado", 0) // 0 = No sincronizado, 1 = Sincronizado
+            put("client_uuid", clientUuid)
             put("created_at", timestamp)
             put("updated_at", timestamp)
         }
@@ -4700,7 +4752,7 @@ return insertOk
                 db.insert("rel_fotos_bitacora_actividades", null, valuesFoto)
             }
         }
-        Log.d("ACTIVIDAD_NO_PROGRAMADA", "Actividad no programada insertada con ID: $result")
+        Log.d("ACTIVIDAD_NO_PROGRAMADA", "Actividad no programada insertada con ID: $result, client_uuid=$clientUuid")
         db.close()
         return result
     }

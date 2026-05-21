@@ -68,7 +68,9 @@ class InventarioConsultaUbicacionActivity : AppCompatActivity() {
         var ubiRows: List<DatabaseHelper.InvUbicacionRow> = emptyList()
 
         adapterProductos = ProductosUbicacionAdapter()
-        rvProductos.layoutManager = LinearLayoutManager(this)
+        rvProductos.layoutManager = FullyExpandedLinearLayoutManager(this)
+        rvProductos.setHasFixedSize(false)
+        rvProductos.isNestedScrollingEnabled = false
         rvProductos.adapter = adapterProductos
 
         fun limpiarResultados() {
@@ -139,6 +141,10 @@ class InventarioConsultaUbicacionActivity : AppCompatActivity() {
                 tvListaTitulo.visibility = View.VISIBLE
                 rvProductos.visibility = View.VISIBLE
                 tvSinProductos.visibility = View.GONE
+            }
+            rvProductos.post {
+                rvProductos.requestLayout()
+                findViewById<androidx.core.widget.NestedScrollView>(R.id.scrollConsultaUbicacion)?.requestLayout()
             }
         }
 
@@ -289,6 +295,27 @@ class InventarioConsultaUbicacionActivity : AppCompatActivity() {
         }
 
         btnConsultar.setOnClickListener { consultarExistencias() }
+    }
+
+    /**
+     * Permite que el RecyclerView muestre todos los ítems dentro del NestedScrollView (scroll de la pantalla).
+     */
+    private class FullyExpandedLinearLayoutManager(context: android.content.Context) :
+        LinearLayoutManager(context) {
+
+        override fun onMeasure(
+            recycler: RecyclerView.Recycler,
+            state: RecyclerView.State,
+            widthSpec: Int,
+            heightSpec: Int
+        ) {
+            super.onMeasure(
+                recycler,
+                state,
+                widthSpec,
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+        }
     }
 
     private fun abrirEscaneoQrCelda(scanUbicacionLauncher: ActivityResultLauncher<ScanOptions>) {
