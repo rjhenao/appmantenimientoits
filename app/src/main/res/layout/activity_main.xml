@@ -165,6 +165,7 @@
                         app:iconGravity="textStart"
                         app:iconTint="@android:color/white"
                         style="@style/Widget.Material3.Button" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -201,6 +202,23 @@
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
+
+    <!-- FAB reporte QR / escáner (inferior izquierda) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_scan_reporte_qr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="24dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="@string/login_scan_qr"
+        app:backgroundTint="?attr/colorPrimary"
+        app:borderWidth="0dp"
+        app:elevation="8dp"
+        app:fabSize="normal"
+        app:srcCompat="@android:drawable/ic_menu_camera"
+        app:tint="@android:color/white" />
 
     <!-- FAB de Sincronización (posición fija) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton

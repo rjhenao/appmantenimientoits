@@ -18,11 +18,18 @@ import com.uvrp.itsmantenimientoapp.models.Ticket
 import com.uvrp.itsmantenimientoapp.models.TicketResponse
 import com.uvrp.itsmantenimientoapp.models.TicketDetailResponse
 import com.uvrp.itsmantenimientoapp.models.TicketStatsResponse
+import com.uvrp.itsmantenimientoapp.models.TicketCreateRequest
+import com.uvrp.itsmantenimientoapp.models.TicketCreateResponse
+import com.uvrp.itsmantenimientoapp.models.PublicReporteCatalogosResponse
+import com.uvrp.itsmantenimientoapp.models.PublicReporteLocacionResponse
+import com.uvrp.itsmantenimientoapp.models.PublicReporteLocacionesResponse
+import com.uvrp.itsmantenimientoapp.models.PublicReporteSubmitResponse
 import com.uvrp.itsmantenimientoapp.models.FotosMasivasRequest
 import com.uvrp.itsmantenimientoapp.models.FotosMasivasResponse
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -386,7 +393,7 @@ interface ApiService {
     fun finalizarMantenimientoBitacora(
         @Part("json") json: RequestBody, // <-- CAMBIA @PartMap POR @Part("json")
         @Part imagenes: List<MultipartBody.Part>
-    ): Call<Void>
+    ): Call<ResponseBody>
 
 
 
@@ -409,6 +416,35 @@ interface ApiService {
     
     @GET("/api/tickets-stats")
     fun getTicketStats(): Call<TicketStatsResponse>
+
+    @POST("/api/tickets")
+    fun createTicket(@retrofit2.http.Body body: TicketCreateRequest): Call<TicketCreateResponse>
+
+    @GET("api/public/reporte-qr/catalogos")
+    fun publicReporteCatalogos(): Call<PublicReporteCatalogosResponse>
+
+    @GET("api/public/reporte-qr/locaciones")
+    fun publicReporteLocaciones(): Call<PublicReporteLocacionesResponse>
+
+    @GET("api/public/reporte-qr/locacion")
+    fun publicReporteLocacion(
+        @Query("locacion_id") locacionId: Int,
+        @Query("qr_token") qrToken: String,
+    ): Call<PublicReporteLocacionResponse>
+
+    @Multipart
+    @POST("api/public/reporte-qr/enviar")
+    fun publicReporteEnviar(
+        @Part("locacion_id") locacionId: RequestBody,
+        @Part("qr_token") qrToken: RequestBody,
+        @Part("sin_escaneo_qr") sinEscaneoQr: RequestBody,
+        @Part("solicitante_nombre") solicitanteNombre: RequestBody,
+        @Part("solicitante_area") solicitanteArea: RequestBody,
+        @Part("tipo_solicitud") tipoSolicitud: RequestBody,
+        @Part("descripcion") descripcion: RequestBody,
+        @Part("email") email: RequestBody,
+        @Part attachments: List<MultipartBody.Part>,
+    ): Call<PublicReporteSubmitResponse>
 
     // ===== ENDPOINTS DE FOTOS MASIVAS =====
     
@@ -441,5 +477,187 @@ interface ApiService {
         @Part("json") json: RequestBody,
         @Part foto_ticket: MultipartBody.Part?
     ): Call<CombustibleResponse>
+
+    // ===== LOGIN MÓVIL (SANCTUM) + INVENTARIO =====
+
+    data class MobileLoginRequest(
+        val documento: String,
+        val password: String
+    )
+
+    data class MobileLoginResponse(
+        val token: String?,
+        @SerializedName("token_type") val tokenType: String?,
+        val user: MobileUserInfo?,
+        val roles: List<Int>?,
+        @SerializedName("puede_inventario") val puedeInventario: Boolean?
+    )
+
+    data class MobileUserInfo(
+        val id: Int,
+        val nombre: String?,
+        val documento: Long?
+    )
+
+    data class InvUnidadDto(
+        val id: Int,
+        val codigo: String,
+        val nombre: String
+    )
+
+    data class InvProductoDto(
+        val id: Int,
+        @SerializedName("codigo_etiqueta") val codigoEtiqueta: String,
+        val nombre: String,
+        val tipo: String,
+        @SerializedName("inv_unidad_id") val invUnidadId: Int,
+        @SerializedName("unidad_codigo") val unidadCodigo: String?,
+        val descripcion: String?
+    )
+
+    data class InvUbicacionDto(
+        val id: Int,
+        @SerializedName("codigo_unico_global") val codigoUnicoGlobal: String,
+        val label: String
+    )
+
+    data class InventarioCatalogoResponse(
+        val unidades: List<InvUnidadDto>?,
+        val productos: List<InvProductoDto>?,
+        val ubicaciones: List<InvUbicacionDto>?,
+        val meta: Map<String, Any>?
+    )
+
+    data class ExistenciaItemDto(
+        @SerializedName("inv_ubicacion_id") val invUbicacionId: Int,
+        val label: String,
+        val cantidad: String
+    )
+
+    data class ExistenciasInventarioResponse(
+        val data: List<ExistenciaItemDto>?
+    )
+
+    data class UbicacionExistenciaProductoDto(
+        @SerializedName("inv_producto_id") val invProductoId: Int,
+        @SerializedName("codigo_etiqueta") val codigoEtiqueta: String,
+        val nombre: String,
+        val tipo: String,
+        @SerializedName("unidad_codigo") val unidadCodigo: String?,
+        val cantidad: String
+    )
+
+    data class UbicacionExistenciasUbicacionDto(
+        val id: Int,
+        @SerializedName("codigo_unico_global") val codigoUnicoGlobal: String,
+        val label: String,
+        @SerializedName("bodega_codigo") val bodegaCodigo: String?,
+        @SerializedName("bodega_nombre") val bodegaNombre: String?,
+        @SerializedName("estante_codigo") val estanteCodigo: String?,
+        val fila: Int?,
+        val columna: Int?
+    )
+
+    data class UbicacionExistenciasResumenDto(
+        @SerializedName("lineas_con_stock") val lineasConStock: Int?,
+        @SerializedName("productos_distintos") val productosDistintos: Int?,
+        @SerializedName("por_tipo") val porTipo: Map<String, Int>?
+    )
+
+    data class UbicacionExistenciasResponse(
+        val ubicacion: UbicacionExistenciasUbicacionDto?,
+        val resumen: UbicacionExistenciasResumenDto?,
+        val data: List<UbicacionExistenciaProductoDto>?
+    )
+
+    data class InventarioMensajeResponse(
+        val message: String?
+    )
+
+    data class InventarioAjusteRequest(
+        @SerializedName("inv_producto_id") val invProductoId: Int,
+        @SerializedName("inv_ubicacion_id") val invUbicacionId: Int,
+        val cantidad: String,
+        val nota: String?
+    )
+
+    data class InventarioSalidaRequest(
+        @SerializedName("inv_producto_id") val invProductoId: Int,
+        @SerializedName("inv_ubicacion_id") val invUbicacionId: Int,
+        val cantidad: String,
+        @SerializedName("tipo_movimiento") val tipoMovimiento: String,
+        @SerializedName("responsable_recibe_nombre") val responsableRecibeNombre: String? = null,
+        @SerializedName("responsable_recibe_documento") val responsableRecibeDocumento: String? = null,
+        @SerializedName("destino_uso") val destinoUso: String? = null,
+        @SerializedName("prestado_a_nombre") val prestadoANombre: String? = null,
+        @SerializedName("prestado_a_documento") val prestadoADocumento: String? = null,
+        @SerializedName("observacion_salida") val observacionSalida: String? = null
+    )
+
+    @POST("api/mobile/login")
+    fun mobileLogin(@Body body: MobileLoginRequest): Call<MobileLoginResponse>
+
+    @GET("api/inventario/sync/catalogo")
+    fun inventarioCatalogoOffline(): Call<InventarioCatalogoResponse>
+
+    @GET("api/inventario/productos/{id}/existencias")
+    fun inventarioExistencias(@retrofit2.http.Path("id") productoId: Int): Call<ExistenciasInventarioResponse>
+
+    @GET("api/inventario/ubicaciones/{id}/existencias")
+    fun inventarioUbicacionExistencias(@retrofit2.http.Path("id") ubicacionId: Int): Call<UbicacionExistenciasResponse>
+
+    @POST("api/inventario/stock/ajuste-entrada")
+    fun inventarioAjusteEntrada(@Body body: InventarioAjusteRequest): Call<InventarioMensajeResponse>
+
+    @POST("api/inventario/movimientos/salida")
+    fun inventarioSalida(@Body body: InventarioSalidaRequest): Call<InventarioMensajeResponse>
+
+    // ===== EXTRAS (HORAS EXTRAS) — OFFLINE FIRST =====
+
+    data class ExtraTurnoDto(
+        val codigo: Int,
+        val label: String,
+        val start: String?,
+        val end: String?,
+        @SerializedName("next_day_end") val nextDayEnd: Boolean?
+    )
+
+    data class ExtrasTurnosCatalogoResponse(
+        val data: List<ExtraTurnoDto>?
+    )
+
+    data class ExtraHourSyncItem(
+        @SerializedName("client_uuid") val clientUuid: String,
+        @SerializedName("fecha_inicial") val fechaInicial: String,
+        @SerializedName("fecha_final") val fechaFinal: String,
+        @SerializedName("turno_codigo") val turnoCodigo: Int,
+        @SerializedName("aplica_antes") val aplicaAntes: Boolean,
+        @SerializedName("horas_antes") val horasAntes: Double?,
+        @SerializedName("hora_inicio_antes") val horaInicioAntes: String? = null,
+        @SerializedName("hora_fin_antes") val horaFinAntes: String? = null,
+        @SerializedName("aplica_despues") val aplicaDespues: Boolean,
+        @SerializedName("horas_despues") val horasDespues: Double?,
+        @SerializedName("hora_inicio_despues") val horaInicioDespues: String? = null,
+        @SerializedName("hora_fin_despues") val horaFinDespues: String? = null,
+        @SerializedName("autorizo_nombre") val autorizoNombre: String,
+        val observacion: String,
+        @SerializedName("cargado_en") val cargadoEn: String?
+    )
+
+    data class ExtrasSyncRequest(
+        val extras: List<ExtraHourSyncItem>
+    )
+
+    data class ExtrasSyncResponse(
+        val created: Int?,
+        val ignored: Int?,
+        val ids: List<Int>?
+    )
+
+    @GET("api/extras/catalogo/turnos")
+    fun extrasCatalogoTurnos(): Call<ExtrasTurnosCatalogoResponse>
+
+    @POST("api/extras/sync")
+    fun extrasSync(@Body body: ExtrasSyncRequest): Call<ExtrasSyncResponse>
 
 }

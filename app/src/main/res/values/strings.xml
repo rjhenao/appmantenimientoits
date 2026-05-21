@@ -2,6 +2,24 @@
     <string name="app_name">ITSOM</string>
     <string name="navigation_drawer_open">Abrir menú</string>
     <string name="navigation_drawer_close">Cerrar menú</string>
+
+    <!-- Menú lateral (agrupado por secciones) -->
+    <string name="drawer_inicio">Inicio</string>
+    <string name="drawer_seccion_mantenimiento">Mantenimiento ITS</string>
+    <string name="drawer_seccion_trabajo">ITS y operación</string>
+    <string name="drawer_preventivo_its">Preventivo</string>
+    <string name="drawer_correctivo_its">Correctivo</string>
+    <string name="drawer_bitacoras">Bitácoras</string>
+    <string name="drawer_tickets">Tickets</string>
+    <string name="drawer_seccion_operacion">Operación en campo</string>
+    <string name="drawer_preoperacional">Preoperacional</string>
+    <string name="drawer_combustible">Combustible</string>
+    <string name="drawer_seccion_inventario">Inventario</string>
+    <string name="drawer_inv_cargar">Cargar stock</string>
+    <string name="drawer_inv_salida">Salida de material</string>
+    <string name="drawer_inv_consulta_ubicacion">Consultar ubicación</string>
+    <string name="drawer_extras">Horas extra</string>
+    <string name="drawer_cerrar_sesion">Cerrar sesión</string>
     <string-array name="opciones_array">
         <item>Opción 1</item>
         <item>Opción 2</item>
@@ -18,6 +36,132 @@
         <item>Media</item>
         <item>Alta</item>
         <item>Crítica</item>
+    </string-array>
+
+    <string name="inv_ubicacion_qr_ayuda">La celda se identifica con el código único del catálogo (mismo dato que en el QR). Sincronice desde Inicio tras el login para tener las celdas offline.</string>
+    <string name="inv_escanear_qr_celda">Escanear QR de celda</string>
+    <string name="inv_scan_prompt_celda">Enfoque el QR de la celda</string>
+    <string name="inv_qr_celda_no_encontrada">QR no reconocido: no coincide con ninguna celda del catálogo. Sincronice inventario desde Inicio o verifique el código.</string>
+    <string name="inv_qr_celda_sin_stock_producto">Esa celda no tiene stock del producto elegido. Elija otra celda o verifique el QR.</string>
+    <string name="inv_celda_no_aplica_producto">La celda seleccionada no aplica para este producto. Elija otra celda.</string>
+    <string name="inv_salida_stock_sin_datos">No se pudo validar el stock en esta celda. Elija de nuevo el producto con conexión o sincronice inventario desde Inicio.</string>
+    <string name="inv_salida_stock_excede">La cantidad supera lo disponible en esta celda (máximo %1$s, incluye salidas pendientes por enviar).</string>
+    <string name="inv_salida_cantidad_invalida">Indique una cantidad numérica válida.</string>
+
+    <string name="inv_cantidad_seleccione_producto">Seleccione un producto para ver la unidad de medida.</string>
+    <string name="inv_cantidad_unidad_suffix">Unidad: %1$s</string>
+
+    <string name="home_inv_pendiente_sync_hint">Movimientos guardados en el celular. Pulse el botón para enviarlos al servidor, o use «Sincronizar Ahora» si también tiene mantenimientos pendientes.</string>
+    <string name="home_inv_btn_sync">Sincronizar inventario</string>
+
+    <string name="inv_consulta_ubicacion_toolbar">Inventario — Consultar ubicación</string>
+    <string name="inv_consulta_ubicacion_titulo">Consulta por ubicación</string>
+    <string name="inv_consulta_ubicacion_ayuda">Use la cámara para leer el QR de la celda. También puede buscarla manualmente si lo necesita.</string>
+    <string name="inv_consulta_ubicacion_permiso_camara">Se necesita permiso de cámara para escanear el QR de la celda.</string>
+    <string name="inv_consulta_ubicacion_hint">Buscar celda</string>
+    <string name="inv_consulta_ubicacion_sin_seleccion">Celda: (ninguna)</string>
+    <string name="inv_consulta_ubicacion_seleccionada">Celda: %1$s</string>
+    <string name="inv_consulta_ubicacion_btn">Ver ubicación</string>
+    <string name="inv_consulta_ubicacion_detalle_titulo">Ubicación</string>
+    <string name="inv_consulta_ubicacion_resumen_titulo">Resumen</string>
+    <string name="inv_consulta_ubicacion_lista_titulo">Productos en esta celda</string>
+    <string name="inv_consulta_ubicacion_sin_stock">No hay productos con stock en esta celda.</string>
+    <string name="inv_consulta_ubicacion_falta_celda">Seleccione o escanee una celda primero.</string>
+    <string name="inv_consulta_ubicacion_sin_datos_offline">Sin datos en caché para esta celda. Conéctese o sincronice inventario desde Inicio.</string>
+    <string name="inv_consulta_ubicacion_resumen_linea">%1$d producto(s) · %2$d consumible(s) · %3$d préstamo(s)</string>
+    <string name="inv_consulta_ubicacion_codigo">Código: %1$s</string>
+    <string name="inv_consulta_ubicacion_bodega">Bodega: %1$s</string>
+    <string name="inv_consulta_ubicacion_estante">Estante: %1$s</string>
+    <string name="inv_consulta_ubicacion_fila_col">Fila %1$d · Columna %2$d</string>
+    <string name="inv_consulta_ubicacion_tipo_consumible">Consumible</string>
+    <string name="inv_consulta_ubicacion_tipo_prestamo">Préstamo</string>
+    <string name="inv_consulta_ubicacion_cantidad_unidad">%1$s %2$s</string>
+
+    <string name="inv_salida_tipo_titulo">Tipo de salida</string>
+    <string name="inv_salida_tipo_sin_producto">Seleccione un producto. El tipo (consumible o préstamo) se define al crear el producto en el sistema.</string>
+    <string name="inv_salida_tipo_consumo">Consumo — el producto está catalogado como consumible (no se devuelve).</string>
+    <string name="inv_salida_tipo_prestamo">Préstamo — el producto está catalogado como préstamo (debe poder devolverse).</string>
+    <string name="inv_salida_hint_usuario">Buscar usuario (lista de la app)</string>
+    <string name="inv_salida_hint_usuario_consumo">Usuario que recibe el material</string>
+    <string name="inv_salida_hint_usuario_prestamo">Usuario a quien se presta</string>
+    <string name="inv_salida_destino_uso">¿Para qué se despacha? (opcional)</string>
+
+    <string name="inv_cargar_ayuda_compact">Escanee la celda o busque (2+ letras). Sin red el movimiento queda pendiente.</string>
+    <string name="inv_hint_act_producto">Escriba para ver sugerencias y elija</string>
+    <string name="inv_hint_act_ubicacion">Opcional: buscar celda si no usa QR</string>
+    <string name="inv_salida_ayuda_compact">Escanee la celda o búsquela. Producto: sugerencias al escribir.</string>
+
+    <string name="extras_resumen_tramo">De %1$s a %2$s → total %3$s</string>
+    <string name="extras_estado_pendiente">Pendiente de envío</string>
+    <string name="extras_estado_enviando">Intentando enviar…</string>
+    <string name="extras_estado_enviado">Enviado (o sin pendientes)</string>
+    <string name="extras_estado_cola">Sigue en cola (sin internet o error)</string>
+    <string name="extras_btn_guardar_enviar">Guardar y enviar</string>
+    <string name="extras_proceso_guardando_local">Paso 1: guardando en el celular…</string>
+    <string name="extras_proceso_enviando">Paso 2: enviando al servidor…</string>
+    <string name="extras_exito_final">\n✓ Guardado en el celular.\n✓ Enviado al servidor.\n\nLos campos quedaron vacíos para un nuevo registro.</string>
+    <string name="extras_ayuda_principal">Pulse «Guardar y enviar»: primero se guarda en el celular y luego se intenta enviar al servidor. Las horas de cada tramo se calculan solas.</string>
+    <string name="extras_proceso_envio_fallo">\n✓ Guardado local.\n⚠ Envío: %1$s\n\nRevise conexión y pulse de nuevo «Guardar y enviar» para reintentar.</string>
+    <string name="extras_sync_detalle_ok">Sincronizado con el servidor.</string>
+    <string name="extras_sync_detalle_error">No se pudo contactar al servidor. El registro quedó pendiente en el celular.</string>
+    <string name="extras_toast_completo">Registro guardado y enviado correctamente.</string>
+
+    <string name="nav_reporte_qr">Reporte público (QR)</string>
+    <string name="reporte_qr_title">Reporte público (QR)</string>
+    <string name="reporte_public_title">Solicitud soporte ITS</string>
+    <string name="reporte_public_subtitle">Incidencias locativas — sin usuario</string>
+    <string name="reporte_qr_ayuda">Escanee el código del cartel. No necesita iniciar sesión. Complete el formulario y envíe; la locación queda tomada del QR.</string>
+    <string name="reporte_qr_ayuda_tarjeta">Elija la locación escaneando el QR del cartel o seleccionándola en la lista. No requiere iniciar sesión.</string>
+    <string name="reporte_btn_escanear_o_locacion">Escanear QR o elegir locación</string>
+    <string name="reporte_scan_opcion_titulo">¿Cómo desea identificar la locación?</string>
+    <string name="reporte_scan_opcion_escanear">Escanear código QR del cartel</string>
+    <string name="reporte_scan_opcion_sin_escanear">Sin escanear — elegir locación en la lista</string>
+    <string name="reporte_elige_locacion_titulo">Seleccione la locación</string>
+    <string name="reporte_loc_lista_vacia">No hay locaciones disponibles. Conéctese a internet o sincronice desde la pantalla de inicio e intente de nuevo.</string>
+    <string name="reporte_qr_btn_escanear">Escanear código QR</string>
+    <string name="reporte_qr_scan_prompt">Enfoque el QR de la locación</string>
+    <string name="reporte_qr_invalido">Este QR no es válido para reporte. Use el código de la web (por locación).</string>
+    <string name="login_scan_qr">Escanear QR (sin login)</string>
+    <string name="reporte_field_locacion">Locación donde se prestará el servicio</string>
+    <string name="reporte_field_solicitante">Nombre del solicitante</string>
+    <string name="reporte_field_area">Área del solicitante</string>
+    <string name="reporte_field_tipo">Tipo de solicitud</string>
+    <string name="reporte_field_descripcion">Descripción de la solicitud</string>
+    <string name="reporte_field_email">Correo electrónico de quien reporta</string>
+    <string name="reporte_field_email_helper">Sugerencia: usuario@uvriopamplonita.com</string>
+    <string name="reporte_field_adjuntos">Fotos o archivos (opcional)</string>
+    <string name="reporte_adjuntos_ninguno">Ninguna foto ni archivo aún.</string>
+    <string name="reporte_btn_adjuntar">Agregar fotos o archivos</string>
+    <string name="reporte_adj_menu_titulo">¿Cómo desea adjuntar?</string>
+    <string name="reporte_adj_opcion_camara">Tomar foto con la cámara</string>
+    <string name="reporte_adj_opcion_galeria">Elegir de galería (imágenes)</string>
+    <string name="reporte_adj_opcion_archivo">Elegir archivo (PDF, etc.)</string>
+    <string name="reporte_adj_preview_desc">Vista previa del adjunto</string>
+    <string name="reporte_adj_quitar">Quitar</string>
+    <string name="reporte_loc_cargando">Consultando nombre de la locación…</string>
+    <string name="reporte_btn_enviar">Enviar</string>
+    <string name="reporte_enviando">Enviando… espere</string>
+    <string name="reporte_enviado_ok">Solicitud enviada. Número: %1$s</string>
+    <string name="reporte_enviado_error">No se pudo enviar. Revise datos, conexión y archivos (máx. 10 MB c/u).</string>
+    <string name="reporte_enviado_error_detalle">No se pudo enviar: %1$s</string>
+    <string name="reporte_adjuntos_max">Máximo %1$d archivos.</string>
+    <string name="reporte_adjuntos_resumen">%1$d de %2$d seleccionados (pulse el botón para agregar más o la X para quitar).</string>
+    <string name="reporte_loc_id_fallback">Locación número %1$d (sin conexión o QR no válido; verifique red)</string>
+
+    <string-array name="public_report_areas_fallback">
+        <item>ITS / Operaciones</item>
+        <item>Mantenimiento</item>
+        <item>Administración</item>
+        <item>Peaje / Recaudo</item>
+        <item>Seguridad y salud en el trabajo</item>
+        <item>Otro</item>
+    </string-array>
+    <string-array name="public_report_tipos_fallback">
+        <item>Correctivo / avería</item>
+        <item>Preventivo</item>
+        <item>Soporte / consulta</item>
+        <item>Mejora / cambio</item>
+        <item>Otro</item>
     </string-array>
 
 </resources>

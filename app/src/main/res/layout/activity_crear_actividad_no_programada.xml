@@ -44,24 +44,32 @@
                         android:orientation="vertical"
                         android:padding="20dp">
 
-                        <!-- Spinner Actividad -->
-                        <TextView
+                        <!-- Actividad: búsqueda + texto completo (descripciones largas) -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilActividad"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Actividad *"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/primary_blue"
-                            android:layout_marginBottom="4dp" />
-
-                        <Spinner
-                            android:id="@+id/spinnerActividad"
-                            android:layout_width="match_parent"
-                            android:layout_height="56dp"
-                            android:background="@drawable/spinner_background"
-                            android:padding="12dp"
                             android:layout_marginBottom="16dp"
-                            android:spinnerMode="dropdown" />
+                            android:hint="Actividad *"
+                            app:helperTextEnabled="true"
+                            app:helperText="Escriba al menos 3 letras para filtrar, o desplácese en la lista"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            app:boxStrokeColor="@color/primary_blue"
+                            app:hintTextColor="@color/primary_blue">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/autoCompleteActividad"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="text|textCapSentences|textMultiLine"
+                                android:minHeight="56dp"
+                                android:paddingVertical="12dp"
+                                android:completionThreshold="1"
+                                android:dropDownWidth="match_parent"
+                                android:maxLines="5"
+                                android:ellipsize="none"
+                                android:scrollHorizontally="false" />
+                        </com.google.android.material.textfield.TextInputLayout>
 
                         <!-- Spinner Cuadrilla -->
                         <TextView
@@ -395,55 +403,41 @@
 
                         </com.google.android.material.textfield.TextInputLayout>
 
-                        <!-- Evidencia fotográfica -->
-                        <TextView
+                        <!-- Las fotos se cargan al pulsar "Registrar actividad" en el listado (misma pantalla que actividades programadas). -->
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Evidencia Fotográfica *"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/primary_blue"
-                            android:layout_marginBottom="8dp" />
+                            android:layout_marginBottom="20dp"
+                            app:cardBackgroundColor="#E8F4FC"
+                            app:cardCornerRadius="10dp"
+                            app:cardElevation="0dp"
+                            app:strokeColor="@color/primary_blue"
+                            app:strokeWidth="1dp">
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginBottom="24dp">
-
-                            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                                android:id="@+id/btnTomarFotoNoProgramada"
-                                android:layout_width="wrap_content"
+                            <LinearLayout
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginEnd="12dp"
-                                android:contentDescription="Tomar foto"
-                                app:backgroundTint="@color/primary_blue"
-                                app:fabSize="normal"
-                                app:srcCompat="@drawable/ic_camera_outline"
-                                app:tint="@android:color/white" />
-
-                            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                                android:id="@+id/btnGaleriaNoProgramada"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="12dp"
-                                android:contentDescription="Seleccionar desde galería"
-                                app:backgroundTint="@color/primary_blue"
-                                app:fabSize="normal"
-                                app:srcCompat="@android:drawable/ic_menu_gallery"
-                                app:tint="@android:color/white" />
-
-                            <androidx.recyclerview.widget.RecyclerView
-                                android:id="@+id/rvFotosNoProgramada"
-                                android:layout_width="0dp"
-                                android:layout_height="80dp"
-                                android:layout_weight="1"
                                 android:orientation="horizontal"
-                                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                                tools:itemCount="3"
-                                tools:listitem="@layout/item_foto_miniatura" />
-                        </LinearLayout>
+                                android:gravity="center_vertical"
+                                android:padding="14dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="📷"
+                                    android:textSize="22sp"
+                                    android:layout_marginEnd="10dp" />
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="La evidencia fotográfica se registra después: en el listado de actividades, pulsa «Registrar actividad» sobre esta actividad no programada."
+                                    android:textSize="13sp"
+                                    android:textColor="#1a4a6e"
+                                    android:lineSpacingExtra="2dp" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
 
                         <!-- Botón Guardar -->
                         <com.google.android.material.button.MaterialButton

@@ -37,9 +37,11 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.math.BigDecimal
+import java.util.UUID
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 45) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 49) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
         // IF NOT EXISTS evita crash si onCreate se ejecuta dos veces (p. ej. condición de carrera al sincronizar).
@@ -361,11 +363,15 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         Observacion TEXT,
         supervisorResponsable INTEGER NOT NULL,
         sincronizado INTEGER NOT NULL DEFAULT 0,
+        client_uuid TEXT,
         created_at TEXT,
         updated_at TEXT
     )
 """
         db.execSQL(createProgramarActividadesBitacora)
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_pab_client_uuid ON programar_actividades_bitacora(client_uuid) WHERE client_uuid IS NOT NULL"
+        )
 
 // Tabla intermedia que relaciona la ejecución de una actividad programada
         val createRelBitacoraActividades = """
@@ -551,6 +557,96 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         """
         db.execSQL(createCombustibleTable)
 
+        // Tabla Extras (horas extras) — offline first
+        val createExtrasHoursTable = """
+            CREATE TABLE IF NOT EXISTS extras_hours (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_uuid TEXT NOT NULL UNIQUE,
+                fecha_inicial TEXT NOT NULL,
+                fecha_final TEXT NOT NULL,
+                turno_codigo INTEGER NOT NULL,
+                aplica_antes INTEGER NOT NULL DEFAULT 0,
+                horas_antes REAL,
+                hora_inicio_antes TEXT,
+                hora_fin_antes TEXT,
+                aplica_despues INTEGER NOT NULL DEFAULT 0,
+                horas_despues REAL,
+                hora_inicio_despues TEXT,
+                hora_fin_despues TEXT,
+                autorizo_nombre TEXT NOT NULL,
+                observacion TEXT NOT NULL,
+                cargado_en TEXT,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT
+            )
+        """
+        db.execSQL(createExtrasHoursTable)
+
+        val invUnidad = """
+            CREATE TABLE IF NOT EXISTS inv_unidad_local (
+                id INTEGER PRIMARY KEY,
+                codigo TEXT,
+                nombre TEXT
+            )
+        """
+        db.execSQL(invUnidad)
+
+        val invProducto = """
+            CREATE TABLE IF NOT EXISTS inv_producto_local (
+                id INTEGER PRIMARY KEY,
+                codigo_etiqueta TEXT,
+                nombre TEXT,
+                tipo TEXT,
+                inv_unidad_id INTEGER,
+                unidad_codigo TEXT,
+                texto_busqueda TEXT
+            )
+        """
+        db.execSQL(invProducto)
+
+        val invUbicacion = """
+            CREATE TABLE IF NOT EXISTS inv_ubicacion_local (
+                id INTEGER PRIMARY KEY,
+                codigo_unico_global TEXT,
+                label TEXT,
+                texto_busqueda TEXT
+            )
+        """
+        db.execSQL(invUbicacion)
+
+        val invPendAjuste = """
+            CREATE TABLE IF NOT EXISTS inv_pendiente_cargar_stock (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                inv_producto_id INTEGER NOT NULL,
+                inv_ubicacion_id INTEGER NOT NULL,
+                cantidad TEXT NOT NULL,
+                nota TEXT,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                creado_en TEXT NOT NULL
+            )
+        """
+        db.execSQL(invPendAjuste)
+
+        val invPendSalida = """
+            CREATE TABLE IF NOT EXISTS inv_pendiente_salida (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                json_payload TEXT NOT NULL,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                creado_en TEXT NOT NULL
+            )
+        """
+        db.execSQL(invPendSalida)
+
+        val invExistenciaCache = """
+            CREATE TABLE IF NOT EXISTS inv_existencia_local (
+                inv_producto_id INTEGER NOT NULL,
+                inv_ubicacion_id INTEGER NOT NULL,
+                cantidad TEXT NOT NULL,
+                PRIMARY KEY (inv_producto_id, inv_ubicacion_id)
+            )
+        """
+        db.execSQL(invExistenciaCache)
+
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -570,6 +666,102 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             )
         """
         db.execSQL(createLadosCatalogoTableQuery)
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inv_unidad_local (
+                id INTEGER PRIMARY KEY,
+                codigo TEXT,
+                nombre TEXT
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inv_producto_local (
+                id INTEGER PRIMARY KEY,
+                codigo_etiqueta TEXT,
+                nombre TEXT,
+                tipo TEXT,
+                inv_unidad_id INTEGER,
+                unidad_codigo TEXT,
+                texto_busqueda TEXT
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inv_ubicacion_local (
+                id INTEGER PRIMARY KEY,
+                codigo_unico_global TEXT,
+                label TEXT,
+                texto_busqueda TEXT
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inv_pendiente_cargar_stock (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                inv_producto_id INTEGER NOT NULL,
+                inv_ubicacion_id INTEGER NOT NULL,
+                cantidad TEXT NOT NULL,
+                nota TEXT,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                creado_en TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+
+        // Extras (horas extras) — agregar tabla si el usuario viene de versión anterior
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS extras_hours (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_uuid TEXT NOT NULL UNIQUE,
+                fecha_inicial TEXT NOT NULL,
+                fecha_final TEXT NOT NULL,
+                turno_codigo INTEGER NOT NULL,
+                aplica_antes INTEGER NOT NULL DEFAULT 0,
+                horas_antes REAL,
+                hora_inicio_antes TEXT,
+                hora_fin_antes TEXT,
+                aplica_despues INTEGER NOT NULL DEFAULT 0,
+                horas_despues REAL,
+                hora_inicio_despues TEXT,
+                hora_fin_despues TEXT,
+                autorizo_nombre TEXT NOT NULL,
+                observacion TEXT NOT NULL,
+                cargado_en TEXT,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inv_pendiente_salida (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                json_payload TEXT NOT NULL,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                creado_en TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inv_existencia_local (
+                inv_producto_id INTEGER NOT NULL,
+                inv_ubicacion_id INTEGER NOT NULL,
+                cantidad TEXT NOT NULL,
+                PRIMARY KEY (inv_producto_id, inv_ubicacion_id)
+            )
+            """.trimIndent()
+        )
+
+        if (oldVersion < 49) {
+            migrarClientUuidActividadesNp(db)
+        }
 
         // Migración incremental desde la versión 40 a la 41
         if (oldVersion < 41) {
@@ -646,6 +838,30 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
                 Log.d("DB_UPGRADE", "Tabla 'combustible' creada exitosamente")
             } catch (e: Exception) {
                 Log.e("DB_UPGRADE", "Error creando tabla combustible: ${e.message}")
+            }
+        }
+
+        // v48: rangos horarios en extras (hora inicio/fin por tramo)
+        if (oldVersion < 48) {
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_inicio_antes TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_inicio_antes: ${e.message}")
+            }
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_fin_antes TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_fin_antes: ${e.message}")
+            }
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_inicio_despues TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_inicio_despues: ${e.message}")
+            }
+            try {
+                db.execSQL("ALTER TABLE extras_hours ADD COLUMN hora_fin_despues TEXT")
+            } catch (e: Exception) {
+                Log.w("DB_UPGRADE", "extras_hours.hora_fin_despues: ${e.message}")
             }
         }
     }
@@ -2317,6 +2533,25 @@ return insertOk
         ))
     }
 
+    /**
+     * Equipos (fila `equipos.id`) para tickets / reporte por locación.
+     */
+    fun getEquiposPorSubsistema(locacionId: Int, sistemaId: Int, subsistemaId: Int): List<Pair<Int, String>> {
+        return obtenerLista(
+            """
+        SELECT e.id, e.tag
+        FROM equipos e
+        WHERE e.id_locacion = ? AND e.id_sistemas = ? AND e.id_subsistemas = ?
+        ORDER BY e.tag
+            """.trimIndent(),
+            arrayOf(
+                locacionId.toString(),
+                sistemaId.toString(),
+                subsistemaId.toString(),
+            ),
+        )
+    }
+
 
     private fun obtenerLista(query: String, args: Array<String>? = null): List<Pair<Int, String>> {
         val lista = mutableListOf<Pair<Int, String>>()
@@ -2509,14 +2744,14 @@ return insertOk
     }
 
 
-    fun getMantenimientosPendientesBicatacoras(): List<String> {
+    fun getMantenimientosPendientesBicatacoras(idUsuario: Int): List<String> {
         val pendientes = mutableListOf<String>()
         val db = readableDatabase
 
         // Usamos .use para que el cursor se cierre automáticamente, es más seguro.
         // Incluye:
         // 1) avances de actividades programadas sin sincronizar
-        // 2) actividades NO programadas creadas localmente sin sincronizar
+        // 2) actividades NO programadas creadas localmente sin sincronizar (solo las del usuario supervisor)
         // SQLite no tiene CONCAT(); se usa || para concatenar.
         db.rawQuery(
             """
@@ -2530,6 +2765,8 @@ return insertOk
                 programar_actividades_bitacora pab ON (pab.id = rba.idRelProgramarActividadesBitacora)
             JOIN
                 actividades_bitacoras ab ON (ab.id = pab.idActividad)
+            JOIN
+                bitacora_mantenimientos bm ON (bm.id = pab.idBitacora AND bm.estado = 1)
             WHERE
                 rba.sincronizado = 0
                 AND rba.Programada = 1
@@ -2542,11 +2779,32 @@ return insertOk
                 programar_actividades_bitacora pab2
             JOIN
                 actividades_bitacoras ab2 ON (ab2.id = pab2.idActividad)
+            JOIN
+                bitacora_mantenimientos bm2 ON (bm2.id = pab2.idBitacora AND bm2.estado = 1)
             WHERE
                 pab2.sincronizado = 0
                 AND pab2.Estado = 2
+                AND pab2.supervisorResponsable = ?
+
+            UNION ALL
+
+            SELECT
+                ('Reg. NP: ' || SUBSTR(ab3.Descripcion, 1, 18) || ' ' || CAST(rba3.Cantidad AS TEXT)) AS tag
+            FROM
+                rel_bitacora_actividades rba3
+            JOIN
+                programar_actividades_bitacora pab3 ON (pab3.id = rba3.idRelProgramarActividadesBitacora)
+            JOIN
+                actividades_bitacoras ab3 ON (ab3.id = pab3.idActividad)
+            JOIN
+                bitacora_mantenimientos bm3 ON (bm3.id = pab3.idBitacora AND bm3.estado = 1)
+            WHERE
+                rba3.sincronizado = 0
+                AND rba3.Programada = 0
+                AND pab3.Estado = 2
+                AND pab3.supervisorResponsable = ?
         ) t
-        """, null
+        """, arrayOf(idUsuario.toString(), idUsuario.toString())
         ).use { cursor ->
             if (cursor.moveToFirst()) {
                 do {
@@ -2945,6 +3203,10 @@ return insertOk
             """.trimIndent()
             db.rawQuery(query, arrayOf(bitacoraId.toString()))
         } else {
+            // No admin (p. ej. auxiliares, técnicos): ven actividades donde son supervisor
+            // O donde la actividad es PROGRAMADA (Estado != 2) y están en rel_cuadrillas_usuarios
+            // para esa IdCuadrilla. Antes: LEFT JOIN + filtro por Descripcion != 'No Programada' fallaba
+            // (catálogo NP no siempre se llama así) y el GROUP BY con JOIN podía dejar fuera a miembros válidos.
             val query = """
                 SELECT
                     pab.id,
@@ -2963,11 +3225,19 @@ return insertOk
                 JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
                 JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
                 JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
-                LEFT JOIN rel_cuadrillas_usuarios rcu on (rcu.IdCuadrilla  = c.id)
-                WHERE bm.id = ? AND rcu.IdUsuario = ? AND ab.Descripcion != 'No Programada'
-                GROUP BY pab.id
+                WHERE bm.id = ?
+                  AND (
+                    pab.supervisorResponsable = ?
+                    OR (
+                      IFNULL(pab.Estado, 1) != 2
+                      AND EXISTS (
+                        SELECT 1 FROM rel_cuadrillas_usuarios rcu
+                        WHERE rcu.IdCuadrilla = pab.IdCuadrilla AND rcu.IdUsuario = ?
+                      )
+                    )
+                  )
             """.trimIndent()
-            db.rawQuery(query, arrayOf(bitacoraId.toString(), idUser.toString()))
+            db.rawQuery(query, arrayOf(bitacoraId.toString(), idUser.toString(), idUser.toString()))
         }
 
         cursor.use {
@@ -3105,6 +3375,48 @@ return insertOk
         return usuario
     }
 
+    /** Para salida de inventario: usuarios locales con documento (lista desplegable). */
+    data class UsuarioInventarioSalidaRow(
+        val id: Int,
+        val nombre: String,
+        val documento: String?
+    ) {
+        override fun toString(): String = when {
+            documento.isNullOrBlank() -> nombre
+            else -> "$nombre · $documento"
+        }
+    }
+
+    fun listarUsuariosActivosParaInventarioSalida(): List<UsuarioInventarioSalidaRow> {
+        val out = mutableListOf<UsuarioInventarioSalidaRow>()
+        val db = readableDatabase
+        try {
+            db.rawQuery(
+                "SELECT id, nombre, documento FROM users WHERE activo = 1 ORDER BY nombre COLLATE NOCASE",
+                null
+            ).use { c ->
+                val idxDoc = c.getColumnIndex("documento")
+                while (c.moveToNext()) {
+                    val id = c.getInt(c.getColumnIndexOrThrow("id"))
+                    val nombre = c.getString(c.getColumnIndexOrThrow("nombre")) ?: ""
+                    val doc: String? = if (idxDoc >= 0 && !c.isNull(idxDoc)) {
+                        try {
+                            c.getLong(idxDoc).toString()
+                        } catch (_: Exception) {
+                            c.getString(idxDoc)
+                        }
+                    } else null
+                    out.add(UsuarioInventarioSalidaRow(id, nombre.trim(), doc?.trim()?.takeIf { it.isNotEmpty() }))
+                }
+            }
+        } catch (_: Exception) {
+            for (u in getAllUsers()) {
+                out.add(UsuarioInventarioSalidaRow(u.id, u.nombre, null))
+            }
+        }
+        return out
+    }
+
 
     private fun getCurrentTimestamp(): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -3112,6 +3424,97 @@ return insertOk
     }
 
 
+
+    fun esActividadNoProgramada(idProgramarActividadesBitacora: Int): Boolean {
+        val db = this.readableDatabase
+        db.rawQuery(
+            "SELECT Estado FROM programar_actividades_bitacora WHERE id = ? LIMIT 1",
+            arrayOf(idProgramarActividadesBitacora.toString())
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                return cursor.getInt(cursor.getColumnIndexOrThrow("Estado")) == 2
+            }
+        }
+        return false
+    }
+
+    fun existeRegistroBitacoraPendienteDuplicado(
+        numeroActividad: Int,
+        prInicial: String,
+        prFinal: String,
+        cantidad: Double,
+        observacion: String
+    ): Boolean {
+        val db = this.readableDatabase
+        db.rawQuery(
+            """
+            SELECT 1 FROM rel_bitacora_actividades
+            WHERE idRelProgramarActividadesBitacora = ?
+              AND PrInicial = ?
+              AND PrFinal = ?
+              AND Cantidad = ?
+              AND IFNULL(ObservacionInterna, '') = ?
+              AND sincronizado = 0
+            LIMIT 1
+            """.trimIndent(),
+            arrayOf(
+                numeroActividad.toString(),
+                prInicial,
+                prFinal,
+                cantidad.toString(),
+                observacion
+            )
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
+    fun existeActividadNpPendienteDuplicada(
+        idBitacora: Int,
+        idActividad: Int,
+        idCuadrilla: Int,
+        uf: Int,
+        sentido: String,
+        lado: String,
+        prInicial: String,
+        prFinal: String,
+        cantidad: Double,
+        observacion: String
+    ): Boolean {
+        val db = this.readableDatabase
+        db.rawQuery(
+            """
+            SELECT 1 FROM programar_actividades_bitacora
+            WHERE idBitacora = ?
+              AND idActividad = ?
+              AND IdCuadrilla = ?
+              AND UF = ?
+              AND Sentido = ?
+              AND Lado = ?
+              AND PrInicial = ?
+              AND PrFinal = ?
+              AND Cantidad = ?
+              AND IFNULL(Observacion, '') = ?
+              AND Estado = 2
+              AND sincronizado = 0
+            LIMIT 1
+            """.trimIndent(),
+            arrayOf(
+                idBitacora.toString(),
+                idActividad.toString(),
+                idCuadrilla.toString(),
+                uf.toString(),
+                sentido,
+                lado,
+                prInicial,
+                prFinal,
+                cantidad.toString(),
+                observacion
+            )
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
 
     fun insertarRegistroBitacora(
         numeroActividad: Int,
@@ -3122,8 +3525,24 @@ return insertOk
         idUsuarios: List<Int>, // <-- Ahora se recibe la lista de usuarios
         fotos: List<File>       // <-- Y la lista de fotos
     ): Boolean {
+        if (existeRegistroBitacoraPendienteDuplicado(
+                numeroActividad,
+                prInicial,
+                prFinal,
+                cantidad,
+                observacion
+            )
+        ) {
+            Log.w(
+                "DatabaseHelper",
+                "Registro de bitácora duplicado pendiente ignorado para actividad $numeroActividad"
+            )
+            return false
+        }
+
         val db = this.writableDatabase
         var exito = false
+        val esNoProgramada = esActividadNoProgramada(numeroActividad)
 
         // INICIAMOS LA TRANSACCIÓN
         db.beginTransaction()
@@ -3136,7 +3555,7 @@ return insertOk
                 put("PrInicial", prInicial)
                 put("PrFinal", prFinal)
                 put("Cantidad", cantidad)
-                put("Programada", 1)
+                put("Programada", if (esNoProgramada) 0 else 1)
                 put("ObservacionInterna", observacion)
                 put("created_at", timestamp)
                 put("updated_at", timestamp)
@@ -3273,21 +3692,88 @@ return insertOk
 
     // Dentro de la clase DatabaseHelper.kt
 
+    private data class RegistroNpPendienteLocal(
+        val idRba: Int,
+        val prInicial: String,
+        val prFinal: String,
+        val cantidad: Double,
+        val observacion: String,
+        val sentido: String?,
+        val lado: String?
+    )
+
+    private fun obtenerRegistroNpPendiente(db: SQLiteDatabase, idPab: Int): RegistroNpPendienteLocal? {
+        val sql = """
+            SELECT rba.id, rba.PrInicial, rba.PrFinal, rba.Cantidad, rba.ObservacionInterna, pab.Sentido, pab.Lado
+            FROM rel_bitacora_actividades rba
+            JOIN programar_actividades_bitacora pab ON pab.id = rba.idRelProgramarActividadesBitacora
+            WHERE rba.idRelProgramarActividadesBitacora = ? AND rba.sincronizado = 0
+            ORDER BY rba.id DESC
+            LIMIT 1
+        """.trimIndent()
+        db.rawQuery(sql, arrayOf(idPab.toString())).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                return null
+            }
+            return RegistroNpPendienteLocal(
+                idRba = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+                prInicial = cursor.getString(cursor.getColumnIndexOrThrow("PrInicial")),
+                prFinal = cursor.getString(cursor.getColumnIndexOrThrow("PrFinal")),
+                cantidad = cursor.getDouble(cursor.getColumnIndexOrThrow("Cantidad")),
+                observacion = cursor.getString(cursor.getColumnIndexOrThrow("ObservacionInterna")) ?: "",
+                sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
+                lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado"))
+            )
+        }
+    }
+
+    private fun obtenerUsuariosRegistroNp(db: SQLiteDatabase, idRba: Int): List<Int> {
+        val usuarios = mutableListOf<Int>()
+        val queryUsuarios =
+            "SELECT idUsuario FROM rel_usuarios_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+        db.rawQuery(queryUsuarios, arrayOf(idRba.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                usuarios.add(cursor.getInt(cursor.getColumnIndexOrThrow("idUsuario")))
+            }
+        }
+        return usuarios
+    }
+
+    private fun obtenerFotosRegistroNp(db: SQLiteDatabase, idRba: Int): List<File> {
+        val fotos = mutableListOf<File>()
+        val queryFotos =
+            "SELECT ruta FROM rel_fotos_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+        db.rawQuery(queryFotos, arrayOf(idRba.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                val path = cursor.getString(cursor.getColumnIndexOrThrow("ruta"))
+                if (path.isNotBlank()) {
+                    fotos.add(File(path))
+                }
+            }
+        }
+        return fotos
+    }
+
     /**
      * Obtiene todos los registros de bitácora pendientes de sincronizar (sincronizado = 0),
      * incluyendo sus listas de usuarios y fotos asociadas.
      */
-    fun obtenerBitacorasPendientes(): List<BitacoraRecord> {
+    /**
+     * @param idUsuarioActivo Solo sincroniza NP pendientes cuyo [supervisorResponsable] coincide (evita que otro usuario vea/envíe registros ajenos).
+     */
+    fun obtenerBitacorasPendientes(idUsuarioActivo: Int): List<BitacoraRecord> {
         val listaBitacoras = mutableListOf<BitacoraRecord>()
         val db = this.readableDatabase
 
         // 1. Obtenemos los registros principales de bitácora pendientes (actividades programadas)
         val queryPrincipal = """
-            SELECT rba.*, pab.Sentido, pab.Lado
+            SELECT rba.*, pab.Sentido, pab.Lado, pab.Estado AS pabEstado
             FROM rel_bitacora_actividades rba
             JOIN programar_actividades_bitacora pab 
                 ON pab.id = rba.idRelProgramarActividadesBitacora
-            WHERE rba.sincronizado = 0 AND rba.Programada = 1
+            JOIN bitacora_mantenimientos bm ON bm.id = pab.idBitacora AND bm.estado = 1
+            WHERE rba.sincronizado = 0
+              AND NOT (IFNULL(pab.Estado, 1) = 2 AND pab.sincronizado = 0)
         """.trimIndent()
         db.rawQuery(queryPrincipal, null).use { cursor ->
             while (cursor.moveToNext()) {
@@ -3333,23 +3819,40 @@ return insertOk
             }
         }
 
-        // 5. Obtenemos las actividades no programadas pendientes
-        val queryNoProgramadas = "SELECT * FROM programar_actividades_bitacora WHERE sincronizado = 0 AND Estado = 2"
-        db.rawQuery(queryNoProgramadas, null).use { cursor ->
+        // 5. Actividades no programadas pendientes (solo las del supervisor que las creó)
+        val queryNoProgramadas = """
+            SELECT pab.* FROM programar_actividades_bitacora pab
+            INNER JOIN bitacora_mantenimientos bm ON bm.id = pab.idBitacora AND bm.estado = 1
+            WHERE pab.sincronizado = 0 AND pab.Estado = 2 AND pab.supervisorResponsable = ?
+        """.trimIndent()
+        db.rawQuery(queryNoProgramadas, arrayOf(idUsuarioActivo.toString())).use { cursor ->
             while (cursor.moveToNext()) {
                 val idRegistro = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
-                
-                // Para actividades no programadas, no hay usuarios asociados
-                val listaUsuarios = emptyList<Int>()
-                
-                // Fotos asociadas a la actividad no programada
+                val clientUuidNp = leerClientUuidDesdeCursor(cursor)
+
+                val registroPendiente = obtenerRegistroNpPendiente(db, idRegistro)
+                val listaUsuarios = if (registroPendiente != null) {
+                    obtenerUsuariosRegistroNp(db, registroPendiente.idRba)
+                } else {
+                    emptyList()
+                }
+
                 val listaFotos = mutableListOf<File>()
-                val queryFotosNoProgramada = "SELECT ruta FROM rel_fotos_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
-                db.rawQuery(queryFotosNoProgramada, arrayOf(idRegistro.toString())).use { photoCursor ->
-                    while (photoCursor.moveToNext()) {
-                        val path = photoCursor.getString(photoCursor.getColumnIndexOrThrow("ruta"))
+                val pathsVistos = mutableSetOf<String>()
+                fun agregarFoto(path: String) {
+                    if (path.isNotBlank() && pathsVistos.add(path)) {
                         listaFotos.add(File(path))
                     }
+                }
+                val sqlFotosPab =
+                    "SELECT ruta FROM rel_fotos_bitacora_actividades WHERE idRelProgramarActividadesBitacora = ?"
+                db.rawQuery(sqlFotosPab, arrayOf(idRegistro.toString())).use { photoCursor ->
+                    while (photoCursor.moveToNext()) {
+                        agregarFoto(photoCursor.getString(photoCursor.getColumnIndexOrThrow("ruta")))
+                    }
+                }
+                if (registroPendiente != null) {
+                    obtenerFotosRegistroNp(db, registroPendiente.idRba).forEach { agregarFoto(it.absolutePath) }
                 }
 
                 // Creamos el objeto completo y lo añadimos a la lista (actividad no programada)
@@ -3371,13 +3874,45 @@ return insertOk
                         uf = cursor.getInt(cursor.getColumnIndexOrThrow("UF")),
                         sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
                         lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado")),
-                        supervisorResponsable = cursor.getInt(cursor.getColumnIndexOrThrow("supervisorResponsable"))
+                        supervisorResponsable = cursor.getInt(cursor.getColumnIndexOrThrow("supervisorResponsable")),
+                        registroPrInicial = registroPendiente?.prInicial,
+                        registroPrFinal = registroPendiente?.prFinal,
+                        registroCantidad = registroPendiente?.cantidad,
+                        registroObservacion = registroPendiente?.observacion,
+                        registroSentido = registroPendiente?.sentido,
+                        registroLado = registroPendiente?.lado,
+                        idRegistroNpLocal = registroPendiente?.idRba,
+                        clientUuid = clientUuidNp
                     )
                 )
             }
         }
 
         return listaBitacoras
+    }
+
+    private fun leerClientUuidDesdeCursor(cursor: Cursor): String? {
+        val idx = cursor.getColumnIndex("client_uuid")
+        if (idx < 0 || cursor.isNull(idx)) {
+            return null
+        }
+        val value = cursor.getString(idx)?.trim()
+        return if (value.isNullOrEmpty()) null else value
+    }
+
+    fun marcarRegistrosNpDependientesSincronizados(idPab: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("sincronizado", 1)
+        }
+        val filas = db.update(
+            "rel_bitacora_actividades",
+            values,
+            "idRelProgramarActividadesBitacora = ? AND sincronizado = 0",
+            arrayOf(idPab.toString())
+        )
+        Log.d("SyncBitacora", "Registros NP dependientes marcados como sincronizados para pab=$idPab (filas=$filas)")
+        db.close()
     }
 
     /**
@@ -3403,6 +3938,98 @@ return insertOk
         }
         
         db.close()
+    }
+
+    /**
+     * Tras sincronizar una NP, el servidor asigna el PK real en [programar_actividades_bitacora].
+     * Reemplaza el id local por el id remoto y re-enlaza fotos / rels que apuntaban al id local.
+     */
+    fun remapearIdProgramarActividadesBitacoraTrasSyncNp(idLocal: Int, idServidor: Int): Boolean {
+        if (idLocal == idServidor) return true
+        val db = this.writableDatabase
+        return try {
+            db.beginTransaction()
+            val curExists = db.rawQuery(
+                "SELECT 1 FROM programar_actividades_bitacora WHERE id = ?",
+                arrayOf(idServidor.toString())
+            )
+            val yaExisteServidor = curExists.moveToFirst()
+            curExists.close()
+
+            if (yaExisteServidor) {
+                db.execSQL(
+                    "UPDATE rel_fotos_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_usuarios_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL("DELETE FROM programar_actividades_bitacora WHERE id = ?", arrayOf(idLocal.toString()))
+                Log.d("SyncBitacora", "Remapeo NP: id servidor ya existía; eliminada fila local duplicada id=$idLocal")
+            } else {
+                val cursor = db.rawQuery(
+                    "SELECT * FROM programar_actividades_bitacora WHERE id = ?",
+                    arrayOf(idLocal.toString())
+                )
+                if (!cursor.moveToFirst()) {
+                    cursor.close()
+                    db.endTransaction()
+                    return false
+                }
+                val cv = ContentValues()
+                for (i in 0 until cursor.columnCount) {
+                    val col = cursor.getColumnName(i)
+                    if (col == "id") {
+                        cv.put("id", idServidor)
+                        continue
+                    }
+                    if (cursor.isNull(i)) {
+                        cv.putNull(col)
+                    } else {
+                        when (cursor.getType(i)) {
+                            Cursor.FIELD_TYPE_INTEGER -> cv.put(col, cursor.getLong(i))
+                            Cursor.FIELD_TYPE_FLOAT -> cv.put(col, cursor.getDouble(i))
+                            Cursor.FIELD_TYPE_STRING -> cv.put(col, cursor.getString(i))
+                            Cursor.FIELD_TYPE_BLOB -> cv.put(col, cursor.getBlob(i))
+                            else -> { }
+                        }
+                    }
+                }
+                cursor.close()
+                val ins = db.insert("programar_actividades_bitacora", null, cv)
+                if (ins == -1L) {
+                    db.endTransaction()
+                    return false
+                }
+                db.execSQL(
+                    "UPDATE rel_fotos_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL(
+                    "UPDATE rel_usuarios_bitacora_actividades SET idRelProgramarActividadesBitacora = ? WHERE idRelProgramarActividadesBitacora = ?",
+                    arrayOf(idServidor, idLocal)
+                )
+                db.execSQL("DELETE FROM programar_actividades_bitacora WHERE id = ?", arrayOf(idLocal.toString()))
+            }
+            db.setTransactionSuccessful()
+            true
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "remapearIdProgramarActividadesBitacoraTrasSyncNp: ${e.message}", e)
+            false
+        } finally {
+            try {
+                db.endTransaction()
+            } catch (_: Exception) { }
+        }
     }
 
 
@@ -4022,6 +4649,36 @@ return insertOk
         return rows > 0
     }
 
+    private fun migrarClientUuidActividadesNp(db: SQLiteDatabase) {
+        try {
+            db.execSQL("ALTER TABLE programar_actividades_bitacora ADD COLUMN client_uuid TEXT")
+            Log.d("DB_UPGRADE", "Columna client_uuid agregada a programar_actividades_bitacora")
+        } catch (e: Exception) {
+            Log.d("DB_UPGRADE", "client_uuid ya existe o no se pudo agregar: ${e.message}")
+        }
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_pab_client_uuid ON programar_actividades_bitacora(client_uuid) WHERE client_uuid IS NOT NULL"
+        )
+        db.rawQuery(
+            """
+            SELECT id FROM programar_actividades_bitacora
+            WHERE Estado = 2 AND sincronizado = 0
+              AND (client_uuid IS NULL OR TRIM(client_uuid) = '')
+            """.trimIndent(),
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getInt(0)
+                val uuid = UUID.randomUUID().toString()
+                db.execSQL(
+                    "UPDATE programar_actividades_bitacora SET client_uuid = ? WHERE id = ?",
+                    arrayOf(uuid, id.toString())
+                )
+            }
+        }
+        Log.d("DB_UPGRADE", "UUID asignados a NP pendientes sin client_uuid")
+    }
+
     /**
      * Inserta una nueva actividad no programada
      */
@@ -4039,8 +4696,29 @@ return insertOk
         supervisorResponsable: Int,
         fotos: List<File> = emptyList()
     ): Long {
+        if (existeActividadNpPendienteDuplicada(
+                idBitacora,
+                idActividad,
+                idCuadrilla,
+                uf,
+                sentido,
+                lado,
+                prInicial,
+                prFinal,
+                cantidad,
+                observacion
+            )
+        ) {
+            Log.w(
+                "ACTIVIDAD_NO_PROGRAMADA",
+                "Actividad NP duplicada pendiente ignorada para bitácora $idBitacora"
+            )
+            return -1L
+        }
+
         val db = this.writableDatabase
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        val clientUuid = UUID.randomUUID().toString()
         val values = ContentValues().apply {
             put("idBitacora", idBitacora)
             put("idActividad", idActividad)
@@ -4055,6 +4733,7 @@ return insertOk
             put("Estado", 2) // 2 = No Programada (1 = Programada)
             put("supervisorResponsable", supervisorResponsable)
             put("sincronizado", 0) // 0 = No sincronizado, 1 = Sincronizado
+            put("client_uuid", clientUuid)
             put("created_at", timestamp)
             put("updated_at", timestamp)
         }
@@ -4073,7 +4752,7 @@ return insertOk
                 db.insert("rel_fotos_bitacora_actividades", null, valuesFoto)
             }
         }
-        Log.d("ACTIVIDAD_NO_PROGRAMADA", "Actividad no programada insertada con ID: $result")
+        Log.d("ACTIVIDAD_NO_PROGRAMADA", "Actividad no programada insertada con ID: $result, client_uuid=$clientUuid")
         db.close()
         return result
     }
@@ -4489,6 +5168,134 @@ return insertOk
         db.close()
     }
 
+    // ===================================================================
+    // MÉTODOS PARA EXTRAS (HORAS EXTRAS) — OFFLINE FIRST
+    // ===================================================================
+
+    data class ExtraHourLocal(
+        val id: Int,
+        val clientUuid: String,
+        val fechaInicial: String,
+        val fechaFinal: String,
+        val turnoCodigo: Int,
+        val aplicaAntes: Int,
+        val horasAntes: Double?,
+        val horaInicioAntes: String?,
+        val horaFinAntes: String?,
+        val aplicaDespues: Int,
+        val horasDespues: Double?,
+        val horaInicioDespues: String?,
+        val horaFinDespues: String?,
+        val autorizoNombre: String,
+        val observacion: String,
+        val cargadoEn: String?
+    )
+
+    fun insertarExtraHourLocal(
+        clientUuid: String,
+        fechaInicial: String,
+        fechaFinal: String,
+        turnoCodigo: Int,
+        aplicaAntes: Boolean,
+        horasAntes: Double?,
+        horaInicioAntes: String?,
+        horaFinAntes: String?,
+        aplicaDespues: Boolean,
+        horasDespues: Double?,
+        horaInicioDespues: String?,
+        horaFinDespues: String?,
+        autorizoNombre: String,
+        observacion: String,
+        cargadoEn: String?
+    ): Long {
+        val db = this.writableDatabase
+        val values = ContentValues().apply {
+            put("client_uuid", clientUuid)
+            put("fecha_inicial", fechaInicial)
+            put("fecha_final", fechaFinal)
+            put("turno_codigo", turnoCodigo)
+            put("aplica_antes", if (aplicaAntes) 1 else 0)
+            put("horas_antes", horasAntes)
+            put("hora_inicio_antes", horaInicioAntes)
+            put("hora_fin_antes", horaFinAntes)
+            put("aplica_despues", if (aplicaDespues) 1 else 0)
+            put("horas_despues", horasDespues)
+            put("hora_inicio_despues", horaInicioDespues)
+            put("hora_fin_despues", horaFinDespues)
+            put("autorizo_nombre", autorizoNombre)
+            put("observacion", observacion)
+            put("cargado_en", cargadoEn)
+            put("sincronizado", 0)
+            put("created_at", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+        }
+        val id = db.insertWithOnConflict("extras_hours", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        db.close()
+        return id
+    }
+
+    fun obtenerExtrasPendientes(): List<ExtraHourLocal> {
+        val lista = mutableListOf<ExtraHourLocal>()
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT * FROM extras_hours WHERE sincronizado = 0 ORDER BY created_at DESC",
+            null
+        )
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val clientUuid = cursor.getString(cursor.getColumnIndexOrThrow("client_uuid"))
+                val fechaInicial = cursor.getString(cursor.getColumnIndexOrThrow("fecha_inicial"))
+                val fechaFinal = cursor.getString(cursor.getColumnIndexOrThrow("fecha_final"))
+                val turnoCodigo = cursor.getInt(cursor.getColumnIndexOrThrow("turno_codigo"))
+                val aplicaAntes = cursor.getInt(cursor.getColumnIndexOrThrow("aplica_antes"))
+                val horasAntes = if (cursor.isNull(cursor.getColumnIndexOrThrow("horas_antes"))) null else cursor.getDouble(cursor.getColumnIndexOrThrow("horas_antes"))
+                val idxHia = cursor.getColumnIndex("hora_inicio_antes")
+                val horaInicioAntes = if (idxHia < 0 || cursor.isNull(idxHia)) null else cursor.getString(idxHia)
+                val idxHfa = cursor.getColumnIndex("hora_fin_antes")
+                val horaFinAntes = if (idxHfa < 0 || cursor.isNull(idxHfa)) null else cursor.getString(idxHfa)
+                val aplicaDespues = cursor.getInt(cursor.getColumnIndexOrThrow("aplica_despues"))
+                val horasDespues = if (cursor.isNull(cursor.getColumnIndexOrThrow("horas_despues"))) null else cursor.getDouble(cursor.getColumnIndexOrThrow("horas_despues"))
+                val idxHid = cursor.getColumnIndex("hora_inicio_despues")
+                val horaInicioDespues = if (idxHid < 0 || cursor.isNull(idxHid)) null else cursor.getString(idxHid)
+                val idxHfd = cursor.getColumnIndex("hora_fin_despues")
+                val horaFinDespues = if (idxHfd < 0 || cursor.isNull(idxHfd)) null else cursor.getString(idxHfd)
+                val autorizoNombre = cursor.getString(cursor.getColumnIndexOrThrow("autorizo_nombre"))
+                val observacion = cursor.getString(cursor.getColumnIndexOrThrow("observacion"))
+                val cargadoEn = if (cursor.isNull(cursor.getColumnIndexOrThrow("cargado_en"))) null else cursor.getString(cursor.getColumnIndexOrThrow("cargado_en"))
+
+                lista.add(
+                    ExtraHourLocal(
+                        id = id,
+                        clientUuid = clientUuid,
+                        fechaInicial = fechaInicial,
+                        fechaFinal = fechaFinal,
+                        turnoCodigo = turnoCodigo,
+                        aplicaAntes = aplicaAntes,
+                        horasAntes = horasAntes,
+                        horaInicioAntes = horaInicioAntes,
+                        horaFinAntes = horaFinAntes,
+                        aplicaDespues = aplicaDespues,
+                        horasDespues = horasDespues,
+                        horaInicioDespues = horaInicioDespues,
+                        horaFinDespues = horaFinDespues,
+                        autorizoNombre = autorizoNombre,
+                        observacion = observacion,
+                        cargadoEn = cargadoEn
+                    )
+                )
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return lista
+    }
+
+    fun marcarExtraSincronizado(idExtra: Int) {
+        val db = this.writableDatabase
+        val values = ContentValues().apply { put("sincronizado", 1) }
+        db.update("extras_hours", values, "id = ?", arrayOf(idExtra.toString()))
+        db.close()
+    }
+
     /**
      * Obtener combustibles pendientes por usuario (para HomeActivity)
      */
@@ -4544,6 +5351,433 @@ return insertOk
 
         cursor.close()
         return tags
+    }
+
+    // ---------- Inventario offline ----------
+
+    fun reemplazarCatalogoInventario(
+        unidades: List<ApiService.InvUnidadDto>,
+        productos: List<ApiService.InvProductoDto>,
+        ubicaciones: List<ApiService.InvUbicacionDto>
+    ) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("DELETE FROM inv_unidad_local")
+            db.execSQL("DELETE FROM inv_producto_local")
+            db.execSQL("DELETE FROM inv_ubicacion_local")
+            for (u in unidades) {
+                val cv = ContentValues().apply {
+                    put("id", u.id)
+                    put("codigo", u.codigo)
+                    put("nombre", u.nombre)
+                }
+                db.insert("inv_unidad_local", null, cv)
+            }
+            for (p in productos) {
+                val busq = listOf(p.codigoEtiqueta, p.nombre, p.unidadCodigo ?: "")
+                    .joinToString(" ")
+                    .lowercase(Locale.getDefault())
+                val cv = ContentValues().apply {
+                    put("id", p.id)
+                    put("codigo_etiqueta", p.codigoEtiqueta)
+                    put("nombre", p.nombre)
+                    put("tipo", p.tipo)
+                    put("inv_unidad_id", p.invUnidadId)
+                    put("unidad_codigo", p.unidadCodigo)
+                    put("texto_busqueda", busq)
+                }
+                db.insert("inv_producto_local", null, cv)
+            }
+            for (x in ubicaciones) {
+                val busq = "${x.codigoUnicoGlobal} ${x.label}".lowercase(Locale.getDefault())
+                val cv = ContentValues().apply {
+                    put("id", x.id)
+                    put("codigo_unico_global", x.codigoUnicoGlobal)
+                    put("label", x.label)
+                    put("texto_busqueda", busq)
+                }
+                db.insert("inv_ubicacion_local", null, cv)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun contarCatalogoInventario(): Triple<Int, Int, Int> {
+        val db = readableDatabase
+        val u = db.rawQuery("SELECT COUNT(*) FROM inv_unidad_local", null).use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+        val p = db.rawQuery("SELECT COUNT(*) FROM inv_producto_local", null).use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+        val ub = db.rawQuery("SELECT COUNT(*) FROM inv_ubicacion_local", null).use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+        return Triple(u, p, ub)
+    }
+
+    fun buscarProductosInventarioLocal(q: String, limit: Int = 30): List<InvProductoRow> {
+        if (q.length < 2) return emptyList()
+        val db = readableDatabase
+        val like = "%${q.lowercase(Locale.getDefault())}%"
+        val sql = "SELECT id, codigo_etiqueta, nombre, tipo, unidad_codigo FROM inv_producto_local WHERE texto_busqueda LIKE ? ORDER BY nombre LIMIT ?"
+        val out = mutableListOf<InvProductoRow>()
+        db.rawQuery(sql, arrayOf(like, limit.toString())).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    InvProductoRow(
+                        id = c.getInt(0),
+                        codigoEtiqueta = c.getString(1) ?: "",
+                        nombre = c.getString(2) ?: "",
+                        tipo = c.getString(3) ?: "",
+                        unidadCodigo = c.getString(4)
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    fun buscarUbicacionesInventarioLocal(q: String, limit: Int = 30): List<InvUbicacionRow> {
+        if (q.length < 2) return emptyList()
+        val db = readableDatabase
+        val like = "%${q.lowercase(Locale.getDefault())}%"
+        val sql = "SELECT id, label FROM inv_ubicacion_local WHERE texto_busqueda LIKE ? ORDER BY label LIMIT ?"
+        val out = mutableListOf<InvUbicacionRow>()
+        db.rawQuery(sql, arrayOf(like, limit.toString())).use { c ->
+            while (c.moveToNext()) {
+                out.add(InvUbicacionRow(c.getInt(0), c.getString(1) ?: ""))
+            }
+        }
+        return out
+    }
+
+    /**
+     * Resuelve una celda a partir del contenido del QR (o texto pegado) usando el catálogo local.
+     * Coincide por codigo_unico_global (insensible a mayúsculas), por id numérico,
+     * o por búsqueda acotada en texto_busqueda.
+     */
+    fun resolverUbicacionPorCodigoQr(raw: String): InvUbicacionRow? {
+        val payload = InventarioUbicacionQr.normalizarPayload(raw)
+        if (payload.isEmpty()) return null
+        val db = readableDatabase
+        val pl = payload.lowercase(Locale.getDefault())
+
+        db.rawQuery(
+            "SELECT id, label FROM inv_ubicacion_local WHERE lower(trim(codigo_unico_global)) = ? LIMIT 1",
+            arrayOf(pl)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                return InvUbicacionRow(c.getInt(0), c.getString(1) ?: "")
+            }
+        }
+
+        payload.toIntOrNull()?.let { idNum ->
+            db.rawQuery(
+                "SELECT id, label FROM inv_ubicacion_local WHERE id = ? LIMIT 1",
+                arrayOf(idNum.toString())
+            ).use { c ->
+                if (c.moveToFirst()) {
+                    return InvUbicacionRow(c.getInt(0), c.getString(1) ?: "")
+                }
+            }
+        }
+
+        if (payload.length >= 3) {
+            val like = "%$pl%"
+            db.rawQuery(
+                "SELECT id, label FROM inv_ubicacion_local WHERE texto_busqueda LIKE ? ORDER BY label LIMIT 1",
+                arrayOf(like)
+            ).use { c ->
+                if (c.moveToFirst()) {
+                    return InvUbicacionRow(c.getInt(0), c.getString(1) ?: "")
+                }
+            }
+        }
+
+        return null
+    }
+
+    data class InvProductoRow(
+        val id: Int,
+        val codigoEtiqueta: String,
+        val nombre: String,
+        val tipo: String,
+        val unidadCodigo: String?
+    ) {
+        override fun toString(): String {
+            val u = unidadCodigo?.trim().orEmpty()
+            return if (u.isNotEmpty()) "$codigoEtiqueta — $nombre ($u)" else "$codigoEtiqueta — $nombre"
+        }
+    }
+
+    data class InvUbicacionRow(val id: Int, val label: String) {
+        override fun toString() = label
+    }
+
+    fun insertarPendienteCargarStock(
+        invProductoId: Int,
+        invUbicacionId: Int,
+        cantidad: String,
+        nota: String?
+    ): Long {
+        val db = writableDatabase
+        val cv = ContentValues().apply {
+            put("inv_producto_id", invProductoId)
+            put("inv_ubicacion_id", invUbicacionId)
+            put("cantidad", cantidad)
+            put("nota", nota)
+            put("sincronizado", 0)
+            put("creado_en", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+        }
+        return db.insert("inv_pendiente_cargar_stock", null, cv)
+    }
+
+    data class PendienteCargarStock(
+        val id: Int,
+        val invProductoId: Int,
+        val invUbicacionId: Int,
+        val cantidad: String,
+        val nota: String?
+    )
+
+    fun obtenerPendientesCargarStock(): List<PendienteCargarStock> {
+        val db = readableDatabase
+        val sql = "SELECT id, inv_producto_id, inv_ubicacion_id, cantidad, nota FROM inv_pendiente_cargar_stock WHERE sincronizado = 0 ORDER BY id"
+        val out = mutableListOf<PendienteCargarStock>()
+        db.rawQuery(sql, null).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    PendienteCargarStock(
+                        id = c.getInt(0),
+                        invProductoId = c.getInt(1),
+                        invUbicacionId = c.getInt(2),
+                        cantidad = c.getString(3) ?: "0",
+                        nota = c.getString(4)
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    fun marcarCargarStockSincronizado(idLocal: Int) {
+        val db = writableDatabase
+        val cv = ContentValues().apply { put("sincronizado", 1) }
+        db.update("inv_pendiente_cargar_stock", cv, "id = ?", arrayOf(idLocal.toString()))
+    }
+
+    fun insertarPendienteSalida(jsonPayload: String): Long {
+        val db = writableDatabase
+        val cv = ContentValues().apply {
+            put("json_payload", jsonPayload)
+            put("sincronizado", 0)
+            put("creado_en", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))
+        }
+        return db.insert("inv_pendiente_salida", null, cv)
+    }
+
+    /** Sustituye la caché de existencias del producto (respuesta de [ApiService.inventarioExistencias]). */
+    fun reemplazarExistenciasProductoEnCache(invProductoId: Int, items: List<ApiService.ExistenciaItemDto>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("inv_existencia_local", "inv_producto_id = ?", arrayOf(invProductoId.toString()))
+            items.forEach { ex ->
+                val cv = ContentValues().apply {
+                    put("inv_producto_id", invProductoId)
+                    put("inv_ubicacion_id", ex.invUbicacionId)
+                    put("cantidad", ex.cantidad.trim())
+                }
+                db.insert("inv_existencia_local", null, cv)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun obtenerCantidadCacheExistencia(invProductoId: Int, invUbicacionId: Int): String? {
+        readableDatabase.rawQuery(
+            "SELECT cantidad FROM inv_existencia_local WHERE inv_producto_id = ? AND inv_ubicacion_id = ? LIMIT 1",
+            arrayOf(invProductoId.toString(), invUbicacionId.toString())
+        ).use { c ->
+            if (c.moveToFirst()) return c.getString(0)?.trim()?.takeIf { it.isNotEmpty() }
+        }
+        return null
+    }
+
+    fun upsertExistenciaEnCache(invProductoId: Int, invUbicacionId: Int, cantidad: String) {
+        val cv = ContentValues().apply {
+            put("inv_producto_id", invProductoId)
+            put("inv_ubicacion_id", invUbicacionId)
+            put("cantidad", cantidad.trim())
+        }
+        writableDatabase.insertWithOnConflict(
+            "inv_existencia_local",
+            null,
+            cv,
+            SQLiteDatabase.CONFLICT_REPLACE
+        )
+    }
+
+    data class InvUbicacionProductoRow(
+        val invProductoId: Int,
+        val codigoEtiqueta: String,
+        val nombre: String,
+        val tipo: String,
+        val unidadCodigo: String?,
+        val cantidad: String
+    )
+
+    fun listarExistenciasUbicacionLocal(invUbicacionId: Int): List<InvUbicacionProductoRow> {
+        val sql = """
+            SELECT p.id, p.codigo_etiqueta, p.nombre, p.tipo, p.unidad_codigo, e.cantidad
+            FROM inv_existencia_local e
+            INNER JOIN inv_producto_local p ON p.id = e.inv_producto_id
+            WHERE e.inv_ubicacion_id = ?
+            ORDER BY p.nombre COLLATE NOCASE
+        """.trimIndent()
+        val out = mutableListOf<InvUbicacionProductoRow>()
+        readableDatabase.rawQuery(sql, arrayOf(invUbicacionId.toString())).use { c ->
+            while (c.moveToNext()) {
+                val productoId = c.getInt(0)
+                val cantidadRaw = c.getString(5)?.trim().orEmpty()
+                if (cantidadRaw.isEmpty()) continue
+                val cantidadBd = parseCantidadInventarioBigDecimal(cantidadRaw) ?: continue
+                val pendiente = sumaPendienteSalidaMismaCelda(productoId, invUbicacionId)
+                val disponible = cantidadBd.subtract(pendiente)
+                if (disponible <= BigDecimal.ZERO) continue
+                out.add(
+                    InvUbicacionProductoRow(
+                        invProductoId = productoId,
+                        codigoEtiqueta = c.getString(1) ?: "",
+                        nombre = c.getString(2) ?: "",
+                        tipo = c.getString(3) ?: "",
+                        unidadCodigo = c.getString(4),
+                        cantidad = disponible.stripTrailingZeros().toPlainString()
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    /** Suma salidas de inventario aún no sincronizadas para la misma celda y producto. */
+    fun sumaPendienteSalidaMismaCelda(invProductoId: Int, invUbicacionId: Int): BigDecimal {
+        val gson = Gson()
+        var sum = BigDecimal.ZERO
+        for (row in obtenerPendientesSalida()) {
+            try {
+                val req = gson.fromJson(row.jsonPayload, ApiService.InventarioSalidaRequest::class.java)
+                if (req.invProductoId == invProductoId && req.invUbicacionId == invUbicacionId) {
+                    val part = parseCantidadInventarioBigDecimal(req.cantidad) ?: continue
+                    sum = sum.add(part)
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return sum
+    }
+
+    private fun parseCantidadInventarioBigDecimal(raw: String?): BigDecimal? {
+        if (raw == null) return null
+        val t = raw.trim().replace(',', '.').replace(" ", "")
+        if (t.isEmpty()) return null
+        return try {
+            BigDecimal(t)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    data class PendienteSalida(val id: Int, val jsonPayload: String)
+
+    fun obtenerPendientesSalida(): List<PendienteSalida> {
+        val db = readableDatabase
+        val out = mutableListOf<PendienteSalida>()
+        db.rawQuery(
+            "SELECT id, json_payload FROM inv_pendiente_salida WHERE sincronizado = 0 ORDER BY id",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(PendienteSalida(c.getInt(0), c.getString(1) ?: "{}"))
+            }
+        }
+        return out
+    }
+
+    fun marcarSalidaSincronizado(idLocal: Int) {
+        val db = writableDatabase
+        val cv = ContentValues().apply { put("sincronizado", 1) }
+        db.update("inv_pendiente_salida", cv, "id = ?", arrayOf(idLocal.toString()))
+    }
+
+    fun getInventarioPendientesTags(): List<String> {
+        val tags = mutableListOf<String>()
+        val a = obtenerPendientesCargarStock().size
+        val s = obtenerPendientesSalida().size
+        if (a > 0) tags.add("Inv. cargar stock ($a)")
+        if (s > 0) tags.add("Inv. salida ($s)")
+        return tags
+    }
+
+    /**
+     * Textos para mostrar en Inicio: una línea por movimiento de inventario pendiente de subir al servidor.
+     */
+    fun getInventarioPendienteLineasDescripcion(): List<String> {
+        val db = readableDatabase
+        val gson = Gson()
+        val lines = mutableListOf<String>()
+        for (row in obtenerPendientesCargarStock()) {
+            val p = etiquetaInvProductoLocal(db, row.invProductoId)
+            val u = etiquetaInvUbicacionLocal(db, row.invUbicacionId)
+            val nota = row.nota?.trim()?.takeIf { it.isNotEmpty() }
+            val suf = if (nota != null) " — $nota" else ""
+            lines.add("Entrada de stock: $p → $u — cant. ${row.cantidad}$suf")
+        }
+        for (row in obtenerPendientesSalida()) {
+            try {
+                val req = gson.fromJson(row.jsonPayload, ApiService.InventarioSalidaRequest::class.java)
+                val p = etiquetaInvProductoLocal(db, req.invProductoId)
+                val u = etiquetaInvUbicacionLocal(db, req.invUbicacionId)
+                val tipo = if (req.tipoMovimiento == "consumo") "Consumo" else "Préstamo"
+                lines.add("Salida ($tipo): $p → $u — cant. ${req.cantidad}")
+            } catch (_: Exception) {
+                lines.add("Salida inventario (pendiente #${row.id})")
+            }
+        }
+        return lines
+    }
+
+    private fun etiquetaInvProductoLocal(db: SQLiteDatabase, id: Int): String {
+        db.rawQuery(
+            "SELECT codigo_etiqueta, nombre FROM inv_producto_local WHERE id = ?",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (c.moveToFirst()) {
+                val cod = c.getString(0)?.trim().orEmpty()
+                val nom = c.getString(1)?.trim().orEmpty()
+                val t = listOf(cod, nom).filter { it.isNotEmpty() }.joinToString(" — ")
+                return t.ifEmpty { "Producto #$id" }
+            }
+        }
+        return "Producto #$id"
+    }
+
+    private fun etiquetaInvUbicacionLocal(db: SQLiteDatabase, id: Int): String {
+        db.rawQuery(
+            "SELECT label FROM inv_ubicacion_local WHERE id = ?",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (c.moveToFirst()) {
+                return c.getString(0)?.trim().orEmpty().ifEmpty { "Celda #$id" }
+            }
+        }
+        return "Celda #$id"
     }
 
     // Data class para combustible local

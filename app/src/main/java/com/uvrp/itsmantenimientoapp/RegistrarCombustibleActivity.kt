@@ -33,6 +33,9 @@ import java.util.*
 
 class RegistrarCombustibleActivity : AppCompatActivity() {
 
+    /** Máximo de dígitos después de la coma (ajústalo si necesitas más/menos precisión). */
+    private val MAX_DECIMALES_COMBUSTIBLE = 15
+
     private var idPreoperacional: Int = -1
     private var idVehiculo: Int = -1
     private var idUsuario: Int = -1
@@ -230,9 +233,9 @@ class RegistrarCombustibleActivity : AppCompatActivity() {
                 // Extraer solo los números de la parte entera (eliminar puntos y otros caracteres)
                 val parteEnteraSinFormato = partes[0].replace(Regex("[^0-9]"), "")
                 
-                // Extraer solo números de la parte decimal (máximo 2 dígitos)
+                // Decimales: sin tope fijo de 2; se limita solo por precisión práctica (evita cadenas enormes)
                 val parteDecimal = if (partes.size > 1) {
-                    partes[1].replace(Regex("[^0-9]"), "").take(2)
+                    partes[1].replace(Regex("[^0-9]"), "").take(MAX_DECIMALES_COMBUSTIBLE)
                 } else {
                     ""
                 }

@@ -97,3 +97,26 @@ data class TicketStats(
     @SerializedName("resolved_tickets") val resolvedTickets: Int,
     @SerializedName("closed_tickets") val closedTickets: Int
 )
+
+data class TicketCreateRequest(
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("priority") val priority: String,
+    @SerializedName("locacion_id") val locacionId: Int,
+    @SerializedName("sistema_id") val sistemaId: Int,
+    @SerializedName("subsistema_id") val subsistemaId: Int,
+    @SerializedName("equipo_id") val equipoId: Int,
+    @SerializedName("qr_token") val qrToken: String,
+)
+
+data class TicketCreateResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String?,
+    @SerializedName("data") val data: TicketCreateResult?,
+    @SerializedName("timestamp") val timestamp: String?,
+)
+
+data class TicketCreateResult(
+    @SerializedName("id") val id: Int,
+    @SerializedName("ticket_number") val ticketNumber: String,
+)

@@ -17,8 +17,13 @@ import com.uvrp.itsmantenimientoapp.Nivel1Activity
 import com.uvrp.itsmantenimientoapp.R
 import com.uvrp.itsmantenimientoapp.SeleccionEquipoActivity
 import com.uvrp.itsmantenimientoapp.TicketsActivity
+import com.uvrp.itsmantenimientoapp.ReporteQrActivity
 import com.uvrp.itsmantenimientoapp.iniciarPreoperacional
 import com.uvrp.itsmantenimientoapp.IniciarCombustibleActivity
+import com.uvrp.itsmantenimientoapp.InventarioCargarStockActivity
+import com.uvrp.itsmantenimientoapp.InventarioConsultaUbicacionActivity
+import com.uvrp.itsmantenimientoapp.InventarioSalidaActivity
+import com.uvrp.itsmantenimientoapp.ExtrasActivity
 
 object HeaderHelper {
 
@@ -61,12 +66,18 @@ object HeaderHelper {
         val menu = navView.menu
         val tienePermisosITS = (idRol == 1 || idRol == 2)
         val tienePermisosMantenimiento = (idRol == 1 || idRol == 5 || idRol == 6)
-
+        val puedeInventario = sharedPreferences.getBoolean("puede_inventario", tienePermisosITS)
+        val mostrarInventario = tienePermisosITS && puedeInventario
 
         menu.findItem(R.id.nav_its).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_correctivo).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_bitacoras).isVisible = tienePermisosMantenimiento
         menu.findItem(R.id.nav_tickets).isVisible = tienePermisosITS
+        menu.findItem(R.id.nav_reporte_qr).isVisible = tienePermisosITS
+        menu.findItem(R.id.nav_inv_cargar_stock).isVisible = mostrarInventario
+        menu.findItem(R.id.nav_inv_salida).isVisible = mostrarInventario
+        menu.findItem(R.id.nav_inv_consulta_ubicacion).isVisible = mostrarInventario
+        menu.findItem(R.id.nav_extras).isVisible = tienePermisosITS
 
         // --- FIN DE LA MEJORA PRINCIPAL ---
 
@@ -93,6 +104,11 @@ object HeaderHelper {
                 R.id.nav_combustible -> navigateTo(activity, IniciarCombustibleActivity::class.java)
                 R.id.nav_bitacoras -> navigateTo(activity, BitacorasActivity::class.java)
                 R.id.nav_tickets -> navigateTo(activity, TicketsActivity::class.java)
+                R.id.nav_reporte_qr -> navigateTo(activity, ReporteQrActivity::class.java)
+                R.id.nav_inv_cargar_stock -> navigateTo(activity, InventarioCargarStockActivity::class.java)
+                R.id.nav_inv_salida -> navigateTo(activity, InventarioSalidaActivity::class.java)
+                R.id.nav_inv_consulta_ubicacion -> navigateTo(activity, InventarioConsultaUbicacionActivity::class.java)
+                R.id.nav_extras -> navigateTo(activity, ExtrasActivity::class.java)
                 R.id.nav_cerrarsesion -> logout(activity) // Usamos la función centralizada
             }
             // Cierra el menú lateral después de la selección
