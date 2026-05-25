@@ -27,19 +27,25 @@ object FuncionesGenerales {
         "No se pudo subir una actividad no programada: en el servidor ya existe otra con la misma referencia de sincronización. " +
             "No se marcó como enviada; actualice la app o contacte a soporte."
 
+    private const val TOAST_AVANCE_BITACORA_CONFLICTO_409 =
+        "No se pudo subir el avance de bitácora: el servidor ya tiene un registro distinto con la misma referencia. " +
+            "No se marcó como enviado; sincronice de nuevo tras actualizar la app."
+
     @Volatile
     private var sincronizacionMantenimientosEnCurso = false
 
     private data class BitacoraSyncResult(
         val success: Boolean,
-        val hadConflict409: Boolean = false
+        val hadConflict409: Boolean = false,
+        val hadAvanceConflict409: Boolean = false
     )
 
     private data class SyncBatchOutcome(
         val anySuccess: Boolean,
         val pendBitacoraAntes: Int,
         val exitoBitacoras: Boolean,
-        val hadBitacoraConflict409: Boolean = false
+        val hadBitacoraConflict409: Boolean = false,
+        val hadAvanceConflict409: Boolean = false
     )
 
     fun sincronizarTodosMantenimientos(context: Context, onResult: (Boolean) -> Unit) {
@@ -83,7 +89,8 @@ object FuncionesGenerales {
                         anySuccess,
                         pendBitacoraAntes,
                         exitoBitacoras,
-                        resultadoBitacoras.hadConflict409
+                        resultadoBitacoras.hadConflict409,
+                        resultadoBitacoras.hadAvanceConflict409
                     )
                 }
 
@@ -111,6 +118,8 @@ object FuncionesGenerales {
 
                         if (outcome.hadBitacoraConflict409) {
                             Toast.makeText(context, TOAST_BITACORA_CONFLICTO_409, Toast.LENGTH_LONG).show()
+                        } else if (outcome.hadAvanceConflict409) {
+                            Toast.makeText(context, TOAST_AVANCE_BITACORA_CONFLICTO_409, Toast.LENGTH_LONG).show()
                         } else if (bitacoraFallo) {
                             Toast.makeText(
                                 context,
@@ -125,6 +134,8 @@ object FuncionesGenerales {
                     bitacoraFallo -> {
                         if (outcome.hadBitacoraConflict409) {
                             Toast.makeText(context, TOAST_BITACORA_CONFLICTO_409, Toast.LENGTH_LONG).show()
+                        } else if (outcome.hadAvanceConflict409) {
+                            Toast.makeText(context, TOAST_AVANCE_BITACORA_CONFLICTO_409, Toast.LENGTH_LONG).show()
                         } else {
                             Toast.makeText(
                                 context,
@@ -327,6 +338,7 @@ object FuncionesGenerales {
         var pasada = 0
         var todoOk = true
         var hadConflict409 = false
+        var hadAvanceConflict409 = false
         while (pasada < 12) {
             val bitacorasPendientes = dbHelper.obtenerBitacorasPendientes(idUsuario)
                 .sortedWith(
@@ -335,7 +347,11 @@ object FuncionesGenerales {
                 )
 
             if (bitacorasPendientes.isEmpty()) {
-                return BitacoraSyncResult(success = todoOk, hadConflict409 = hadConflict409)
+                return BitacoraSyncResult(
+                    success = todoOk,
+                    hadConflict409 = hadConflict409,
+                    hadAvanceConflict409 = hadAvanceConflict409
+                )
             }
 
             Log.i(
@@ -364,6 +380,10 @@ object FuncionesGenerales {
                     // el backend los guarda en RelBitacoraActividades si vienen en el JSON.
                     if (bitacora.sentido != null) put("sentido", bitacora.sentido)
                     if (bitacora.lado != null) put("lado", bitacora.lado)
+
+                    val rbaUuid = bitacora.rbaClientUuid?.takeIf { it.isNotBlank() }
+                        ?: dbHelper.asegurarRbaClientUuid(bitacora.id)
+                    put("rba_client_uuid", rbaUuid)
                     
                     // Campos adicionales para actividades no programadas
                     if (bitacora.estado == 2) {
@@ -440,6 +460,14 @@ object FuncionesGenerales {
 
                     var idParaMarcar = bitacora.id
                     var puedeMarcarSincronizado = true
+                    val pabSolicitada = bitacora.idRelProgramarActividadesBitacora
+                    if (idServidorPab != null && idServidorPab != pabSolicitada) {
+                        Log.e(
+                            "SyncBitacora",
+                            "Respuesta con PAB distinta (solicitada=$pabSolicitada, respuesta=$idServidorPab); no se marca sincronizado."
+                        )
+                        puedeMarcarSincronizado = false
+                    }
                     if (bitacora.estado == 2) {
                         if (idServidorPab != null && idServidorPab != bitacora.id) {
                             val okRemap = dbHelper.remapearIdProgramarActividadesBitacoraTrasSyncNp(bitacora.id, idServidorPab)
@@ -472,12 +500,25 @@ object FuncionesGenerales {
                     }
                     exitos++
                 } else if (response.code() == 409) {
-                    hadConflict409 = true
                     val errorBody = response.errorBody()?.string()
-                    Log.e(
-                        "SyncBitacora",
-                        "⚠️ Conflicto de sincronización NP (409) id=${bitacora.id} uuid=${bitacora.clientUuid}. Body: $errorBody"
-                    )
+                    val code = try {
+                        if (!errorBody.isNullOrBlank()) JSONObject(errorBody).optString("code") else ""
+                    } catch (_: Exception) {
+                        ""
+                    }
+                    if (code == "rba_sync_conflict") {
+                        hadAvanceConflict409 = true
+                        Log.e(
+                            "SyncBitacora",
+                            "⚠️ Conflicto avance bitácora (409) id=${bitacora.id} rba_uuid=${bitacora.rbaClientUuid}. Body: $errorBody"
+                        )
+                    } else {
+                        hadConflict409 = true
+                        Log.e(
+                            "SyncBitacora",
+                            "⚠️ Conflicto de sincronización NP (409) id=${bitacora.id} uuid=${bitacora.clientUuid}. Body: $errorBody"
+                        )
+                    }
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("SyncBitacora", "❌ Error del servidor al sincronizar bitácora ID=${bitacora.id}. Código: ${response.code()}. Body: $errorBody")
@@ -503,7 +544,11 @@ object FuncionesGenerales {
         if (pasada >= 12) {
             Log.e("SyncBitacora", "Se alcanzó el máximo de pasadas de sincronización de bitácora.")
         }
-        return BitacoraSyncResult(success = todoOk, hadConflict409 = hadConflict409)
+        return BitacoraSyncResult(
+            success = todoOk,
+            hadConflict409 = hadConflict409,
+            hadAvanceConflict409 = hadAvanceConflict409
+        )
     }
 
 

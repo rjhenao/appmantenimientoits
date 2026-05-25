@@ -41,7 +41,7 @@ import java.math.BigDecimal
 import java.util.UUID
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 49) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 50) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
         // IF NOT EXISTS evita crash si onCreate se ejecuta dos veces (p. ej. condición de carrera al sincronizar).
@@ -383,6 +383,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         Cantidad REAL NOT NULL,
         Programada INTEGER NOT NULL DEFAULT 1,
         ObservacionInterna TEXT,
+        rba_client_uuid TEXT,
         sincronizado INTEGER NOT NULL DEFAULT 0,
         created_at TEXT,
         updated_at TEXT
@@ -761,6 +762,10 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
 
         if (oldVersion < 49) {
             migrarClientUuidActividadesNp(db)
+        }
+
+        if (oldVersion < 50) {
+            migrarRbaClientUuidAvancesBitacora(db)
         }
 
         // Migración incremental desde la versión 40 a la 41
@@ -3557,6 +3562,7 @@ return insertOk
                 put("Cantidad", cantidad)
                 put("Programada", if (esNoProgramada) 0 else 1)
                 put("ObservacionInterna", observacion)
+                put("rba_client_uuid", UUID.randomUUID().toString())
                 put("created_at", timestamp)
                 put("updated_at", timestamp)
                 put("sincronizado", 0)
@@ -3699,12 +3705,13 @@ return insertOk
         val cantidad: Double,
         val observacion: String,
         val sentido: String?,
-        val lado: String?
+        val lado: String?,
+        val rbaClientUuid: String?
     )
 
     private fun obtenerRegistroNpPendiente(db: SQLiteDatabase, idPab: Int): RegistroNpPendienteLocal? {
         val sql = """
-            SELECT rba.id, rba.PrInicial, rba.PrFinal, rba.Cantidad, rba.ObservacionInterna, pab.Sentido, pab.Lado
+            SELECT rba.id, rba.PrInicial, rba.PrFinal, rba.Cantidad, rba.ObservacionInterna, pab.Sentido, pab.Lado, rba.rba_client_uuid
             FROM rel_bitacora_actividades rba
             JOIN programar_actividades_bitacora pab ON pab.id = rba.idRelProgramarActividadesBitacora
             WHERE rba.idRelProgramarActividadesBitacora = ? AND rba.sincronizado = 0
@@ -3722,7 +3729,8 @@ return insertOk
                 cantidad = cursor.getDouble(cursor.getColumnIndexOrThrow("Cantidad")),
                 observacion = cursor.getString(cursor.getColumnIndexOrThrow("ObservacionInterna")) ?: "",
                 sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
-                lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado"))
+                lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado")),
+                rbaClientUuid = leerRbaClientUuidDesdeCursor(cursor)
             )
         }
     }
@@ -3801,6 +3809,8 @@ return insertOk
                 }
 
                 // 4. Creamos el objeto completo y lo añadimos a la lista (actividad programada)
+                val rbaUuid = leerRbaClientUuidDesdeCursor(cursor)
+                    ?: asegurarRbaClientUuid(idRegistro)
                 listaBitacoras.add(
                     BitacoraRecord(
                         id = idRegistro,
@@ -3813,7 +3823,8 @@ return insertOk
                         fotos = listaFotos,
                         estado = 1, // Actividad programada
                         sentido = cursor.getString(cursor.getColumnIndexOrThrow("Sentido")),
-                        lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado"))
+                        lado = cursor.getString(cursor.getColumnIndexOrThrow("Lado")),
+                        rbaClientUuid = rbaUuid
                     )
                 )
             }
@@ -3882,7 +3893,9 @@ return insertOk
                         registroSentido = registroPendiente?.sentido,
                         registroLado = registroPendiente?.lado,
                         idRegistroNpLocal = registroPendiente?.idRba,
-                        clientUuid = clientUuidNp
+                        clientUuid = clientUuidNp,
+                        rbaClientUuid = registroPendiente?.rbaClientUuid
+                            ?: registroPendiente?.idRba?.let { asegurarRbaClientUuid(it) }
                     )
                 )
             }
@@ -3898,6 +3911,40 @@ return insertOk
         }
         val value = cursor.getString(idx)?.trim()
         return if (value.isNullOrEmpty()) null else value
+    }
+
+    private fun leerRbaClientUuidDesdeCursor(cursor: Cursor): String? {
+        val idx = cursor.getColumnIndex("rba_client_uuid")
+        if (idx < 0 || cursor.isNull(idx)) {
+            return null
+        }
+        val value = cursor.getString(idx)?.trim()
+        return if (value.isNullOrEmpty()) null else value
+    }
+
+    fun asegurarRbaClientUuid(idRba: Int): String {
+        val db = readableDatabase
+        db.rawQuery(
+            "SELECT rba_client_uuid FROM rel_bitacora_actividades WHERE id = ?",
+            arrayOf(idRba.toString())
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val existente = leerRbaClientUuidDesdeCursor(cursor)
+                if (!existente.isNullOrBlank()) {
+                    return existente
+                }
+            }
+        }
+        val uuid = UUID.randomUUID().toString()
+        val w = writableDatabase
+        w.update(
+            "rel_bitacora_actividades",
+            ContentValues().apply { put("rba_client_uuid", uuid) },
+            "id = ?",
+            arrayOf(idRba.toString())
+        )
+        w.close()
+        return uuid
     }
 
     fun marcarRegistrosNpDependientesSincronizados(idPab: Int) {
@@ -4677,6 +4724,51 @@ return insertOk
             }
         }
         Log.d("DB_UPGRADE", "UUID asignados a NP pendientes sin client_uuid")
+    }
+
+    /**
+     * Avances de bitácora: UUID por registro + rehabilitar avances NP marcados como enviados sin UUID confirmado.
+     */
+    private fun migrarRbaClientUuidAvancesBitacora(db: SQLiteDatabase) {
+        try {
+            db.execSQL("ALTER TABLE rel_bitacora_actividades ADD COLUMN rba_client_uuid TEXT")
+            Log.d("DB_UPGRADE", "Columna rba_client_uuid agregada a rel_bitacora_actividades")
+        } catch (e: Exception) {
+            Log.d("DB_UPGRADE", "rba_client_uuid ya existe o no se pudo agregar: ${e.message}")
+        }
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_rba_client_uuid ON rel_bitacora_actividades(rba_client_uuid) WHERE rba_client_uuid IS NOT NULL"
+        )
+
+        val rehabilitados = db.compileStatement(
+            """
+            UPDATE rel_bitacora_actividades SET sincronizado = 0
+            WHERE sincronizado = 1
+              AND (rba_client_uuid IS NULL OR TRIM(rba_client_uuid) = '')
+              AND idRelProgramarActividadesBitacora IN (
+                  SELECT id FROM programar_actividades_bitacora WHERE Estado = 2
+              )
+            """.trimIndent()
+        ).executeUpdateDelete()
+        Log.d("DB_UPGRADE", "Avances NP sin UUID rehabilitados para reenvío: $rehabilitados fila(s)")
+
+        db.rawQuery(
+            """
+            SELECT id FROM rel_bitacora_actividades
+            WHERE sincronizado = 0
+              AND (rba_client_uuid IS NULL OR TRIM(rba_client_uuid) = '')
+            """.trimIndent(),
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getInt(0)
+                db.execSQL(
+                    "UPDATE rel_bitacora_actividades SET rba_client_uuid = ? WHERE id = ?",
+                    arrayOf(UUID.randomUUID().toString(), id.toString())
+                )
+            }
+        }
+        Log.d("DB_UPGRADE", "UUID asignados a avances de bitácora pendientes sin rba_client_uuid")
     }
 
     /**

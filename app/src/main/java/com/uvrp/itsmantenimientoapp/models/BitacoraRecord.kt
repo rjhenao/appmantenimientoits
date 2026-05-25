@@ -28,5 +28,7 @@ data class BitacoraRecord(
     val registroLado: String? = null,
     val idRegistroNpLocal: Int? = null,
     /** UUID inmutable de la cabecera NP (idempotencia en servidor). */
-    val clientUuid: String? = null
+    val clientUuid: String? = null,
+    /** UUID del avance de campo (rel_bitacora_actividades), distinto de la cabecera. */
+    val rbaClientUuid: String? = null
 )
