@@ -388,11 +388,10 @@ class ReporteQrActivity : AppCompatActivity() {
 
         val nombre = findViewById<TextInputEditText>(R.id.inputSolicitanteNombre).text?.toString()?.trim().orEmpty()
         val desc = findViewById<TextInputEditText>(R.id.inputDescripcionReporte).text?.toString()?.trim().orEmpty()
-        val email = findViewById<TextInputEditText>(R.id.inputEmailReporte).text?.toString()?.trim().orEmpty()
         val area = spinnerValue(findViewById(R.id.spinnerAreaSolicitante))
         val tipo = spinnerValue(findViewById(R.id.spinnerTipoSolicitud))
 
-        if (nombre.isEmpty() || desc.isEmpty() || email.isEmpty() || area.isEmpty() || tipo.isEmpty()) {
+        if (nombre.isEmpty() || desc.isEmpty() || area.isEmpty() || tipo.isEmpty()) {
             Toast.makeText(this, "Complete todos los campos obligatorios.", Toast.LENGTH_LONG).show()
             return
         }
@@ -417,7 +416,6 @@ class ReporteQrActivity : AppCompatActivity() {
                         txt(area),
                         txt(tipo),
                         txt(desc),
-                        txt(email),
                         parts,
                     ).execute()
                     if (resp.isSuccessful) {

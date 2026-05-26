@@ -442,7 +442,6 @@ interface ApiService {
         @Part("solicitante_area") solicitanteArea: RequestBody,
         @Part("tipo_solicitud") tipoSolicitud: RequestBody,
         @Part("descripcion") descripcion: RequestBody,
-        @Part("email") email: RequestBody,
         @Part attachments: List<MultipartBody.Part>,
     ): Call<PublicReporteSubmitResponse>
 
