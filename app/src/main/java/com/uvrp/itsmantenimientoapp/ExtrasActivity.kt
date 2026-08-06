@@ -21,6 +21,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.round
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ExtrasActivity : AppCompatActivity() {
 
@@ -138,8 +140,16 @@ class ExtrasActivity : AppCompatActivity() {
             return
         }
 
-        val mapping = (spTurno.tag as? List<Pair<Int, String>>) ?: emptyList()
-        val turnoCodigo = mapping.getOrNull(spTurno.selectedItemPosition)?.first ?: 27
+        val mapping = (spTurno.tag as? List<*>)?.filterIsInstance<Pair<Int, String>>() ?: emptyList()
+        if (mapping.isEmpty()) {
+            Toast.makeText(this, "Espere a que carguen los turnos vigentes o inicie sesión con internet.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val turnoCodigo = mapping.getOrNull(spTurno.selectedItemPosition)?.first
+        if (turnoCodigo == null) {
+            Toast.makeText(this, "Seleccione un turno válido.", Toast.LENGTH_LONG).show()
+            return
+        }
         val autorizo = spAutorizo.selectedItem?.toString()?.trim().orEmpty()
 
         var hIniAntes: String? = null
@@ -285,13 +295,39 @@ class ExtrasActivity : AppCompatActivity() {
     }
 
     private fun configurarTurnosBasico() {
-        val items = listOf(
-            Pair(27, "27 — 08:00 - 17:00"),
-            Pair(40, "40 — 08:00 - 12:00"),
-            Pair(12, "12 — 14:00 - 18:00"),
-            Pair(121, "121 — 14:00 - 18:00"),
-            Pair(65, "65 — 20:00 - 05:00 (+1)")
-        )
+        val locales = dbHelper.obtenerExtrasTurnosCatalogo()
+        val items = if (locales.isNotEmpty()) {
+            locales.map { t ->
+                val horario = listOfNotNull(t.startHora, t.endHora).joinToString(" - ")
+                val suf = if (t.nextDayEnd) " (+1)" else ""
+                val detail = if (horario.isNotEmpty()) " — $horario$suf" else ""
+                Pair(t.codigo, "${t.codigo} — ${t.label}$detail")
+            }
+        } else {
+            // Fallback mínimo mientras descarga; no usar catálogo histórico obsoleto
+            emptyList()
+        }
+        if (items.isEmpty()) {
+            spTurno.adapter = ArrayAdapter(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                listOf("Sincronizando turnos…")
+            )
+            spTurno.tag = emptyList<Pair<Int, String>>()
+            tvEstadoEnvio.text = "Descargando catálogo de turnos vigentes…"
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                val ok = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    ExtrasOfflineSync.sincronizarCatalogoTurnos(this@ExtrasActivity)
+                }
+                if (ok) {
+                    configurarTurnosBasico()
+                    tvEstadoEnvio.text = ""
+                } else {
+                    tvEstadoEnvio.text = "No se pudo cargar turnos. Inicie sesión con internet y abra Extras de nuevo."
+                }
+            }
+            return
+        }
         val labels = items.map { it.second }
         spTurno.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
         spTurno.tag = items

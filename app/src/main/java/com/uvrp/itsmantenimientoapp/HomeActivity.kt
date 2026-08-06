@@ -15,6 +15,8 @@ import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
 import com.google.android.material.navigation.NavigationView
 import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomeActivity : AppCompatActivity() {
 
@@ -42,6 +44,20 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var chipInventarioCount: Chip
     private lateinit var rvInventarioPendientes: RecyclerView
     private lateinit var btnSincronizarInventario: MaterialButton
+
+    private lateinit var cardPpiePendiente: MaterialCardView
+    private lateinit var tvPpieDescription: TextView
+    private lateinit var tvPpieErrorDetalle: TextView
+    private lateinit var chipPpieCount: Chip
+    private lateinit var rvPpiePendientes: RecyclerView
+    private lateinit var btnSincronizarPpie: MaterialButton
+    private lateinit var btnVerMeteo: MaterialButton
+
+    private lateinit var cardExtrasPendiente: MaterialCardView
+    private lateinit var tvExtrasDescription: TextView
+    private lateinit var chipExtrasCount: Chip
+    private lateinit var rvExtrasPendientes: RecyclerView
+    private lateinit var btnSincronizarExtras: MaterialButton
 
     private lateinit var dbHelper: DatabaseHelper // La hacemos variable de la clase
 
@@ -80,11 +96,28 @@ class HomeActivity : AppCompatActivity() {
         rvInventarioPendientes = findViewById(R.id.rvInventarioPendientes)
         btnSincronizarInventario = findViewById(R.id.btnSincronizarInventario)
 
+        cardPpiePendiente = findViewById(R.id.cardPpiePendiente)
+        tvPpieDescription = findViewById(R.id.tvPpieDescription)
+        tvPpieErrorDetalle = findViewById(R.id.tvPpieErrorDetalle)
+        chipPpieCount = findViewById(R.id.chipPpieCount)
+        rvPpiePendientes = findViewById(R.id.rvPpiePendientes)
+        btnSincronizarPpie = findViewById(R.id.btnSincronizarPpie)
+        btnVerMeteo = findViewById(R.id.btnVerMeteo)
+
+        cardExtrasPendiente = findViewById(R.id.cardExtrasPendiente)
+        tvExtrasDescription = findViewById(R.id.tvExtrasDescription)
+        chipExtrasCount = findViewById(R.id.chipExtrasCount)
+        rvExtrasPendientes = findViewById(R.id.rvExtrasPendientes)
+        btnSincronizarExtras = findViewById(R.id.btnSincronizarExtras)
+
         dbHelper = DatabaseHelper(this)
 
         // Configurar toolbar + menú hamburguesa + NavigationView
         HeaderHelper.setupHeader(this, drawerLayout, navView)
 
+        btnVerMeteo.setOnClickListener {
+            startActivity(android.content.Intent(this, MeteoUfActivity::class.java))
+        }
         // ==== BOTÓN SINCRONIZAR (se configura solo una vez) ====
         btnSincronizar.setOnClickListener {
             // Mostrar estado de carga
@@ -123,6 +156,44 @@ class HomeActivity : AppCompatActivity() {
                 btnSincronizarInventario.text = getString(R.string.home_inv_btn_sync)
                 btnSincronizarInventario.isEnabled = true
                 cargarYMostrarPendientes()
+            }
+        }
+
+        btnSincronizarPpie.setOnClickListener {
+            btnSincronizarPpie.text = "Enviando…"
+            btnSincronizarPpie.isEnabled = false
+            tvPpieErrorDetalle.visibility = View.GONE
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                val result = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    PpieOfflineSync.sincronizarPendientes(this@HomeActivity)
+                }
+                btnSincronizarPpie.text = "Enviar PPIE pendientes"
+                btnSincronizarPpie.isEnabled = true
+                cargarYMostrarPendientes()
+                if (!result.exito) {
+                    tvPpieErrorDetalle.text = result.mensaje
+                    tvPpieErrorDetalle.visibility = View.VISIBLE
+                }
+                android.widget.Toast.makeText(
+                    this@HomeActivity,
+                    result.mensaje,
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+        btnSincronizarExtras.setOnClickListener {
+            btnSincronizarExtras.text = "Enviando…"
+            btnSincronizarExtras.isEnabled = false
+            FuncionesGenerales.sincronizarSoloExtras(this) { exito, detalle ->
+                btnSincronizarExtras.text = "Enviar horas extras"
+                btnSincronizarExtras.isEnabled = true
+                cargarYMostrarPendientes()
+                android.widget.Toast.makeText(
+                    this@HomeActivity,
+                    if (exito) "Horas extras enviadas" else detalle,
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -168,6 +239,29 @@ class HomeActivity : AppCompatActivity() {
             rvInventarioPendientes.adapter = PendientesAdapter(lineasInventarioPendiente)
         } else {
             cardInventarioPendiente.visibility = View.GONE
+        }
+
+        val lineasPpie = dbHelper.getPpiePendienteLineasDescripcion()
+        if (lineasPpie.isNotEmpty()) {
+            cardPpiePendiente.visibility = View.VISIBLE
+            chipPpieCount.text = lineasPpie.size.toString()
+            tvPpieDescription.text = "${lineasPpie.size} ficha(s) PPIE pendiente(s) por enviar"
+            rvPpiePendientes.layoutManager = LinearLayoutManager(this)
+            rvPpiePendientes.adapter = PendientesAdapter(lineasPpie)
+        } else {
+            cardPpiePendiente.visibility = View.GONE
+            tvPpieErrorDetalle.visibility = View.GONE
+        }
+
+        val lineasExtras = dbHelper.getExtrasPendienteLineasDescripcion()
+        if (lineasExtras.isNotEmpty()) {
+            cardExtrasPendiente.visibility = View.VISIBLE
+            chipExtrasCount.text = lineasExtras.size.toString()
+            tvExtrasDescription.text = "${lineasExtras.size} registro(s) de horas extras pendientes"
+            rvExtrasPendientes.layoutManager = LinearLayoutManager(this)
+            rvExtrasPendientes.adapter = PendientesAdapter(lineasExtras)
+        } else {
+            cardExtrasPendiente.visibility = View.GONE
         }
 
         val puedeVerMantenimientos = idRol in intArrayOf(1, 2, 5, 6, 7)

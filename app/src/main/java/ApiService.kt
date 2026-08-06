@@ -63,6 +63,8 @@ interface ApiService {
     )
 
     data class UsuarioVehiculo(
+        @SerializedName("idPreoperacional")
+        val idPreoperacional: Int? = null,
         val idUsuario: Int,
         val placa: String,
         val idVehiculo: Int,
@@ -490,7 +492,8 @@ interface ApiService {
         @SerializedName("token_type") val tokenType: String?,
         val user: MobileUserInfo?,
         val roles: List<Int>?,
-        @SerializedName("puede_inventario") val puedeInventario: Boolean?
+        @SerializedName("puede_inventario") val puedeInventario: Boolean?,
+        @SerializedName("puede_ppie") val puedePpie: Boolean?
     )
 
     data class MobileUserInfo(
@@ -651,7 +654,9 @@ interface ApiService {
     data class ExtrasSyncResponse(
         val created: Int?,
         val ignored: Int?,
-        val ids: List<Int>?
+        val ids: List<Int>?,
+        val message: String?,
+        val errors: List<String>?
     )
 
     @GET("api/extras/catalogo/turnos")
@@ -659,5 +664,119 @@ interface ApiService {
 
     @POST("api/extras/sync")
     fun extrasSync(@Body body: ExtrasSyncRequest): Call<ExtrasSyncResponse>
+
+    // ===== PPIE =====
+
+    data class PpieActivityDto(
+        val id: Int,
+        val grupo: String?,
+        val dc: String?,
+        @SerializedName("item_number") val itemNumber: String?,
+        val description: String?,
+        val pc: String?,
+        @SerializedName("sort_order") val sortOrder: Int?
+    )
+
+    data class PpieFormatDto(
+        val id: Int,
+        val code: String?,
+        val title: String?,
+        val edition: String?,
+        val activities: List<PpieActivityDto>?
+    )
+
+    data class PpieCatalogoResponse(
+        @SerializedName("puede_ppie") val puedePpie: Boolean?,
+        val formatos: List<PpieFormatDto>?
+    )
+
+    data class PpieLineSubmit(
+        @SerializedName("activity_id") val activityId: Int,
+        val correcto: String,
+        @SerializedName("inc_hoy") val incHoy: String,
+        val observaciones: String?
+    )
+
+    data class PpieSubmitRequest(
+        @SerializedName("client_uuid") val clientUuid: String,
+        @SerializedName("format_id") val formatId: Int,
+        val location: String,
+        @SerializedName("inspection_date") val inspectionDate: String,
+        val lines: List<PpieLineSubmit>
+    )
+
+    data class PpieSubmitResponse(
+        val ok: Boolean?,
+        val duplicado: Boolean?,
+        val id: Int?,
+        @SerializedName("fich_code") val fichCode: String?,
+        val status: String?,
+        val message: String?
+    )
+
+    @GET("api/ppie/catalogo")
+    fun ppieCatalogo(): Call<PpieCatalogoResponse>
+
+    @POST("api/ppie/inspecciones/submit")
+    fun ppieSubmit(@Body body: PpieSubmitRequest): Call<PpieSubmitResponse>
+
+    // ===== METEO UF =====
+
+    data class MeteoCierreItemDto(
+        val id: Int?,
+        @SerializedName("tipo_evento") val tipoEvento: String?,
+        @SerializedName("pr_inicial") val prInicial: String?,
+        @SerializedName("pr_final") val prFinal: String?,
+        @SerializedName("fecha_hora_inicio") val fechaHoraInicio: String?
+    )
+
+    data class MeteoCierresDto(
+        val cantidad: Int?,
+        val items: List<MeteoCierreItemDto>?
+    )
+
+    data class MeteoUfDto(
+        @SerializedName("uf_id") val ufId: Int?,
+        val uf: String?,
+        val estacion: String?,
+        val lloviendo: Boolean?,
+        @SerializedName("intensidad_mm") val intensidadMm: Double?,
+        val severidad: String?,
+        @SerializedName("duracion_minutos") val duracionMinutos: Int?,
+        @SerializedName("temperatura_c") val temperaturaC: Double?,
+        @SerializedName("velocidad_viento") val velocidadViento: Double?,
+        val humedad: Double?,
+        @SerializedName("viento_alto") val vientoAlto: Boolean?,
+        @SerializedName("posible_niebla") val posibleNiebla: Boolean?,
+        @SerializedName("precip_tendencia") val precipTendencia: String?,
+        @SerializedName("cierres_activos_uf") val cierresActivosUf: MeteoCierresDto?,
+        @SerializedName("puede_trabajar") val puedeTrabajar: String?
+    )
+
+    data class MeteoUfResponse(
+        val consulta: String?,
+        @SerializedName("zona_horaria") val zonaHoraria: String?,
+        @SerializedName("generado_en") val generadoEn: String?,
+        val ufs: List<MeteoUfDto>?,
+        val message: String?
+    )
+
+    @GET("api/mobile/meteo-uf")
+    fun meteoUf(@Query("refresh") refresh: Int? = null): Call<MeteoUfResponse>
+
+    data class AnularPreoperacionalRequest(
+        val id: Int,
+        val idUsuario: Int
+    )
+
+    data class AnularPreoperacionalResponse(
+        val success: Boolean?,
+        val message: String?,
+        val id: Int?,
+        val estado: Int?
+    )
+
+    @POST("api/anularpreoperacional")
+    fun anularPreoperacional(@Body body: AnularPreoperacionalRequest): Call<AnularPreoperacionalResponse>
 
 }

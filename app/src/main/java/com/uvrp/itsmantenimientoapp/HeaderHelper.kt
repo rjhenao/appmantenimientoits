@@ -24,6 +24,8 @@ import com.uvrp.itsmantenimientoapp.InventarioCargarStockActivity
 import com.uvrp.itsmantenimientoapp.InventarioConsultaUbicacionActivity
 import com.uvrp.itsmantenimientoapp.InventarioSalidaActivity
 import com.uvrp.itsmantenimientoapp.ExtrasActivity
+import com.uvrp.itsmantenimientoapp.PpieFormatosActivity
+import com.uvrp.itsmantenimientoapp.MeteoUfActivity
 
 object HeaderHelper {
 
@@ -68,6 +70,7 @@ object HeaderHelper {
         val tienePermisosMantenimiento = (idRol == 1 || idRol == 5 || idRol == 6)
         val puedeInventario = sharedPreferences.getBoolean("puede_inventario", tienePermisosITS)
         val mostrarInventario = tienePermisosITS && puedeInventario
+        val puedePpie = sharedPreferences.getBoolean("puede_ppie", false)
 
         menu.findItem(R.id.nav_its).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_correctivo).isVisible = tienePermisosITS
@@ -78,6 +81,8 @@ object HeaderHelper {
         menu.findItem(R.id.nav_inv_salida).isVisible = mostrarInventario
         menu.findItem(R.id.nav_inv_consulta_ubicacion).isVisible = mostrarInventario
         menu.findItem(R.id.nav_extras).isVisible = tienePermisosITS
+        menu.findItem(R.id.nav_ppie)?.isVisible = puedePpie
+        menu.findItem(R.id.nav_meteo)?.isVisible = true
 
         // --- FIN DE LA MEJORA PRINCIPAL ---
 
@@ -109,6 +114,8 @@ object HeaderHelper {
                 R.id.nav_inv_salida -> navigateTo(activity, InventarioSalidaActivity::class.java)
                 R.id.nav_inv_consulta_ubicacion -> navigateTo(activity, InventarioConsultaUbicacionActivity::class.java)
                 R.id.nav_extras -> navigateTo(activity, ExtrasActivity::class.java)
+                R.id.nav_ppie -> navigateTo(activity, PpieFormatosActivity::class.java)
+                R.id.nav_meteo -> navigateTo(activity, MeteoUfActivity::class.java)
                 R.id.nav_cerrarsesion -> logout(activity) // Usamos la función centralizada
             }
             // Cierra el menú lateral después de la selección

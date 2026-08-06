@@ -107,6 +107,16 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name=".PpieFormatosActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PpieDiligenciarActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".MeteoUfActivity"
+            android:exported="false" />
+        <activity
             android:name=".ReporteQrActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">

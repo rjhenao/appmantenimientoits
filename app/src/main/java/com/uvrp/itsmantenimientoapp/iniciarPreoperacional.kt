@@ -23,6 +23,7 @@ class iniciarPreoperacional : AppCompatActivity() {
     private var idVehiculoSeleccionado: Int? = null
     private var placaa: String? = null
     private var vehiculoSeleccionado: Vehiculo? = null
+    private var idPreoperacionalAbierto: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,8 +38,56 @@ class iniciarPreoperacional : AppCompatActivity() {
         // El resto de la lógica de tu actividad permanece igual
         val autoComplete = findViewById<AutoCompleteTextView>(R.id.autoCompletePlacas)
         val btnIniciar = findViewById<Button>(R.id.btnIniciarPreoperacional)
+        val btnAnular = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnAnularPreoperacional)
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("idUser", -1)
+
+        btnAnular.setOnClickListener {
+            val idPreop = idPreoperacionalAbierto
+            if (idPreop == null || idUsuario == -1) {
+                Toast.makeText(this, "No hay preoperacional abierto para anular", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Anular preoperacional")
+                .setMessage("Se anulará el preoperacional abierto (sin checklist iniciado). Esta acción no se puede deshacer. ¿Continuar?")
+                .setNegativeButton("No", null)
+                .setPositiveButton("Sí, anular") { _, _ ->
+                    RetrofitClient.instance.anularPreoperacional(
+                        ApiService.AnularPreoperacionalRequest(idPreop, idUsuario)
+                    ).enqueue(object : Callback<ApiService.AnularPreoperacionalResponse> {
+                        override fun onResponse(
+                            call: Call<ApiService.AnularPreoperacionalResponse>,
+                            response: Response<ApiService.AnularPreoperacionalResponse>
+                        ) {
+                            val body = response.body()
+                            if (response.isSuccessful && body?.success == true) {
+                                getSharedPreferences("PreoperacionalesIniciados", MODE_PRIVATE).edit().apply {
+                                    remove("idPreoperacional_$idUsuario")
+                                    remove("idVehiculo_$idUsuario")
+                                    remove("placa_$idUsuario")
+                                    remove("fechaInicio_$idUsuario")
+                                    apply()
+                                }
+                                idPreoperacionalAbierto = null
+                                btnAnular.visibility = android.view.View.GONE
+                                Toast.makeText(this@iniciarPreoperacional, "Preoperacional anulado", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(
+                                    this@iniciarPreoperacional,
+                                    body?.message ?: "No se pudo anular",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+
+                        override fun onFailure(call: Call<ApiService.AnularPreoperacionalResponse>, t: Throwable) {
+                            Toast.makeText(this@iniciarPreoperacional, "Error de red: ${t.message}", Toast.LENGTH_LONG).show()
+                        }
+                    })
+                }
+                .show()
+        }
 
 
         // ... (todo tu código de Retrofit, listeners del botón, etc., se queda como está)
@@ -196,11 +245,30 @@ class iniciarPreoperacional : AppCompatActivity() {
 
                                 if (esUsuarioActual) {
                                     when (estadoEncontrado) {
-                                        1 -> startFormulario()
-                                        2 -> startFinalizar()
-                                        else -> abrirPreoperacional(idUsuario)
+                                        1 -> {
+                                            idPreoperacionalAbierto = data?.aVehiculo?.firstOrNull { it.idUsuario == idUsuario }?.idPreoperacional
+                                                ?: data?.aUsuario?.firstOrNull { it.idUsuario == idUsuario }?.idPreoperacional
+                                            btnAnular.visibility = if (idPreoperacionalAbierto != null) android.view.View.VISIBLE else android.view.View.GONE
+                                            AlertDialog.Builder(this@iniciarPreoperacional)
+                                                .setTitle("Preoperacional abierto")
+                                                .setMessage("Ya tiene un preoperacional abierto. Puede continuar el checklist o anularlo si lo abrió por error.")
+                                                .setPositiveButton("Continuar") { _, _ -> startFormulario() }
+                                                .setNeutralButton("Anular") { _, _ -> btnAnular.performClick() }
+                                                .setNegativeButton("Cerrar", null)
+                                                .show()
+                                        }
+                                        2 -> {
+                                            btnAnular.visibility = android.view.View.GONE
+                                            idPreoperacionalAbierto = null
+                                            startFinalizar()
+                                        }
+                                        else -> {
+                                            btnAnular.visibility = android.view.View.GONE
+                                            abrirPreoperacional(idUsuario)
+                                        }
                                     }
                                 } else {
+                                    btnAnular.visibility = android.view.View.GONE
                                     abrirPreoperacional(idUsuario)
                                 }
 
