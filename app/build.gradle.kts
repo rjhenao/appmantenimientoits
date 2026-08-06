@@ -14,8 +14,8 @@ android {
         applicationId = "com.uvrp.itsmantenimientoapp"
         minSdk = 24
         targetSdk = 35
-        versionCode = 29
-        versionName = "1.0.29"
+        versionCode = 31
+        versionName = "1.0.31"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.inappmessaging.display)

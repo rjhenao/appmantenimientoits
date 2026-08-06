@@ -265,6 +265,202 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Estado de la vía (meteo) -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardMeteoVia"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="@android:color/white">
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Estado de la vía"
+                            android:textStyle="bold"
+                            android:textSize="16sp"
+                            android:textColor="#0D47A1"
+                            android:layout_marginBottom="10dp"/>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnVerMeteo"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Consultar estado de la vía"
+                            android:textAllCaps="false"
+                            app:cornerRadius="12dp"
+                            app:backgroundTint="#1565C0"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Extras pendientes -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardExtrasPendiente"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="3dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/warning_border"
+                    app:cardBackgroundColor="@color/warning_background">
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="20dp">
+
+                        <LinearLayout
+                            android:orientation="horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:id="@+id/tvExtrasTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Horas extras pendientes"
+                                android:textStyle="bold"
+                                android:textSize="16sp"
+                                android:textColor="@color/warning_primary"/>
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipExtrasCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@android:color/white"
+                                app:chipBackgroundColor="@color/warning_primary"
+                                app:chipMinHeight="24dp"/>
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvExtrasDescription"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Registros de horas extras pendientes de envío"
+                            android:textSize="14sp"
+                            android:textColor="@color/warning_text"
+                            android:layout_marginBottom="12dp"/>
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rvExtrasPendientes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
+                            android:nestedScrollingEnabled="false"/>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSincronizarExtras"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Enviar horas extras"
+                            android:textAllCaps="false"
+                            app:icon="@drawable/ic_sync"
+                            app:cornerRadius="12dp"
+                            style="@style/Widget.Material3.Button.UnelevatedButton"
+                            app:backgroundTint="@color/warning_primary"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- PPIE pendientes -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardPpiePendiente"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="3dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/warning_border"
+                    app:cardBackgroundColor="@color/warning_background">
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="20dp">
+
+                        <LinearLayout
+                            android:orientation="horizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:id="@+id/tvPpieTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="PPIE pendiente"
+                                android:textStyle="bold"
+                                android:textSize="16sp"
+                                android:textColor="@color/warning_primary"/>
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipPpieCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@android:color/white"
+                                app:chipBackgroundColor="@color/warning_primary"
+                                app:chipMinHeight="24dp"/>
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvPpieDescription"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Fichas PPIE pendientes de envío"
+                            android:textSize="14sp"
+                            android:textColor="@color/warning_text"
+                            android:layout_marginBottom="8dp"/>
+
+                        <TextView
+                            android:id="@+id/tvPpieErrorDetalle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone"
+                            android:textSize="13sp"
+                            android:textColor="#B71C1C"
+                            android:layout_marginBottom="12dp"/>
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rvPpiePendientes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
+                            android:nestedScrollingEnabled="false"/>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSincronizarPpie"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Enviar PPIE pendientes"
+                            android:textAllCaps="false"
+                            app:icon="@drawable/ic_sync"
+                            app:cornerRadius="12dp"
+                            style="@style/Widget.Material3.Button.UnelevatedButton"
+                            app:backgroundTint="@color/warning_primary"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- Sección de Notificaciones/Alertas (Mantenimientos) -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardNotifications"

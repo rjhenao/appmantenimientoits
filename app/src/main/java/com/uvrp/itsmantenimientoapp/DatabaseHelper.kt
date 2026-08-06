@@ -41,7 +41,7 @@ import java.math.BigDecimal
 import java.util.UUID
 
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 49) {
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", null, 51) {
     private val api: ApiService by lazy { RetrofitClient.instance }
     override fun onCreate(db: SQLiteDatabase) {
         // IF NOT EXISTS evita crash si onCreate se ejecuta dos veces (p. ej. condición de carrera al sincronizar).
@@ -647,6 +647,63 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
         """
         db.execSQL(invExistenciaCache)
 
+        crearTablasPpie(db)
+        crearTablaExtrasTurnos(db)
+
+    }
+
+    private fun crearTablaExtrasTurnos(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS extras_turnos_catalogo (
+                codigo INTEGER PRIMARY KEY,
+                label TEXT NOT NULL,
+                start_hora TEXT,
+                end_hora TEXT,
+                next_day_end INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent()
+        )
+    }
+
+    private fun crearTablasPpie(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS ppie_formatos (
+                id INTEGER PRIMARY KEY,
+                code TEXT,
+                title TEXT,
+                edition TEXT
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS ppie_actividades (
+                id INTEGER PRIMARY KEY,
+                format_id INTEGER NOT NULL,
+                grupo TEXT,
+                dc TEXT,
+                item_number TEXT,
+                description TEXT,
+                pc TEXT,
+                sort_order INTEGER
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS ppie_pendientes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_uuid TEXT NOT NULL UNIQUE,
+                format_id INTEGER NOT NULL,
+                format_code TEXT,
+                json_payload TEXT NOT NULL,
+                sincronizado INTEGER NOT NULL DEFAULT 0,
+                creado_en TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -758,6 +815,9 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, "LocalDB", nu
             )
             """.trimIndent()
         )
+
+        crearTablasPpie(db)
+        crearTablaExtrasTurnos(db)
 
         if (oldVersion < 49) {
             migrarClientUuidActividadesNp(db)
@@ -5778,6 +5838,194 @@ return insertOk
             }
         }
         return "Celda #$id"
+    }
+
+    data class PpieFormatoLocal(val id: Int, val code: String, val title: String, val edition: String?)
+    data class PpieActividadLocal(
+        val id: Int,
+        val formatId: Int,
+        val grupo: String?,
+        val dc: String?,
+        val itemNumber: String?,
+        val description: String?,
+        val pc: String?,
+        val sortOrder: Int
+    )
+    data class PpiePendienteLocal(val id: Int, val clientUuid: String, val formatId: Int, val formatCode: String?, val jsonPayload: String)
+
+    fun reemplazarCatalogoPpie(formatos: List<ApiService.PpieFormatDto>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("ppie_actividades", null, null)
+            db.delete("ppie_formatos", null, null)
+            for (f in formatos) {
+                val cv = ContentValues().apply {
+                    put("id", f.id)
+                    put("code", f.code)
+                    put("title", f.title)
+                    put("edition", f.edition)
+                }
+                db.insert("ppie_formatos", null, cv)
+                for (a in f.activities.orEmpty()) {
+                    val ca = ContentValues().apply {
+                        put("id", a.id)
+                        put("format_id", f.id)
+                        put("grupo", a.grupo)
+                        put("dc", a.dc)
+                        put("item_number", a.itemNumber)
+                        put("description", a.description)
+                        put("pc", a.pc)
+                        put("sort_order", a.sortOrder ?: 0)
+                    }
+                    db.insert("ppie_actividades", null, ca)
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun obtenerPpieFormatos(): List<PpieFormatoLocal> {
+        val out = mutableListOf<PpieFormatoLocal>()
+        readableDatabase.rawQuery("SELECT id, code, title, edition FROM ppie_formatos ORDER BY code", null).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    PpieFormatoLocal(
+                        c.getInt(0),
+                        c.getString(1).orEmpty(),
+                        c.getString(2).orEmpty(),
+                        c.getString(3)
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    fun obtenerPpieActividades(formatId: Int): List<PpieActividadLocal> {
+        val out = mutableListOf<PpieActividadLocal>()
+        readableDatabase.rawQuery(
+            "SELECT id, format_id, grupo, dc, item_number, description, pc, sort_order FROM ppie_actividades WHERE format_id = ? ORDER BY sort_order, id",
+            arrayOf(formatId.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    PpieActividadLocal(
+                        c.getInt(0),
+                        c.getInt(1),
+                        c.getString(2),
+                        c.getString(3),
+                        c.getString(4),
+                        c.getString(5),
+                        c.getString(6),
+                        c.getInt(7)
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    fun insertarPpiePendiente(clientUuid: String, formatId: Int, formatCode: String?, jsonPayload: String): Long {
+        val cv = ContentValues().apply {
+            put("client_uuid", clientUuid)
+            put("format_id", formatId)
+            put("format_code", formatCode)
+            put("json_payload", jsonPayload)
+            put("sincronizado", 0)
+            put("creado_en", System.currentTimeMillis().toString())
+        }
+        return writableDatabase.insert("ppie_pendientes", null, cv)
+    }
+
+    fun obtenerPpiePendientes(): List<PpiePendienteLocal> {
+        val out = mutableListOf<PpiePendienteLocal>()
+        readableDatabase.rawQuery(
+            "SELECT id, client_uuid, format_id, format_code, json_payload FROM ppie_pendientes WHERE sincronizado = 0 ORDER BY id",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    PpiePendienteLocal(
+                        c.getInt(0),
+                        c.getString(1),
+                        c.getInt(2),
+                        c.getString(3),
+                        c.getString(4)
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    fun getPpiePendienteLineasDescripcion(): List<String> {
+        return obtenerPpiePendientes().map {
+            "PPIE ${it.formatCode ?: ("formato #" + it.formatId)} pendiente de envío"
+        }
+    }
+
+    fun marcarPpiePendienteSincronizado(idLocal: Long) {
+        val cv = ContentValues().apply { put("sincronizado", 1) }
+        writableDatabase.update("ppie_pendientes", cv, "id = ?", arrayOf(idLocal.toString()))
+    }
+
+    data class ExtraTurnoLocal(
+        val codigo: Int,
+        val label: String,
+        val startHora: String?,
+        val endHora: String?,
+        val nextDayEnd: Boolean
+    )
+
+    fun reemplazarCatalogoExtrasTurnos(turnos: List<ApiService.ExtraTurnoDto>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("extras_turnos_catalogo", null, null)
+            for (t in turnos) {
+                val cv = ContentValues().apply {
+                    put("codigo", t.codigo)
+                    put("label", t.label)
+                    put("start_hora", t.start)
+                    put("end_hora", t.end)
+                    put("next_day_end", if (t.nextDayEnd == true) 1 else 0)
+                }
+                db.insert("extras_turnos_catalogo", null, cv)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun obtenerExtrasTurnosCatalogo(): List<ExtraTurnoLocal> {
+        val out = mutableListOf<ExtraTurnoLocal>()
+        readableDatabase.rawQuery(
+            "SELECT codigo, label, start_hora, end_hora, next_day_end FROM extras_turnos_catalogo ORDER BY codigo",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    ExtraTurnoLocal(
+                        c.getInt(0),
+                        c.getString(1).orEmpty(),
+                        c.getString(2),
+                        c.getString(3),
+                        c.getInt(4) == 1
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    fun getExtrasPendienteLineasDescripcion(): List<String> {
+        return obtenerExtrasPendientes().map {
+            "Extra ${it.fechaInicial} · turno ${it.turnoCodigo} · ${it.autorizoNombre}"
+        }
     }
 
     // Data class para combustible local

@@ -174,9 +174,12 @@ class MainActivity : AppCompatActivity() {
                                     getSharedPreferences("Sesion", MODE_PRIVATE).edit().apply {
                                         putString("api_token", token)
                                         putBoolean("puede_inventario", body?.puedeInventario == true)
+                                        putBoolean("puede_ppie", body?.puedePpie == true)
                                         apply()
                                     }
                                     InventarioOfflineSync.sincronizarCatalogo(this@MainActivity)
+                                    PpieOfflineSync.sincronizarCatalogo(this@MainActivity)
+                                    ExtrasOfflineSync.sincronizarCatalogoTurnos(this@MainActivity)
                                 }
                             }
                         } catch (_: Exception) {
@@ -258,6 +261,13 @@ class MainActivity : AppCompatActivity() {
                 errorBD++
             }
             delay(80)
+        }
+        try {
+            if (!PpieOfflineSync.sincronizarCatalogo(this@MainActivity)) {
+                // Sin token o sin permiso: no cuenta como error de catálogo general
+            }
+        } catch (e: Exception) {
+            Log.e("Sincronizacion", "PPIE catalogo: ${e.message}")
         }
         return errorBD
     }

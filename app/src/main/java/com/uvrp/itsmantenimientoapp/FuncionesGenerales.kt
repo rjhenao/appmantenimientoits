@@ -77,8 +77,11 @@ object FuncionesGenerales {
                     val exitoExtras = sincronizarExtrasPendientes(dbHelper).exito
                     val exitoInvPend = InventarioOfflineSync.sincronizarPendientes(context)
                     val exitoInvCat = InventarioOfflineSync.sincronizarCatalogo(context)
+                    val exitoPpiePend = PpieOfflineSync.sincronizarPendientes(context).exito
+                    val exitoPpieCat = PpieOfflineSync.sincronizarCatalogo(context)
+                    val exitoExtrasTurnos = ExtrasOfflineSync.sincronizarCatalogoTurnos(context)
 
-                    val anySuccess = exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible || exitoExtras || exitoInvPend || exitoInvCat
+                    val anySuccess = exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible || exitoExtras || exitoInvPend || exitoInvCat || exitoPpiePend || exitoPpieCat || exitoExtrasTurnos
                     SyncBatchOutcome(
                         anySuccess,
                         pendBitacoraAntes,
@@ -166,6 +169,8 @@ object FuncionesGenerales {
             progressDialog.dismiss()
             val mensaje = when {
                 resultado.exito -> "Combustibles sincronizados correctamente."
+                hadPendientes && !resultado.errorServidor.isNullOrBlank() ->
+                    "No se pudo sincronizar: ${resultado.errorServidor}"
                 hadPendientes -> "No se pudo sincronizar. Revisa tu conexión e intenta de nuevo."
                 else -> "No había combustibles pendientes."
             }
@@ -839,9 +844,6 @@ object FuncionesGenerales {
             return ResultadoSyncExtras(exito = false, errorServidor = null)
         }
 
-        var huboExito = false
-        var ultimoError: String? = null
-
         try {
             val payload = ApiService.ExtrasSyncRequest(
                 extras = pendientes.map { x ->
@@ -867,18 +869,21 @@ object FuncionesGenerales {
 
             val response = RetrofitClient.instance.extrasSync(payload).execute()
             if (response.isSuccessful) {
-                // Si el servidor lo recibió, marcamos todos como sincronizados (idempotente por client_uuid)
                 pendientes.forEach { dbHelper.marcarExtraSincronizado(it.id) }
-                huboExito = true
-            } else {
-                val errorBody = response.errorBody()?.string() ?: ""
-                ultimoError = "HTTP ${response.code()}: ${errorBody.take(120)}"
+                return ResultadoSyncExtras(exito = true, errorServidor = null)
             }
+            val errorBody = response.errorBody()?.string() ?: ""
+            val bodyMsg = response.body()?.message
+            var ultimoError = bodyMsg
+                ?: MobileAuthHelper.extractMessage(errorBody)
+                ?: "HTTP ${response.code()}: ${errorBody.take(160)}"
+            if (response.code() == 401) {
+                ultimoError = "Sesión API vencida (401). Cierre sesión e inicie de nuevo con internet."
+            }
+            return ResultadoSyncExtras(exito = false, errorServidor = ultimoError)
         } catch (e: Exception) {
-            ultimoError = "Error: ${e.message ?: "Sin conexión"}"
+            return ResultadoSyncExtras(exito = false, errorServidor = "Error: ${e.message ?: "Sin conexión"}")
         }
-
-        return ResultadoSyncExtras(exito = huboExito, errorServidor = ultimoError)
     }
 
     /**
@@ -887,6 +892,13 @@ object FuncionesGenerales {
      */
     fun sincronizarSoloExtras(context: Context, onResult: (exito: Boolean, mensajeDetalle: String) -> Unit) {
         CoroutineScope(Dispatchers.Main).launch {
+            RetrofitClient.init(context.applicationContext)
+            val token = context.getSharedPreferences("Sesion", Context.MODE_PRIVATE)
+                .getString("api_token", null)?.trim().orEmpty()
+            if (token.isEmpty()) {
+                onResult(false, "Sin sesión API (token). Cierre sesión e inicie de nuevo con internet.")
+                return@launch
+            }
             val resultado = withContext(Dispatchers.IO) {
                 sincronizarExtrasPendientes(DatabaseHelper(context))
             }

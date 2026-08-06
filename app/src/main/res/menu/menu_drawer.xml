@@ -38,6 +38,13 @@
                 <item
                     android:id="@+id/nav_combustible"
                     android:title="@string/drawer_combustible" />
+                <item
+                    android:id="@+id/nav_ppie"
+                    android:title="PPIE"
+                    android:visible="false" />
+                <item
+                    android:id="@+id/nav_meteo"
+                    android:title="Estado de la vía" />
             </group>
         </menu>
     </item>
