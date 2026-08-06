@@ -357,8 +357,6 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
             spinnerUF.adapter = ufAdapter
 
-
-
             val sentidosCatalogo = dbHelper.obtenerSentidosCatalogo()
 
             if (sentidosCatalogo.isEmpty()) {
@@ -610,8 +608,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
         var esValido = true
 
-
-
+        // Validar PR Inicial Km (obligatorio, permite 1-4 dígitos)
         if (etPrInicialKm.text.toString().trim().isEmpty()) {
 
             tilPrInicialKm.error = "Km obligatorio"
@@ -624,8 +621,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
         }
 
-
-
+        // Validar PR Inicial m (obligatorio, permite 1-4 dígitos)
         if (etPrInicialM.text.toString().trim().isEmpty()) {
 
             tilPrInicialM.error = "m obligatorio"
@@ -638,8 +634,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
         }
 
-
-
+        // Validar PR Final Km (obligatorio, permite 1-4 dígitos)
         if (etPrFinalKm.text.toString().trim().isEmpty()) {
 
             tilPrFinalKm.error = "Km obligatorio"
@@ -652,8 +647,7 @@ class CrearActividadNoProgramadaActivity : AppCompatActivity() {
 
         }
 
-
-
+        // Validar PR Final m (obligatorio, permite 1-4 dígitos)
         if (etPrFinalM.text.toString().trim().isEmpty()) {
 
             tilPrFinalM.error = "m obligatorio"

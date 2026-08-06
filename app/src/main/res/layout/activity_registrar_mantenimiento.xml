@@ -127,7 +127,7 @@
                             android:layout_marginBottom="20dp"
                             android:background="@color/divider" />
 
-                        <!-- Presión Inicial -->
+                        <!-- PR Inicial -->
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -156,8 +156,9 @@
                                     android:id="@+id/input_pr_inicial_1"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Km"
-                                    android:inputType="numberDecimal"
+                                    android:hint="Km (máx. 4 dígitos)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -186,8 +187,9 @@
                                     android:id="@+id/input_pr_inicial_2"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="m"
-                                    android:inputType="numberDecimal"
+                                    android:hint="m (máx. 4 dígitos)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -223,8 +225,9 @@
                                     android:id="@+id/input_pr_final_1"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="Km"
-                                    android:inputType="numberDecimal"
+                                    android:hint="Km (máx. 4 dígitos)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
@@ -253,8 +256,9 @@
                                     android:id="@+id/input_pr_final_2"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:hint="m"
-                                    android:inputType="numberDecimal"
+                                    android:hint="m (máx. 4 dígitos)"
+                                    android:inputType="number"
+                                    android:maxLength="4"
                                     android:textSize="14sp" />
 
                             </com.google.android.material.textfield.TextInputLayout>
