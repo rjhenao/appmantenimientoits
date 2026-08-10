@@ -20,8 +20,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.FirebaseApp
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -38,22 +36,6 @@ import retrofit2.http.GET
 
 
 class MainActivity : AppCompatActivity() {
-
-    private val scanQrLoginLauncher = registerForActivityResult(ScanContract()) { result ->
-        val raw = result?.contents?.trim().orEmpty()
-        if (raw.isEmpty()) return@registerForActivityResult
-        val p = QrReporteParser.parse(raw)
-        if (p == null) {
-            Toast.makeText(this, getString(R.string.reporte_qr_invalido), Toast.LENGTH_LONG).show()
-            return@registerForActivityResult
-        }
-        startActivity(
-            Intent(this, ReporteQrActivity::class.java).apply {
-                putExtra(ReporteQrActivity.EXTRA_LOCACION_ID, p.first)
-                putExtra(ReporteQrActivity.EXTRA_QR_TOKEN, p.second)
-            },
-        )
-    }
 
     lateinit var usernameInput : EditText
     lateinit var passswordInput : EditText
@@ -98,37 +80,7 @@ class MainActivity : AppCompatActivity() {
         loginbtn = findViewById(R.id.login_btn)
         val sincronizarbtn: FloatingActionButton = findViewById(R.id.sincronizar_btn)
 
-        findViewById<FloatingActionButton>(R.id.fab_scan_reporte_qr).setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.reporte_scan_opcion_titulo)
-                .setItems(
-                    arrayOf(
-                        getString(R.string.reporte_scan_opcion_escanear),
-                        getString(R.string.reporte_scan_opcion_sin_escanear),
-                    ),
-                ) { _, which ->
-                    when (which) {
-                        0 -> {
-                            val options = ScanOptions()
-                            options.setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                            options.setPrompt(getString(R.string.reporte_qr_scan_prompt))
-                            options.setBeepEnabled(true)
-                            options.setBarcodeImageEnabled(false)
-                            options.setOrientationLocked(true)
-                            scanQrLoginLauncher.launch(options)
-                        }
-                        1 -> {
-                            startActivity(
-                                Intent(this, ReporteQrActivity::class.java).putExtra(
-                                    ReporteQrActivity.EXTRA_OPEN_LOCACION_PICKER,
-                                    true,
-                                ),
-                            )
-                        }
-                    }
-                }
-                .show()
-        }
+        findViewById<FloatingActionButton>(R.id.fab_scan_reporte_qr).visibility = android.view.View.GONE
 
         loginbtn.setOnClickListener {
 

@@ -106,12 +106,12 @@
     <string name="extras_sync_detalle_error">No se pudo contactar al servidor. El registro quedó pendiente en el celular.</string>
     <string name="extras_toast_completo">Registro guardado y enviado correctamente.</string>
 
-    <string name="nav_reporte_qr">Reporte público (QR)</string>
-    <string name="reporte_qr_title">Reporte público (QR)</string>
+    <string name="nav_reporte_qr">Reporte por QR</string>
+    <string name="reporte_qr_title">Reporte por QR</string>
     <string name="reporte_public_title">Solicitud soporte ITS</string>
-    <string name="reporte_public_subtitle">Incidencias locativas — sin usuario</string>
-    <string name="reporte_qr_ayuda">Escanee el código del cartel. No necesita iniciar sesión. Complete el formulario y envíe; la locación queda tomada del QR.</string>
-    <string name="reporte_qr_ayuda_tarjeta">Elija la locación escaneando el QR del cartel o seleccionándola en la lista. No requiere iniciar sesión.</string>
+    <string name="reporte_public_subtitle">Incidencias locativas — con sesión iniciada</string>
+    <string name="reporte_qr_ayuda">Escanee el código del cartel. Debe haber iniciado sesión. Complete el formulario y envíe; la locación queda tomada del QR.</string>
+    <string name="reporte_qr_ayuda_tarjeta">Elija la locación escaneando el QR del cartel o seleccionándola en la lista. Requiere iniciar sesión.</string>
     <string name="reporte_btn_escanear_o_locacion">Escanear QR o elegir locación</string>
     <string name="reporte_scan_opcion_titulo">¿Cómo desea identificar la locación?</string>
     <string name="reporte_scan_opcion_escanear">Escanear código QR del cartel</string>
@@ -121,14 +121,13 @@
     <string name="reporte_qr_btn_escanear">Escanear código QR</string>
     <string name="reporte_qr_scan_prompt">Enfoque el QR de la locación</string>
     <string name="reporte_qr_invalido">Este QR no es válido para reporte. Use el código de la web (por locación).</string>
-    <string name="login_scan_qr">Escanear QR (sin login)</string>
+    <string name="login_scan_qr">Reporte QR (requiere sesión)</string>
+    <string name="reporte_requiere_login">Inicie sesión con su usuario y contraseña para crear un reporte.</string>
     <string name="reporte_field_locacion">Locación donde se prestará el servicio</string>
     <string name="reporte_field_solicitante">Nombre del solicitante</string>
     <string name="reporte_field_area">Área del solicitante</string>
     <string name="reporte_field_tipo">Tipo de solicitud</string>
     <string name="reporte_field_descripcion">Descripción de la solicitud</string>
-    <string name="reporte_field_email">Correo electrónico de quien reporta</string>
-    <string name="reporte_field_email_helper">Sugerencia: usuario@uvriopamplonita.com</string>
     <string name="reporte_field_adjuntos">Fotos o archivos (opcional)</string>
     <string name="reporte_adjuntos_ninguno">Ninguna foto ni archivo aún.</string>
     <string name="reporte_btn_adjuntar">Agregar fotos o archivos</string>

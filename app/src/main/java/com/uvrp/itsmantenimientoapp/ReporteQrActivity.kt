@@ -1,5 +1,6 @@
 package com.uvrp.itsmantenimientoapp
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -33,8 +34,9 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Formulario público alineado con solicitud soporte ITS (Microsoft Forms).
- * No requiere login. La locación se toma del QR verificado en servidor.
+ * Formulario de reporte por QR / locación.
+ * Requiere sesión iniciada (usuario y contraseña). El envío sigue el endpoint público
+ * sin campo de correo (Play Data Safety).
  */
 class ReporteQrActivity : AppCompatActivity() {
 
@@ -88,8 +90,19 @@ class ReporteQrActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_reporte_qr)
         RetrofitClient.init(applicationContext)
+
+        val prefs = getSharedPreferences("Sesion", MODE_PRIVATE)
+        if (!prefs.getBoolean("isLoggedIn", false)) {
+            Toast.makeText(this, getString(R.string.reporte_requiere_login), Toast.LENGTH_LONG).show()
+            startActivity(Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+            finish()
+            return
+        }
+
+        setContentView(R.layout.activity_reporte_qr)
         dbHelper = DatabaseHelper(this)
 
         adjuntosAdapter = ReporteAdjuntosAdapter { pos ->
@@ -108,6 +121,11 @@ class ReporteQrActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
         toolbar.title = getString(R.string.reporte_public_title)
+
+        val nombreSesion = prefs.getString("nombre", null)?.trim().orEmpty()
+        if (nombreSesion.isNotEmpty()) {
+            findViewById<TextInputEditText>(R.id.inputSolicitanteNombre).setText(nombreSesion)
+        }
 
         findViewById<MaterialButton>(R.id.btnReporteQrEscanearLocacion).setOnClickListener {
             mostrarOpcionesLocacionDialog()
@@ -388,11 +406,10 @@ class ReporteQrActivity : AppCompatActivity() {
 
         val nombre = findViewById<TextInputEditText>(R.id.inputSolicitanteNombre).text?.toString()?.trim().orEmpty()
         val desc = findViewById<TextInputEditText>(R.id.inputDescripcionReporte).text?.toString()?.trim().orEmpty()
-        val email = findViewById<TextInputEditText>(R.id.inputEmailReporte).text?.toString()?.trim().orEmpty()
         val area = spinnerValue(findViewById(R.id.spinnerAreaSolicitante))
         val tipo = spinnerValue(findViewById(R.id.spinnerTipoSolicitud))
 
-        if (nombre.isEmpty() || desc.isEmpty() || email.isEmpty() || area.isEmpty() || tipo.isEmpty()) {
+        if (nombre.isEmpty() || desc.isEmpty() || area.isEmpty() || tipo.isEmpty()) {
             Toast.makeText(this, "Complete todos los campos obligatorios.", Toast.LENGTH_LONG).show()
             return
         }
@@ -417,7 +434,7 @@ class ReporteQrActivity : AppCompatActivity() {
                         txt(area),
                         txt(tipo),
                         txt(desc),
-                        txt(email),
+                        txt(""), // sin correo (cumplimiento Play / solo sesión)
                         parts,
                     ).execute()
                     if (resp.isSuccessful) {
@@ -436,7 +453,7 @@ class ReporteQrActivity : AppCompatActivity() {
                         EnvioOutcome(false, detalleUsuario = msg)
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Fallo al enviar reporte público", e)
+                    Log.e(TAG, "Fallo al enviar reporte", e)
                     val red = when (e) {
                         is java.net.UnknownHostException -> "No hay conexión o el servidor no existe (revisar URL en la app)."
                         is java.net.SocketTimeoutException -> "Tiempo de espera agotado (red lenta o servidor no responde)."
