@@ -51,7 +51,7 @@ object PpieOfflineSync {
         val db = DatabaseHelper(context)
         val pendientes = db.obtenerPpiePendientes()
         if (pendientes.isEmpty()) {
-            return@withContext SyncResult(true, "No hay PPIE pendientes", 0, 0)
+            return@withContext SyncResult(false, "No hay PPIE pendientes", 0, 0)
         }
 
         // Refrescar catálogo antes de reenviar (alineación de actividades)

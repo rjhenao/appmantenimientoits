@@ -37,20 +37,25 @@
                 android:gravity="center"
                 android:layout_marginBottom="48dp">
 
-                <!-- Logo con sombra elegante -->
+                <!-- Logo UVRP nítido sobre tarjeta clara (contraste sobre fondo login) -->
                 <com.google.android.material.card.MaterialCardView
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
-                    app:cardCornerRadius="60dp"
-                    app:cardElevation="12dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="8dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="10dp"
                     app:cardBackgroundColor="@android:color/white">
 
                     <ImageView
-                        android:layout_width="160dp"
-                        android:layout_height="120dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="112dp"
                         android:layout_gravity="center"
-                        android:src="@mipmap/ic_launcher_foreground"
-                        android:scaleType="centerCrop" />
+                        android:paddingHorizontal="28dp"
+                        android:paddingVertical="20dp"
+                        android:src="@drawable/logo_uvrp"
+                        android:scaleType="fitCenter"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="@string/app_name" />
                 </com.google.android.material.card.MaterialCardView>
 
                 <!-- Títulos -->

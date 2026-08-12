@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.edit
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -26,6 +28,7 @@ import com.uvrp.itsmantenimientoapp.InventarioSalidaActivity
 import com.uvrp.itsmantenimientoapp.ExtrasActivity
 import com.uvrp.itsmantenimientoapp.PpieFormatosActivity
 import com.uvrp.itsmantenimientoapp.MeteoUfActivity
+import com.uvrp.itsmantenimientoapp.ComprasSeguimientoActivity
 
 object HeaderHelper {
 
@@ -61,16 +64,29 @@ object HeaderHelper {
 
         val sharedPreferences = activity.getSharedPreferences("Sesion", AppCompatActivity.MODE_PRIVATE)
         val idRol = sharedPreferences.getInt("idRol", -1)
+        val nombreUsu = sharedPreferences.getString("nombre", null)?.trim().orEmpty()
 
-        // --- INICIO DE LA MEJORA PRINCIPAL ---
-        // 1. Ocultar ítems del menú si el usuario no tiene el rol adecuado.
-        //    Esto se hace ANTES de que el usuario pueda hacer clic.
+        // Cabecera compacta del drawer (una sola vez por NavigationView)
+        // fitsSystemWindows=false: el inset lo aplica el spacer del header (más fiable en drawers)
+        navView.fitsSystemWindows = false
+        if (navView.headerCount == 0) {
+            navView.inflateHeaderView(R.layout.nav_header_drawer)
+        }
+        navView.getHeaderView(0)?.let { header ->
+            ajustarSpacerBarraEstado(header)
+            header.findViewById<TextView>(R.id.nav_header_nombre)?.text =
+                if (nombreUsu.isNotEmpty()) nombreUsu else "Usuario"
+            header.findViewById<TextView>(R.id.nav_header_rol)?.text = etiquetaRol(idRol)
+        }
+
+        // Visibilidad por permisos
         val menu = navView.menu
         val tienePermisosITS = (idRol == 1 || idRol == 2)
         val tienePermisosMantenimiento = (idRol == 1 || idRol == 5 || idRol == 6)
         val puedeInventario = sharedPreferences.getBoolean("puede_inventario", tienePermisosITS)
         val mostrarInventario = tienePermisosITS && puedeInventario
         val puedePpie = sharedPreferences.getBoolean("puede_ppie", false)
+        val puedeComprasSeguimiento = sharedPreferences.getBoolean("puede_compras_seguimiento", idRol == 1)
 
         menu.findItem(R.id.nav_its).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_correctivo).isVisible = tienePermisosITS
@@ -82,9 +98,16 @@ object HeaderHelper {
         menu.findItem(R.id.nav_inv_consulta_ubicacion).isVisible = mostrarInventario
         menu.findItem(R.id.nav_extras).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_ppie)?.isVisible = puedePpie
+        menu.findItem(R.id.nav_compras)?.isVisible = puedeComprasSeguimiento
         menu.findItem(R.id.nav_meteo)?.isVisible = true
 
-        // --- FIN DE LA MEJORA PRINCIPAL ---
+        // Ocultar sección Inventario completa si no aplica
+        for (i in 0 until menu.size()) {
+            val top = menu.getItem(i)
+            if (top.hasSubMenu() && top.title == activity.getString(R.string.drawer_seccion_inventario)) {
+                top.isVisible = mostrarInventario
+            }
+        }
 
         // Listener del menú del toolbar (Cerrar Sesión)
         toolbar.setOnMenuItemClickListener { item ->
@@ -115,6 +138,7 @@ object HeaderHelper {
                 R.id.nav_inv_consulta_ubicacion -> navigateTo(activity, InventarioConsultaUbicacionActivity::class.java)
                 R.id.nav_extras -> navigateTo(activity, ExtrasActivity::class.java)
                 R.id.nav_ppie -> navigateTo(activity, PpieFormatosActivity::class.java)
+                R.id.nav_compras -> navigateTo(activity, ComprasSeguimientoActivity::class.java)
                 R.id.nav_meteo -> navigateTo(activity, MeteoUfActivity::class.java)
                 R.id.nav_cerrarsesion -> logout(activity) // Usamos la función centralizada
             }
@@ -143,5 +167,59 @@ object HeaderHelper {
         }
         activity.startActivity(intent)
         activity.finish()
+    }
+
+    private fun etiquetaRol(idRol: Int): String = when (idRol) {
+        1 -> "Administrador"
+        2 -> "ITS"
+        5, 6 -> "Mantenimiento"
+        else -> "Sesión activa"
+    }
+
+    /** Reserva espacio bajo hora/batería; no depende de insets del NavigationView. */
+    private fun ajustarSpacerBarraEstado(header: View) {
+        val spacer = header.findViewById<View>(R.id.nav_header_status_spacer) ?: return
+        val applyHeight: (Int) -> Unit = { topPx ->
+            val h = if (topPx > 0) topPx else alturaBarraEstadoFallback(header)
+            val lp = spacer.layoutParams
+            if (lp.height != h) {
+                lp.height = h
+                spacer.layoutParams = lp
+            }
+        }
+
+        // 1) Altura del sistema (siempre disponible)
+        applyHeight(alturaBarraEstadoFallback(header))
+
+        // 2) Refinar con insets reales cuando lleguen (cutouts / notch)
+        ViewCompat.setOnApplyWindowInsetsListener(header) { _, insets ->
+            val top = insets.getInsets(
+                WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+            ).top
+            applyHeight(top)
+            insets
+        }
+        ViewCompat.requestApplyInsets(header)
+
+        // También escuchar en el NavigationView padre por si el header no recibe insets
+        (header.parent as? View)?.let { parent ->
+            ViewCompat.setOnApplyWindowInsetsListener(parent) { _, insets ->
+                val top = insets.getInsets(
+                    WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+                ).top
+                applyHeight(top)
+                insets
+            }
+            ViewCompat.requestApplyInsets(parent)
+        }
+    }
+
+    private fun alturaBarraEstadoFallback(view: View): Int {
+        val res = view.resources
+        val id = res.getIdentifier("status_bar_height", "dimen", "android")
+        if (id > 0) {
+            return res.getDimensionPixelSize(id)
+        }
+        return (28f * res.displayMetrics.density).toInt()
     }
 }

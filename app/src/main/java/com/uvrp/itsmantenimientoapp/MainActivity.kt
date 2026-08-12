@@ -127,6 +127,7 @@ class MainActivity : AppCompatActivity() {
                                         putString("api_token", token)
                                         putBoolean("puede_inventario", body?.puedeInventario == true)
                                         putBoolean("puede_ppie", body?.puedePpie == true)
+                                        putBoolean("puede_compras_seguimiento", body?.puedeComprasSeguimiento == true)
                                         apply()
                                     }
                                     InventarioOfflineSync.sincronizarCatalogo(this@MainActivity)

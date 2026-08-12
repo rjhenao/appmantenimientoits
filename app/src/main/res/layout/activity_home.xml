@@ -52,21 +52,14 @@
                         android:padding="20dp"
                         android:gravity="center_vertical">
 
-                        <!-- Logo corporativo -->
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="80dp"
-                            android:layout_height="80dp"
-                            app:cardCornerRadius="40dp"
-                            app:cardElevation="2dp"
-                            app:cardBackgroundColor="@color/primary_light">
-
-                            <ImageView
-                                android:layout_width="128dp"
-                                android:layout_height="128dp"
-                                android:layout_gravity="center"
-                                android:src="@mipmap/ic_launcher_foreground"
-                                android:scaleType="centerCrop"/>
-                        </com.google.android.material.card.MaterialCardView>
+                        <!-- Logo UVRP (negro transparente sobre card blanca) -->
+                        <ImageView
+                            android:layout_width="140dp"
+                            android:layout_height="56dp"
+                            android:src="@drawable/logo_uvrp"
+                            android:scaleType="fitCenter"
+                            android:adjustViewBounds="true"
+                            android:contentDescription="@string/app_name"/>
 
                         <LinearLayout
                             android:orientation="vertical"
