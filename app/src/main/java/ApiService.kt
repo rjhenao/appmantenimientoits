@@ -173,6 +173,7 @@ interface ApiService {
         @SerializedName("Estado") val Estado: Int,
         @SerializedName("Observacion") val Observacion: String?,
         @SerializedName("supervisorResponsable") val supervisorResponsable: Int,
+        @SerializedName("client_uuid") val client_uuid: String? = null,
         @SerializedName("created_at") val created_at: String?,
         @SerializedName("updated_at") val updated_at: String?
     )

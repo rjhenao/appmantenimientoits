@@ -266,12 +266,11 @@ class MainActivity : AppCompatActivity() {
                         mutex.withLock {
                             db.beginTransaction()
                             try {
-                                // PROTECCIÓN NP: conservar TODAS las filas Estado=2 (no programadas).
-                                // Antes se borraban las NP ya sincronizadas (sincronizado=1) y al reinsertar desde la API
-                                // el modelo no trae "sincronizado", quedaba 0 y volvían a salir "por sincronizar".
+                                // PROTECCIÓN NP: refrescar programadas + NP ya sync; conservar NP pendientes (sync=0).
                                 if (nombreTabla == "programar_actividades_bitacora") {
                                     db.execSQL("DELETE FROM $nombreTabla WHERE IFNULL(Estado, 0) != 2")
-                                    Log.d(tag, "Tabla $nombreTabla: eliminadas solo programadas; NP (Estado=2) preservadas")
+                                    db.execSQL("DELETE FROM $nombreTabla WHERE IFNULL(Estado, 0) = 2 AND IFNULL(sincronizado, 0) = 1")
+                                    Log.d(tag, "Tabla $nombreTabla: limpia programadas y NP sync=1; se conservan NP sync=0")
                                 } else {
                                     db.execSQL("DELETE FROM $nombreTabla") // Limpia la tabla local
                                 }
@@ -288,14 +287,31 @@ class MainActivity : AppCompatActivity() {
                                     // Filas descargadas del servidor: no son "pendientes de subir" (la API no envía sincronizado).
                                     if (nombreTabla == "programar_actividades_bitacora") {
                                         values.put("sincronizado", 1)
-                                    }
 
-                                    // 4. Verificamos si la inserción en la BD fue exitosa
-                                    // Para programar_actividades_bitacora, usamos INSERT OR IGNORE para no sobrescribir IDs locales
-                                    if (nombreTabla == "programar_actividades_bitacora") {
-                                        val id = db.insertWithOnConflict(nombreTabla, null, values, SQLiteDatabase.CONFLICT_IGNORE)
-                                        if (id == -1L) {
-                                            Log.d(tag, "Registro ya existe (ID del servidor), ignorado correctamente")
+                                        val serverId = values.getAsString("id")?.toLongOrNull()
+                                        var skipPending = false
+                                        if (serverId != null) {
+                                            db.rawQuery(
+                                                "SELECT sincronizado FROM programar_actividades_bitacora WHERE id = ? AND IFNULL(Estado,0)=2 LIMIT 1",
+                                                arrayOf(serverId.toString())
+                                            ).use { c ->
+                                                if (c.moveToFirst() && c.getInt(0) == 0) {
+                                                    skipPending = true
+                                                }
+                                            }
+                                        }
+                                        if (skipPending) {
+                                            Log.d(tag, "Omitiendo id=$serverId: NP local pendiente (sync=0)")
+                                        } else {
+                                            val id = db.insertWithOnConflict(
+                                                nombreTabla,
+                                                null,
+                                                values,
+                                                SQLiteDatabase.CONFLICT_REPLACE
+                                            )
+                                            if (id == -1L) {
+                                                Log.e(tag, "¡FALLÓ UPSERT PAB! -> Fila: $values")
+                                            }
                                         }
                                     } else {
                                         val id = db.insert(nombreTabla, null, values)

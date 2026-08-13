@@ -3244,7 +3244,7 @@ return insertOk
                 SELECT
                     pab.id,
                     ab.Descripcion,
-                    c.Nombre,
+                    IFNULL(c.Nombre, '—') AS Nombre,
                     pab.UF,
                     pab.Sentido,
                     pab.Lado,
@@ -3257,7 +3257,7 @@ return insertOk
                 FROM programar_actividades_bitacora pab
                 JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
                 JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
-                JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
+                LEFT JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
                 WHERE bm.id = ?
                 GROUP BY pab.id
             """.trimIndent()
@@ -3271,7 +3271,7 @@ return insertOk
                 SELECT
                     pab.id,
                     ab.Descripcion,
-                    c.Nombre,
+                    IFNULL(c.Nombre, '—') AS Nombre,
                     pab.UF,
                     pab.Sentido,
                     pab.Lado,
@@ -3284,7 +3284,7 @@ return insertOk
                 FROM programar_actividades_bitacora pab
                 JOIN bitacora_mantenimientos bm ON (pab.idBitacora = bm.id)
                 JOIN actividades_bitacoras ab ON (ab.id = pab.idActividad)
-                JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
+                LEFT JOIN cuadrillas c ON (c.id = pab.IdCuadrilla)
                 WHERE bm.id = ?
                   AND (
                     pab.supervisorResponsable = ?
@@ -3882,7 +3882,6 @@ return insertOk
         // 5. Actividades no programadas pendientes (solo las del supervisor que las creó)
         val queryNoProgramadas = """
             SELECT pab.* FROM programar_actividades_bitacora pab
-            INNER JOIN bitacora_mantenimientos bm ON bm.id = pab.idBitacora AND bm.estado = 1
             WHERE pab.sincronizado = 0 AND pab.Estado = 2 AND pab.supervisorResponsable = ?
         """.trimIndent()
         db.rawQuery(queryNoProgramadas, arrayOf(idUsuarioActivo.toString())).use { cursor ->
