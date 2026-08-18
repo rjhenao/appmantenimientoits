@@ -6,7 +6,7 @@
     <!-- Menú lateral (agrupado por secciones) -->
     <string name="drawer_inicio">Inicio</string>
     <string name="drawer_seccion_mantenimiento">Mantenimiento ITS</string>
-    <string name="drawer_seccion_trabajo">ITS y operación</string>
+    <string name="drawer_seccion_trabajo">Operación</string>
     <string name="drawer_preventivo_its">Preventivo</string>
     <string name="drawer_correctivo_its">Correctivo</string>
     <string name="drawer_bitacoras">Bitácoras</string>

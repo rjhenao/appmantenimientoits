@@ -12,7 +12,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper // Asegúrate de importar tu helper
+import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
@@ -23,74 +23,20 @@ class iniciarPreoperacional : AppCompatActivity() {
     private var idVehiculoSeleccionado: Int? = null
     private var placaa: String? = null
     private var vehiculoSeleccionado: Vehiculo? = null
-    private var idPreoperacionalAbierto: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_iniciar_preoperacional)
 
-        // 1. Llama al HeaderHelper para configurar el menú y la barra de herramientas
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
         val navView = findViewById<NavigationView>(R.id.nav_view)
         HeaderHelper.setupHeader(this, drawerLayout, navView)
 
-        // El resto de la lógica de tu actividad permanece igual
         val autoComplete = findViewById<AutoCompleteTextView>(R.id.autoCompletePlacas)
         val btnIniciar = findViewById<Button>(R.id.btnIniciarPreoperacional)
-        val btnAnular = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnAnularPreoperacional)
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("idUser", -1)
-
-        btnAnular.setOnClickListener {
-            val idPreop = idPreoperacionalAbierto
-            if (idPreop == null || idUsuario == -1) {
-                Toast.makeText(this, "No hay preoperacional abierto para anular", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            AlertDialog.Builder(this)
-                .setTitle("Anular preoperacional")
-                .setMessage("Se anulará el preoperacional abierto (sin checklist iniciado). Esta acción no se puede deshacer. ¿Continuar?")
-                .setNegativeButton("No", null)
-                .setPositiveButton("Sí, anular") { _, _ ->
-                    RetrofitClient.instance.anularPreoperacional(
-                        ApiService.AnularPreoperacionalRequest(idPreop, idUsuario)
-                    ).enqueue(object : Callback<ApiService.AnularPreoperacionalResponse> {
-                        override fun onResponse(
-                            call: Call<ApiService.AnularPreoperacionalResponse>,
-                            response: Response<ApiService.AnularPreoperacionalResponse>
-                        ) {
-                            val body = response.body()
-                            if (response.isSuccessful && body?.success == true) {
-                                getSharedPreferences("PreoperacionalesIniciados", MODE_PRIVATE).edit().apply {
-                                    remove("idPreoperacional_$idUsuario")
-                                    remove("idVehiculo_$idUsuario")
-                                    remove("placa_$idUsuario")
-                                    remove("fechaInicio_$idUsuario")
-                                    apply()
-                                }
-                                idPreoperacionalAbierto = null
-                                btnAnular.visibility = android.view.View.GONE
-                                Toast.makeText(this@iniciarPreoperacional, "Preoperacional anulado", Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(
-                                    this@iniciarPreoperacional,
-                                    body?.message ?: "No se pudo anular",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
-
-                        override fun onFailure(call: Call<ApiService.AnularPreoperacionalResponse>, t: Throwable) {
-                            Toast.makeText(this@iniciarPreoperacional, "Error de red: ${t.message}", Toast.LENGTH_LONG).show()
-                        }
-                    })
-                }
-                .show()
-        }
-
-
-        // ... (todo tu código de Retrofit, listeners del botón, etc., se queda como está)
 
         if (idUsuario != -1) {
             RetrofitClient.instance.validarUsuario(idUsuario)
@@ -164,8 +110,6 @@ class iniciarPreoperacional : AppCompatActivity() {
                     vehiculoSeleccionado = vehiculos.firstOrNull { it.placa == placaSeleccionada }
                     placaa = vehiculoSeleccionado?.placa
                     idVehiculoSeleccionado = vehiculoSeleccionado?.id
-
-                    Log.d("AutoComplete", "Placa seleccionada: $placaa, ID: $idVehiculoSeleccionado")
                 }
 
             } catch (e: Exception) {
@@ -176,8 +120,8 @@ class iniciarPreoperacional : AppCompatActivity() {
 
         btnIniciar.setOnClickListener {
             if (vehiculoSeleccionado != null) {
-                val idUsuario = sharedPreferences.getInt("idUser", -1)
-                if (idUsuario == -1) {
+                val uid = sharedPreferences.getInt("idUser", -1)
+                if (uid == -1) {
                     Toast.makeText(this, "No se encontró el ID de usuario", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
@@ -189,7 +133,7 @@ class iniciarPreoperacional : AppCompatActivity() {
                     .create()
                 progressDialog.show()
 
-                RetrofitClient.instance.validarVehiculoLicencia(idUsuario, vehiculoSeleccionado!!.id)
+                RetrofitClient.instance.validarVehiculoLicencia(uid, vehiculoSeleccionado!!.id)
                     .enqueue(object : Callback<ApiService.ValidarVehiculoResponse> {
                         override fun onResponse(call: Call<ApiService.ValidarVehiculoResponse>, response: Response<ApiService.ValidarVehiculoResponse>) {
                             progressDialog.dismiss()
@@ -204,7 +148,7 @@ class iniciarPreoperacional : AppCompatActivity() {
                                 data?.let {
                                     if (it.vehiculo_con_preoperacional_abierto == true) {
                                         it.aVehiculo?.firstOrNull()?.let { v ->
-                                            if (v.idUsuario != idUsuario) {
+                                            if (v.idUsuario != uid) {
                                                 mensajes.add("El vehículo: ${v.placa} tiene preoperacional abierto por: ${v.nombre}")
                                             } else {
                                                 estadoEncontrado = v.estado
@@ -245,31 +189,12 @@ class iniciarPreoperacional : AppCompatActivity() {
 
                                 if (esUsuarioActual) {
                                     when (estadoEncontrado) {
-                                        1 -> {
-                                            idPreoperacionalAbierto = data?.aVehiculo?.firstOrNull { it.idUsuario == idUsuario }?.idPreoperacional
-                                                ?: data?.aUsuario?.firstOrNull { it.idUsuario == idUsuario }?.idPreoperacional
-                                            btnAnular.visibility = if (idPreoperacionalAbierto != null) android.view.View.VISIBLE else android.view.View.GONE
-                                            AlertDialog.Builder(this@iniciarPreoperacional)
-                                                .setTitle("Preoperacional abierto")
-                                                .setMessage("Ya tiene un preoperacional abierto. Puede continuar el checklist o anularlo si lo abrió por error.")
-                                                .setPositiveButton("Continuar") { _, _ -> startFormulario() }
-                                                .setNeutralButton("Anular") { _, _ -> btnAnular.performClick() }
-                                                .setNegativeButton("Cerrar", null)
-                                                .show()
-                                        }
-                                        2 -> {
-                                            btnAnular.visibility = android.view.View.GONE
-                                            idPreoperacionalAbierto = null
-                                            startFinalizar()
-                                        }
-                                        else -> {
-                                            btnAnular.visibility = android.view.View.GONE
-                                            abrirPreoperacional(idUsuario)
-                                        }
+                                        1 -> startFormulario()
+                                        2 -> startFinalizar()
+                                        else -> confirmarAbrirPreoperacional(uid)
                                     }
                                 } else {
-                                    btnAnular.visibility = android.view.View.GONE
-                                    abrirPreoperacional(idUsuario)
+                                    confirmarAbrirPreoperacional(uid)
                                 }
 
                             } else {
@@ -283,7 +208,7 @@ class iniciarPreoperacional : AppCompatActivity() {
                             Toast.makeText(this@iniciarPreoperacional, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
                             FirebaseCrashlytics.getInstance().apply {
                                 log("📡 Error en validarVehiculoLicencia")
-                                setCustomKey("UsuarioID", idUsuario)
+                                setCustomKey("UsuarioID", uid)
                                 setCustomKey("VehiculoID", vehiculoSeleccionado?.id ?: -1)
                                 recordException(t)
                             }
@@ -295,12 +220,20 @@ class iniciarPreoperacional : AppCompatActivity() {
         }
     }
 
-    // 2. Agrega esta función para que el icono de hamburguesa funcione
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         if (HeaderHelper.onOptionsItemSelected(item)) {
             return true
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    private fun confirmarAbrirPreoperacional(idUsuario: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Abrir preoperacional")
+            .setMessage("¿Está seguro de abrir el preoperacional para este vehículo?")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Sí, abrir") { _, _ -> abrirPreoperacional(idUsuario) }
+            .show()
     }
 
     private fun startFormulario() {
@@ -325,7 +258,6 @@ class iniciarPreoperacional : AppCompatActivity() {
                     if (response.isSuccessful) {
                         val body = response.body()
                         if (body != null && body.success && body.idPreoperacional != null) {
-                            // Guardar id_preoperacional en SharedPreferences para validación offline de combustible
                             val prefs = getSharedPreferences("PreoperacionalesIniciados", MODE_PRIVATE)
                             prefs.edit().apply {
                                 putInt("idPreoperacional_$idUsuario", body.idPreoperacional!!)
@@ -334,7 +266,7 @@ class iniciarPreoperacional : AppCompatActivity() {
                                 putLong("fechaInicio_$idUsuario", System.currentTimeMillis())
                                 apply()
                             }
-                            Log.d("Preoperacional", "✅ Preoperacional guardado en SharedPreferences: ID=${body.idPreoperacional}, Usuario=$idUsuario")
+                            Log.d("Preoperacional", "✅ Preoperacional guardado: ID=${body.idPreoperacional}")
                         }
                         startFormulario()
                     } else {
@@ -356,4 +288,3 @@ class iniciarPreoperacional : AppCompatActivity() {
             })
     }
 }
-

@@ -37,6 +37,7 @@ object FuncionesGenerales {
 
     private data class SyncBatchOutcome(
         val anySuccess: Boolean,
+        val servidorOk: Boolean,
         val pendBitacoraAntes: Int,
         val exitoBitacoras: Boolean,
         val hadBitacoraConflict409: Boolean = false
@@ -62,6 +63,22 @@ object FuncionesGenerales {
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 val outcome = withContext(Dispatchers.IO) {
+                    RetrofitClient.init(context.applicationContext)
+                    val target = RetrofitClient.baseUrl()
+                    Log.i("SyncDebug", "Iniciando sync → $target")
+
+                    val servidorOk = RetrofitClient.pingServer()
+                    if (!servidorOk) {
+                        Log.e("SyncDebug", "Servidor NO alcanzable en $target")
+                        return@withContext SyncBatchOutcome(
+                            anySuccess = false,
+                            servidorOk = false,
+                            pendBitacoraAntes = 0,
+                            exitoBitacoras = false
+                        )
+                    }
+                    Log.i("SyncDebug", "Servidor OK en $target")
+
                     val idSesion = context.getSharedPreferences("Sesion", Context.MODE_PRIVATE).getInt("idUser", -1)
                     val pendBitacoraAntes =
                         if (idSesion > 0) dbHelper.obtenerBitacorasPendientes(idSesion).size else 0
@@ -81,9 +98,21 @@ object FuncionesGenerales {
                     val exitoPpieCat = PpieOfflineSync.sincronizarCatalogo(context)
                     val exitoExtrasTurnos = ExtrasOfflineSync.sincronizarCatalogoTurnos(context)
 
-                    val anySuccess = exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones || exitoFotosMasivas || exitoCombustible || exitoExtras || exitoInvPend || exitoInvCat || exitoPpiePend || exitoPpieCat || exitoExtrasTurnos
+                    val anySuccess = exitoTerminados || exitoCorrectivos || exitoBitacoras || exitoInspecciones ||
+                        exitoFotosMasivas || exitoCombustible || exitoExtras || exitoInvPend ||
+                        exitoInvCat || exitoPpiePend || exitoPpieCat || exitoExtrasTurnos
+
+                    Log.i(
+                        "SyncDebug",
+                        "Resultados sync: terminados=$exitoTerminados correctivos=$exitoCorrectivos " +
+                            "bitacoras=$exitoBitacoras insp=$exitoInspecciones fotos=$exitoFotosMasivas " +
+                            "comb=$exitoCombustible extras=$exitoExtras invP=$exitoInvPend invC=$exitoInvCat " +
+                            "ppieP=$exitoPpiePend ppieC=$exitoPpieCat turnos=$exitoExtrasTurnos any=$anySuccess"
+                    )
+
                     SyncBatchOutcome(
                         anySuccess,
+                        servidorOk = true,
                         pendBitacoraAntes,
                         exitoBitacoras,
                         resultadoBitacoras.hadConflict409
@@ -93,6 +122,14 @@ object FuncionesGenerales {
                 val bitacoraFallo = outcome.pendBitacoraAntes > 0 && !outcome.exitoBitacoras
 
                 when {
+                    !outcome.servidorOk -> {
+                        Toast.makeText(
+                            context,
+                            "Sin conexión al servidor (${RetrofitClient.baseUrl()}). Encienda php artisan serve; si usa USB ejecute: adb reverse tcp:8000 tcp:8000",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        onResult(false)
+                    }
                     outcome.anySuccess -> {
                         withContext(Dispatchers.IO) {
                             try {
@@ -340,7 +377,12 @@ object FuncionesGenerales {
                 )
 
             if (bitacorasPendientes.isEmpty()) {
-                return BitacoraSyncResult(success = todoOk, hadConflict409 = hadConflict409)
+                // Vacío al inicio = no hubo trabajo de red (no contar como éxito).
+                // Vacío tras pasadas = se envió todo correctamente.
+                return BitacoraSyncResult(
+                    success = pasada > 0 && todoOk,
+                    hadConflict409 = hadConflict409
+                )
             }
 
             Log.i(
@@ -508,7 +550,8 @@ object FuncionesGenerales {
         if (pasada >= 12) {
             Log.e("SyncBitacora", "Se alcanzó el máximo de pasadas de sincronización de bitácora.")
         }
-        return BitacoraSyncResult(success = todoOk, hadConflict409 = hadConflict409)
+        // Sin ninguna pasada con datos = no hubo sync real
+        return BitacoraSyncResult(success = pasada > 0 && todoOk, hadConflict409 = hadConflict409)
     }
 
 

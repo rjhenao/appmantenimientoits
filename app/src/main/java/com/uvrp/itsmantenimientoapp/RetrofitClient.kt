@@ -18,8 +18,38 @@ object RetrofitClient {
     //private const val BASE_URL = "http://192.168.0.188:8003/"
     // pruebas
     private const val BASE_URL = "http://181.225.65.82:8196/"
-    //private const val BASE_URL = "http://10.202.8.24:8000/"   
-    
+    // local vía USB (adb reverse tcp:8000 tcp:8000) — más fiable que Wi‑Fi/firewall
+    //private const val BASE_URL = "http://127.0.0.1:8000/"
+    // local por Wi‑Fi LAN (requiere firewall y misma red)
+    //private const val BASE_URL = "http://192.168.0.117:8000/"
+
+    /** URL activa (para toasts / diagnóstico). */
+    fun baseUrl(): String = BASE_URL
+
+    /**
+     * ¿El backend responde? (cualquier HTTP 2xx–5xx = servidor vivo).
+     * Timeouts cortos para no bloquear la UI de sincronización.
+     */
+    fun pingServer(): Boolean {
+        return try {
+            val client = OkHttpClient.Builder()
+                .connectTimeout(3, TimeUnit.SECONDS)
+                .readTimeout(3, TimeUnit.SECONDS)
+                .writeTimeout(3, TimeUnit.SECONDS)
+                .callTimeout(4, TimeUnit.SECONDS)
+                .build()
+            val req = okhttp3.Request.Builder()
+                .url(BASE_URL)
+                .get()
+                .header("Accept", "application/json")
+                .build()
+            client.newCall(req).execute().use { resp ->
+                resp.code in 200..599
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     @Volatile
     private var appContext: Context? = null

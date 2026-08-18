@@ -37,6 +37,7 @@ import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.PartMap
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
@@ -172,6 +173,7 @@ interface ApiService {
         @SerializedName("Estado") val Estado: Int,
         @SerializedName("Observacion") val Observacion: String?,
         @SerializedName("supervisorResponsable") val supervisorResponsable: Int,
+        @SerializedName("client_uuid") val client_uuid: String? = null,
         @SerializedName("created_at") val created_at: String?,
         @SerializedName("updated_at") val updated_at: String?
     )
@@ -493,7 +495,8 @@ interface ApiService {
         val user: MobileUserInfo?,
         val roles: List<Int>?,
         @SerializedName("puede_inventario") val puedeInventario: Boolean?,
-        @SerializedName("puede_ppie") val puedePpie: Boolean?
+        @SerializedName("puede_ppie") val puedePpie: Boolean?,
+        @SerializedName("puede_compras_seguimiento") val puedeComprasSeguimiento: Boolean?
     )
 
     data class MobileUserInfo(
@@ -770,6 +773,145 @@ interface ApiService {
 
     @GET("api/mobile/meteo-uf")
     fun meteoUf(@Query("refresh") refresh: Int? = null): Call<MeteoUfResponse>
+
+    // ===== COMPRAS (seguimiento admin) =====
+
+    data class CompraEstadoDto(
+        val id: Int?,
+        val nombre: String?,
+        val etiqueta: String?
+    )
+
+    data class CompraEstadosResponse(
+        val estados: List<CompraEstadoDto>?
+    )
+
+    data class CompraKpisDto(
+        val total: Int?,
+        @SerializedName("en_tramite") val enTramite: Int?,
+        @SerializedName("en_cotizacion") val enCotizacion: Int?,
+        val adjudicadas: Int?,
+        @SerializedName("con_alerta") val conAlerta: Int?
+    )
+
+    data class CompraPipelineStepDto(
+        val key: String?,
+        val label: String?,
+        val done: Boolean?,
+        val current: Boolean?
+    )
+
+    data class CompraEcListItemDto(
+        val id: Int?,
+        @SerializedName("referencia_ec") val referenciaEc: String?,
+        @SerializedName("tipo_pedido") val tipoPedido: String?,
+        @SerializedName("estado_nombre") val estadoNombre: String?,
+        @SerializedName("estado_etiqueta") val estadoEtiqueta: String?,
+        @SerializedName("dias_en_estado") val diasEnEstado: Int?,
+        @SerializedName("dias_totales_proceso") val diasTotalesProceso: Int?,
+        @SerializedName("dias_para_entrega") val diasParaEntrega: Int?,
+        @SerializedName("fecha_requerida_entrega") val fechaRequeridaEntrega: String?,
+        @SerializedName("porcentaje_plazo") val porcentajePlazo: Double?,
+        @SerializedName("alerta_global") val alertaGlobal: String?,
+        @SerializedName("alerta_entrega") val alertaEntrega: String?,
+        @SerializedName("alerta_cotizacion") val alertaCotizacion: String?,
+        @SerializedName("cotizacion_respondidas") val cotizacionRespondidas: Int?,
+        @SerializedName("cotizacion_total") val cotizacionTotal: Int?,
+        @SerializedName("cotizacion_pendientes") val cotizacionPendientes: Int?,
+        @SerializedName("siguiente_paso") val siguientePaso: String?,
+        @SerializedName("en_tramite") val enTramite: Boolean?,
+        @SerializedName("en_cotizacion") val enCotizacion: Boolean?,
+        val adjudicada: Boolean?,
+        val anulada: Boolean?,
+        @SerializedName("updated_at") val updatedAt: String?,
+        val pipeline: List<CompraPipelineStepDto>?,
+        @SerializedName("duraciones_por_estado") val duracionesPorEstado: List<CompraDuracionEstadoDto>?
+    )
+
+    data class CompraListMetaDto(
+        @SerializedName("current_page") val currentPage: Int?,
+        @SerializedName("last_page") val lastPage: Int?,
+        @SerializedName("per_page") val perPage: Int?,
+        val total: Int?
+    )
+
+    data class CompraListResponse(
+        val kpis: CompraKpisDto?,
+        val items: List<CompraEcListItemDto>?,
+        val meta: CompraListMetaDto?
+    )
+
+    data class CompraHistorialDto(
+        val desde: String?,
+        val hacia: String?,
+        val fecha: String?,
+        val usuario: String?,
+        val observacion: String?
+    )
+
+    data class CompraDetalleItemDto(
+        val id: Int?,
+        @SerializedName("id_detalle") val idDetalle: Int?,
+        val descripcion: String?,
+        val cantidad: Double?,
+        val unidad: String?
+    )
+
+    data class CompraDuracionEstadoDto(
+        val estado: String?,
+        val segundos: Int?,
+        val actual: Boolean?
+    )
+
+    data class CompraEcDetalleDto(
+        val id: Int?,
+        @SerializedName("referencia_ec") val referenciaEc: String?,
+        @SerializedName("tipo_pedido") val tipoPedido: String?,
+        @SerializedName("estado_nombre") val estadoNombre: String?,
+        @SerializedName("estado_etiqueta") val estadoEtiqueta: String?,
+        @SerializedName("dias_en_estado") val diasEnEstado: Int?,
+        @SerializedName("dias_totales_proceso") val diasTotalesProceso: Int?,
+        @SerializedName("dias_para_entrega") val diasParaEntrega: Int?,
+        @SerializedName("fecha_requerida_entrega") val fechaRequeridaEntrega: String?,
+        @SerializedName("porcentaje_plazo") val porcentajePlazo: Double?,
+        @SerializedName("alerta_global") val alertaGlobal: String?,
+        @SerializedName("alerta_entrega") val alertaEntrega: String?,
+        @SerializedName("alerta_cotizacion") val alertaCotizacion: String?,
+        @SerializedName("cotizacion_respondidas") val cotizacionRespondidas: Int?,
+        @SerializedName("cotizacion_total") val cotizacionTotal: Int?,
+        @SerializedName("cotizacion_pendientes") val cotizacionPendientes: Int?,
+        @SerializedName("siguiente_paso") val siguientePaso: String?,
+        @SerializedName("en_tramite") val enTramite: Boolean?,
+        @SerializedName("en_cotizacion") val enCotizacion: Boolean?,
+        val adjudicada: Boolean?,
+        val anulada: Boolean?,
+        @SerializedName("updated_at") val updatedAt: String?,
+        val elaborador: String?,
+        val pipeline: List<CompraPipelineStepDto>?,
+        val historial: List<CompraHistorialDto>?,
+        val items: List<CompraDetalleItemDto>?,
+        @SerializedName("duraciones_por_estado") val duracionesPorEstado: List<CompraDuracionEstadoDto>?
+    )
+
+    data class CompraDetalleResponse(
+        val ec: CompraEcDetalleDto?,
+        val message: String?
+    )
+
+    @GET("api/compras/estados")
+    fun comprasEstados(): Call<CompraEstadosResponse>
+
+    @GET("api/compras")
+    fun comprasListado(
+        @Query("q") q: String? = null,
+        @Query("estado_id") estadoId: Int? = null,
+        @Query("fecha_desde") fechaDesde: String? = null,
+        @Query("fecha_hasta") fechaHasta: String? = null,
+        @Query("page") page: Int? = null
+    ): Call<CompraListResponse>
+
+    @GET("api/compras/{id}")
+    fun comprasDetalle(@Path("id") id: Int): Call<CompraDetalleResponse>
 
     data class AnularPreoperacionalRequest(
         val id: Int,

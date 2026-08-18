@@ -8,10 +8,10 @@
         android:checkableBehavior="single">
         <item
             android:id="@+id/nav_home"
+            android:icon="@drawable/ic_nav_home"
             android:title="@string/drawer_inicio" />
     </group>
 
-    <!-- Un solo bloque: ITS + campo (menos encabezados que antes) -->
     <item android:title="@string/drawer_seccion_trabajo">
         <menu>
             <group
@@ -19,31 +19,45 @@
                 android:checkableBehavior="single">
                 <item
                     android:id="@+id/nav_its"
+                    android:icon="@drawable/ic_nav_build"
                     android:title="@string/drawer_preventivo_its" />
                 <item
                     android:id="@+id/nav_correctivo"
+                    android:icon="@drawable/ic_nav_fix"
                     android:title="@string/drawer_correctivo_its" />
                 <item
                     android:id="@+id/nav_bitacoras"
+                    android:icon="@drawable/ic_nav_checklist"
                     android:title="@string/drawer_bitacoras" />
                 <item
                     android:id="@+id/nav_tickets"
+                    android:icon="@drawable/ic_nav_ticket"
                     android:title="@string/drawer_tickets" />
                 <item
                     android:id="@+id/nav_reporte_qr"
+                    android:icon="@drawable/ic_camera_outline"
                     android:title="@string/nav_reporte_qr" />
                 <item
                     android:id="@+id/nav_preoperacional"
+                    android:icon="@drawable/ic_nav_checklist"
                     android:title="@string/drawer_preoperacional" />
                 <item
                     android:id="@+id/nav_combustible"
+                    android:icon="@drawable/ic_nav_car"
                     android:title="@string/drawer_combustible" />
                 <item
                     android:id="@+id/nav_ppie"
+                    android:icon="@drawable/ic_nav_report"
                     android:title="PPIE"
                     android:visible="false" />
                 <item
+                    android:id="@+id/nav_compras"
+                    android:icon="@drawable/ic_nav_shopping"
+                    android:title="Compras"
+                    android:visible="false" />
+                <item
                     android:id="@+id/nav_meteo"
+                    android:icon="@drawable/ic_nav_place"
                     android:title="Estado de la vía" />
             </group>
         </menu>
@@ -56,12 +70,15 @@
                 android:checkableBehavior="single">
                 <item
                     android:id="@+id/nav_inv_cargar_stock"
+                    android:icon="@drawable/ic_nav_inventory"
                     android:title="@string/drawer_inv_cargar" />
                 <item
                     android:id="@+id/nav_inv_salida"
+                    android:icon="@drawable/ic_nav_inventory"
                     android:title="@string/drawer_inv_salida" />
                 <item
                     android:id="@+id/nav_inv_consulta_ubicacion"
+                    android:icon="@drawable/ic_nav_place"
                     android:title="@string/drawer_inv_consulta_ubicacion" />
             </group>
         </menu>
@@ -72,6 +89,7 @@
         android:checkableBehavior="single">
         <item
             android:id="@+id/nav_extras"
+            android:icon="@drawable/ic_nav_time"
             android:title="@string/drawer_extras" />
     </group>
 
@@ -80,6 +98,7 @@
         android:checkableBehavior="none">
         <item
             android:id="@+id/nav_cerrarsesion"
+            android:icon="@drawable/ic_logout"
             android:title="@string/drawer_cerrar_sesion" />
     </group>
 </menu>

@@ -40,11 +40,15 @@ class PpieDiligenciarActivity : AppCompatActivity() {
     private var formatId = 0
     private var formatCode = ""
     private val opts = listOf("—" to "", "SI" to "si", "NO" to "no", "N/A" to "na")
+    /** Un solo UUID por sesión del formulario (evita duplicados por doble toque). */
+    private lateinit var clientUuid: String
+    private var enviando = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RetrofitClient.init(applicationContext)
         setContentView(R.layout.activity_ppie_diligenciar)
+        clientUuid = savedInstanceState?.getString(KEY_CLIENT_UUID) ?: UUID.randomUUID().toString()
 
         val toolbar = findViewById<Toolbar>(R.id.toolbarPpie)
         setSupportActionBar(toolbar)
@@ -135,7 +139,14 @@ class PpieDiligenciarActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnPpieEnviar).setOnClickListener { enviar() }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_CLIENT_UUID, clientUuid)
+    }
+
     private fun enviar() {
+        if (enviando) return
+        val btn = findViewById<MaterialButton>(R.id.btnPpieEnviar)
         val location = findViewById<TextInputEditText>(R.id.etPpieLocation).text?.toString()?.trim().orEmpty()
         val date = findViewById<TextInputEditText>(R.id.etPpieDate).text?.toString()?.trim().orEmpty()
         if (location.isEmpty()) {
@@ -166,7 +177,7 @@ class PpieDiligenciarActivity : AppCompatActivity() {
             )
         }
 
-        val uuid = UUID.randomUUID().toString()
+        val uuid = clientUuid
         val req = ApiService.PpieSubmitRequest(
             clientUuid = uuid,
             formatId = formatId,
@@ -175,8 +186,14 @@ class PpieDiligenciarActivity : AppCompatActivity() {
             lines = lines
         )
         val json = Gson().toJson(req)
-        db.insertarPpiePendiente(uuid, formatId, formatCode, json)
+        // Solo insertar pendiente si aún no existe este UUID (reintento reusa el mismo)
+        val yaPendiente = db.obtenerPpiePendientes().any { it.clientUuid == uuid }
+        if (!yaPendiente) {
+            db.insertarPpiePendiente(uuid, formatId, formatCode, json)
+        }
 
+        enviando = true
+        btn.isEnabled = false
         val progress = AlertDialog.Builder(this)
             .setView(R.layout.dialog_loading)
             .setCancelable(false)
@@ -218,9 +235,14 @@ class PpieDiligenciarActivity : AppCompatActivity() {
                 Toast.makeText(this@PpieDiligenciarActivity, "Ficha enviada a jefe", Toast.LENGTH_LONG).show()
                 finish()
             } else {
+                enviando = false
+                btn.isEnabled = true
                 Toast.makeText(this@PpieDiligenciarActivity, errMsg, Toast.LENGTH_LONG).show()
-                // No cerrar automáticamente si falló: el usuario ve el motivo
             }
         }
+    }
+
+    companion object {
+        private const val KEY_CLIENT_UUID = "ppie_client_uuid"
     }
 }

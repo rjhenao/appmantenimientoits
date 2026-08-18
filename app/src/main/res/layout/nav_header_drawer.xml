@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/nav_header_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/azul_corporativo"
+    android:theme="@style/ThemeOverlay.AppCompat.Dark">
+
+    <!-- Espacio reservado para hora/batería (altura se ajusta en código) -->
+    <View
+        android:id="@+id/nav_header_status_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:background="@color/azul_corporativo" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="14dp">
+
+        <ImageView
+            android:layout_width="148dp"
+            android:layout_height="44dp"
+            android:src="@drawable/logo_uvrp_white"
+            android:scaleType="fitStart"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/app_name" />
+
+        <TextView
+            android:id="@+id/nav_header_nombre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Usuario" />
+
+        <TextView
+            android:id="@+id/nav_header_rol"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="#B3FFFFFF"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Menú" />
+    </LinearLayout>
+</LinearLayout>

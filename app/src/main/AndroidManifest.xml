@@ -114,6 +114,12 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name=".ComprasSeguimientoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ComprasEcDetalleActivity"
+            android:exported="false" />
+        <activity
             android:name=".MeteoUfActivity"
             android:exported="false" />
         <activity
