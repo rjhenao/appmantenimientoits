@@ -524,10 +524,17 @@ interface ApiService {
         val label: String
     )
 
+    data class InvExistenciaDto(
+        @SerializedName("inv_producto_id") val invProductoId: Int,
+        @SerializedName("inv_ubicacion_id") val invUbicacionId: Int,
+        val cantidad: String
+    )
+
     data class InventarioCatalogoResponse(
         val unidades: List<InvUnidadDto>?,
         val productos: List<InvProductoDto>?,
         val ubicaciones: List<InvUbicacionDto>?,
+        val existencias: List<InvExistenciaDto>?,
         val meta: Map<String, Any>?
     )
 

@@ -215,6 +215,13 @@ class MainActivity : AppCompatActivity() {
             delay(80)
         }
         try {
+            if (!InventarioOfflineSync.sincronizarCatalogo(this@MainActivity)) {
+                Log.w("Sincronizacion", "Catálogo inventario omitido (sin token, rol o error de red).")
+            }
+        } catch (e: Exception) {
+            Log.e("Sincronizacion", "Inventario catalogo: ${e.message}")
+        }
+        try {
             if (!PpieOfflineSync.sincronizarCatalogo(this@MainActivity)) {
                 // Sin token o sin permiso: no cuenta como error de catálogo general
             }

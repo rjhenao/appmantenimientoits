@@ -67,7 +67,7 @@
     <string name="inv_consulta_ubicacion_lista_titulo">Productos en esta celda</string>
     <string name="inv_consulta_ubicacion_sin_stock">No hay productos con stock en esta celda.</string>
     <string name="inv_consulta_ubicacion_falta_celda">Seleccione o escanee una celda primero.</string>
-    <string name="inv_consulta_ubicacion_sin_datos_offline">Sin datos en caché para esta celda. Conéctese o sincronice inventario desde Inicio.</string>
+    <string name="inv_consulta_ubicacion_sin_datos_offline">Sin datos de stock en el celular. Conéctese y pulse Sincronizar en el login o en Inicio.</string>
     <string name="inv_consulta_ubicacion_resumen_linea">%1$d producto(s) · %2$d consumible(s) · %3$d préstamo(s)</string>
     <string name="inv_consulta_ubicacion_codigo">Código: %1$s</string>
     <string name="inv_consulta_ubicacion_bodega">Bodega: %1$s</string>

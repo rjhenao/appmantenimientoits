@@ -5418,7 +5418,8 @@ return insertOk
     fun reemplazarCatalogoInventario(
         unidades: List<ApiService.InvUnidadDto>,
         productos: List<ApiService.InvProductoDto>,
-        ubicaciones: List<ApiService.InvUbicacionDto>
+        ubicaciones: List<ApiService.InvUbicacionDto>,
+        existencias: List<ApiService.InvExistenciaDto> = emptyList()
     ) {
         val db = writableDatabase
         db.beginTransaction()
@@ -5426,6 +5427,7 @@ return insertOk
             db.execSQL("DELETE FROM inv_unidad_local")
             db.execSQL("DELETE FROM inv_producto_local")
             db.execSQL("DELETE FROM inv_ubicacion_local")
+            db.execSQL("DELETE FROM inv_existencia_local")
             for (u in unidades) {
                 val cv = ContentValues().apply {
                     put("id", u.id)
@@ -5458,6 +5460,16 @@ return insertOk
                     put("texto_busqueda", busq)
                 }
                 db.insert("inv_ubicacion_local", null, cv)
+            }
+            for (e in existencias) {
+                val cantidad = e.cantidad.trim()
+                if (cantidad.isEmpty()) continue
+                val cv = ContentValues().apply {
+                    put("inv_producto_id", e.invProductoId)
+                    put("inv_ubicacion_id", e.invUbicacionId)
+                    put("cantidad", cantidad)
+                }
+                db.insert("inv_existencia_local", null, cv)
             }
             db.setTransactionSuccessful()
         } finally {
