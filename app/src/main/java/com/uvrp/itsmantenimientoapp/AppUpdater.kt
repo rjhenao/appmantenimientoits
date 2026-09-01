@@ -10,37 +10,40 @@ import androidx.appcompat.app.AlertDialog
 import okhttp3.*
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class AppUpdater(private val context: Context) {
 
-    //private val serverUrl = "http://10.208.5.53:8080/actualizaciones/version.json"
-    private val serverUrl = "http://181.225.65.82:8195/actualizaciones/version.json"
-
-
     val versionName = BuildConfig.VERSION_NAME
-    private val currentVersion = versionName // Cambia esto por la versión actual de la app
+    private val currentVersion = versionName
 
     fun checkForUpdate() {
-        val client = OkHttpClient()
-        val request = Request.Builder().url(serverUrl).build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e("AppUpdater", "Error al consultar la versión", e)
+        Thread {
+            val serverUrl = EndpointResolver.resolveUpdateJsonUrl(context.applicationContext)
+            if (serverUrl == null) {
+                Log.w("AppUpdater", "No se encontró servidor de actualizaciones")
+                return@Thread
             }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.body?.string()?.let { responseData ->
+            val client = OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .build()
+            val request = Request.Builder().url(serverUrl).build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@Thread
+                    val responseData = response.body?.string() ?: return@Thread
                     val json = JSONObject(responseData)
                     val latestVersion = json.getString("version")
                     val apkUrl = json.getString("apk_url")
-
                     if (latestVersion > currentVersion) {
                         showUpdateDialog(apkUrl)
                     }
                 }
+            } catch (e: IOException) {
+                Log.e("AppUpdater", "Error al consultar la versión en $serverUrl", e)
             }
-        })
+        }.start()
     }
 
     private fun showUpdateDialog(apkUrl: String) {
@@ -64,7 +67,6 @@ class AppUpdater(private val context: Context) {
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = downloadManager.enqueue(request)
 
-        // Verificar cuando finalice la descarga y abrir el APK
         val query = DownloadManager.Query().setFilterById(downloadId)
         Thread {
             var downloading = true

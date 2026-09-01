@@ -39,6 +39,7 @@ import retrofit2.http.Part
 import retrofit2.http.PartMap
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface ApiService {
 
@@ -791,7 +792,8 @@ interface ApiService {
         @SerializedName("en_tramite") val enTramite: Int?,
         @SerializedName("en_cotizacion") val enCotizacion: Int?,
         val adjudicadas: Int?,
-        @SerializedName("con_alerta") val conAlerta: Int?
+        @SerializedName("con_alerta") val conAlerta: Int?,
+        @SerializedName("pendientes_gerencia") val pendientesGerencia: Int?
     )
 
     data class CompraPipelineStepDto(
@@ -836,6 +838,8 @@ interface ApiService {
     )
 
     data class CompraListResponse(
+        @SerializedName("es_gerencia") val esGerencia: Boolean?,
+        val vista: String?,
         val kpis: CompraKpisDto?,
         val items: List<CompraEcListItemDto>?,
         val meta: CompraListMetaDto?
@@ -890,11 +894,45 @@ interface ApiService {
         val pipeline: List<CompraPipelineStepDto>?,
         val historial: List<CompraHistorialDto>?,
         val items: List<CompraDetalleItemDto>?,
-        @SerializedName("duraciones_por_estado") val duracionesPorEstado: List<CompraDuracionEstadoDto>?
+        @SerializedName("duraciones_por_estado") val duracionesPorEstado: List<CompraDuracionEstadoDto>?,
+        val acciones: CompraAccionesDto?,
+        val adjudicacion: CompraAdjudicacionDto?
+    )
+
+    data class CompraAccionesDto(
+        @SerializedName("puede_aprobar_ec") val puedeAprobarEc: Boolean?,
+        @SerializedName("puede_rechazar_ec") val puedeRechazarEc: Boolean?,
+        @SerializedName("puede_aprobar_adjudicacion") val puedeAprobarAdjudicacion: Boolean?,
+        @SerializedName("puede_devolver_adjudicacion") val puedeDevolverAdjudicacion: Boolean?
+    )
+
+    data class CompraAdjudicacionDto(
+        val id: Int?,
+        val estado: String?,
+        val justificacion: String?,
+        val lineas: List<CompraAdjudicacionLineaDto>?
+    )
+
+    data class CompraAdjudicacionLineaDto(
+        val item: String?,
+        val proveedor: String?,
+        val monto: Double?,
+        @SerializedName("precio_unitario") val precioUnitario: Double?,
+        @SerializedName("etiqueta_opcion") val etiquetaOpcion: String?
     )
 
     data class CompraDetalleResponse(
         val ec: CompraEcDetalleDto?,
+        val message: String?
+    )
+
+    data class CompraGerenciaDecisionRequest(
+        val observacion: String,
+        @SerializedName("aceptar_firma") val aceptarFirma: Int? = null
+    )
+
+    data class CompraAccionResponse(
+        val success: Boolean?,
         val message: String?
     )
 
@@ -907,11 +945,44 @@ interface ApiService {
         @Query("estado_id") estadoId: Int? = null,
         @Query("fecha_desde") fechaDesde: String? = null,
         @Query("fecha_hasta") fechaHasta: String? = null,
-        @Query("page") page: Int? = null
+        @Query("page") page: Int? = null,
+        @Query("vista") vista: String? = null
     ): Call<CompraListResponse>
 
     @GET("api/compras/{id}")
     fun comprasDetalle(@Path("id") id: Int): Call<CompraDetalleResponse>
+
+    @Streaming
+    @GET("api/compras/{id}/pdf")
+    fun comprasPdfEc(@Path("id") id: Int): Call<ResponseBody>
+
+    @Streaming
+    @GET("api/compras/{id}/pdf-cdp")
+    fun comprasPdfCdp(@Path("id") id: Int): Call<ResponseBody>
+
+    @POST("api/compras/{id}/gerencia/aprobar")
+    fun comprasAprobarGerencia(
+        @Path("id") id: Int,
+        @Body body: CompraGerenciaDecisionRequest
+    ): Call<CompraAccionResponse>
+
+    @POST("api/compras/{id}/gerencia/rechazar")
+    fun comprasRechazarGerencia(
+        @Path("id") id: Int,
+        @Body body: CompraGerenciaDecisionRequest
+    ): Call<CompraAccionResponse>
+
+    @POST("api/compras/{id}/adjudicacion/aprobar")
+    fun comprasAprobarAdjudicacion(
+        @Path("id") id: Int,
+        @Body body: CompraGerenciaDecisionRequest
+    ): Call<CompraAccionResponse>
+
+    @POST("api/compras/{id}/adjudicacion/devolver")
+    fun comprasDevolverAdjudicacion(
+        @Path("id") id: Int,
+        @Body body: CompraGerenciaDecisionRequest
+    ): Call<CompraAccionResponse>
 
     data class AnularPreoperacionalRequest(
         val id: Int,

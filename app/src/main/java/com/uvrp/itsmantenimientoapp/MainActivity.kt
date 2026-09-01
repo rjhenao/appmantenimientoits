@@ -9,6 +9,7 @@ import android.content.Intent
 import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -57,10 +58,20 @@ class MainActivity : AppCompatActivity() {
 
         val updater = AppUpdater(this)
         val versionName = BuildConfig.VERSION_NAME
-
-        // Mostrar la versión en el TextView
         val tVersion = findViewById<TextView>(R.id.tVersion)
-        tVersion.text = "Versión: $versionName"
+        val tServerUrl = findViewById<TextView>(R.id.tServerUrl)
+        tVersion.text = "Versión $versionName"
+        tServerUrl.text = "Conectando al servidor…"
+        tServerUrl.visibility = View.VISIBLE
+
+        CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.IO) {
+                RetrofitClient.connectBlocking(applicationContext)
+            }
+            val url = RetrofitClient.baseUrl()
+            tServerUrl.text = if (url != "—") url else "Sin conexión al servidor"
+        }
+
         updater.checkForUpdate()
 
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
@@ -114,6 +125,17 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 CoroutineScope(Dispatchers.Main).launch {
+                    val conectado = withContext(Dispatchers.IO) {
+                        RetrofitClient.connectBlocking(applicationContext)
+                    }
+                    if (!conectado) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Sin conexión al servidor ITSOM. Inicio de sesión en modo offline.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
                     withContext(Dispatchers.IO) {
                         try {
                             val loginResp = api.mobileLogin(
@@ -160,6 +182,19 @@ class MainActivity : AppCompatActivity() {
             progressDialog.show()
 
             CoroutineScope(Dispatchers.Main).launch {
+                val conectado = withContext(Dispatchers.IO) {
+                    RetrofitClient.connectBlocking(applicationContext)
+                }
+                if (!conectado) {
+                    progressDialog.dismiss()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Sin conexión al servidor ITSOM. No se pudo sincronizar.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+
                 val errorBD = async(Dispatchers.IO) {
                     sincronizarDatos()
                 }.await()

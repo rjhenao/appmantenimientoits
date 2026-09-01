@@ -195,6 +195,17 @@
                     android:textColor="@color/login_version_text"
                     android:textSize="14sp"
                     android:alpha="0.7"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/tServerUrl"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textColor="@color/login_version_text"
+                    android:textSize="12sp"
+                    android:alpha="0.65"
+                    android:visibility="gone"
                     android:layout_marginBottom="8dp" />
 
                 <TextView

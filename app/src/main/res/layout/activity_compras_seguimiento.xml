@@ -36,10 +36,42 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Seguimiento de compras"
+                        android:text="Compras"
                         android:textStyle="bold"
                         android:textSize="20sp"
                         android:textColor="@color/azul_corporativo" />
+
+                    <LinearLayout
+                        android:id="@+id/rowTabsCompras"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tabPendientes"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:paddingVertical="10dp"
+                            android:text="Pendientes"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tabTodas"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:gravity="center"
+                            android:paddingVertical="10dp"
+                            android:text="Todas"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <HorizontalScrollView
                         android:layout_width="match_parent"
@@ -91,6 +123,20 @@
                                 android:textColor="@color/azul_corporativo"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/kpiPendientes"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="8dp"
+                                android:background="@drawable/bg_info_field"
+                                android:paddingHorizontal="12dp"
+                                android:paddingVertical="8dp"
+                                android:text="Pendientes —"
+                                android:textColor="@color/azul_corporativo"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:visibility="gone" />
 
                             <TextView
                                 android:id="@+id/kpiAlerta"

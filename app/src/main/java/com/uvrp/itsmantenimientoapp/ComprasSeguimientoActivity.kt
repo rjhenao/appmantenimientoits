@@ -35,6 +35,14 @@ class ComprasSeguimientoActivity : AppCompatActivity() {
     private lateinit var kpiTramite: TextView
     private lateinit var kpiCotiz: TextView
     private lateinit var kpiAlerta: TextView
+    private lateinit var kpiPendientes: TextView
+    private lateinit var rowTabs: View
+    private lateinit var tabPendientes: TextView
+    private lateinit var tabTodas: TextView
+
+    private var vista = "pendientes"
+    private var esGerencia = false
+    private var yaCargado = false
 
     private val adapter = EcAdapter { id ->
         startActivity(Intent(this, ComprasEcDetalleActivity::class.java).putExtra(EXTRA_EC_ID, id))
@@ -67,6 +75,10 @@ class ComprasSeguimientoActivity : AppCompatActivity() {
         kpiTramite = findViewById(R.id.kpiTramite)
         kpiCotiz = findViewById(R.id.kpiCotiz)
         kpiAlerta = findViewById(R.id.kpiAlerta)
+        kpiPendientes = findViewById(R.id.kpiPendientes)
+        rowTabs = findViewById(R.id.rowTabsCompras)
+        tabPendientes = findViewById(R.id.tabPendientes)
+        tabTodas = findViewById(R.id.tabTodas)
 
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = adapter
@@ -80,8 +92,31 @@ class ComprasSeguimientoActivity : AppCompatActivity() {
                 true
             } else false
         }
+        tabPendientes.setOnClickListener {
+            if (vista != "pendientes") {
+                vista = "pendientes"
+                pintarTabs()
+                cargarLista()
+            }
+        }
+        tabTodas.setOnClickListener {
+            if (vista != "todas") {
+                vista = "todas"
+                pintarTabs()
+                cargarLista()
+            }
+        }
+        pintarTabs()
 
         cargarLista()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::swipe.isInitialized && yaCargado) {
+            cargarLista()
+        }
+        yaCargado = true
     }
 
     private fun cargarLista() {
@@ -92,7 +127,8 @@ class ComprasSeguimientoActivity : AppCompatActivity() {
         RetrofitClient.instance.comprasListado(
             q = q,
             estadoId = null,
-            page = 1
+            page = 1,
+            vista = vista
         ).enqueue(object : Callback<ApiService.CompraListResponse> {
             override fun onResponse(
                 call: Call<ApiService.CompraListResponse>,
@@ -109,10 +145,24 @@ class ComprasSeguimientoActivity : AppCompatActivity() {
                 }
                 val body = response.body()
                 val items = body?.items.orEmpty()
+                esGerencia = body?.esGerencia == true
+                rowTabs.visibility = if (esGerencia) View.VISIBLE else View.GONE
+                kpiPendientes.visibility = if (esGerencia) View.VISIBLE else View.GONE
+                body?.vista?.takeIf { it.isNotBlank() }?.let { vista = it }
+                pintarTabs()
                 pintarKpis(body?.kpis)
                 adapter.submit(items)
                 val total = body?.meta?.total ?: items.size
-                tvMeta.text = "Mostrando ${items.size} de $total EC en curso"
+                tvMeta.text = if (vista == "pendientes") {
+                    "Pendientes de Gerencia: ${items.size} de $total"
+                } else {
+                    "Mostrando ${items.size} de $total EC"
+                }
+                tvEmpty.text = if (vista == "pendientes") {
+                    "No hay EC pendientes de Gerencia."
+                } else {
+                    "No hay EC con los criterios actuales."
+                }
                 tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
                 rv.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
             }
@@ -129,6 +179,19 @@ class ComprasSeguimientoActivity : AppCompatActivity() {
         kpiTramite.text = "Trámite ${k?.enTramite ?: 0}"
         kpiCotiz.text = "Cotización ${k?.enCotizacion ?: 0}"
         kpiAlerta.text = "Alertas ${k?.conAlerta ?: 0}"
+        kpiPendientes.text = "Pendientes ${k?.pendientesGerencia ?: 0}"
+    }
+
+    private fun pintarTabs() {
+        val selBg = Color.parseColor("#1B4F72")
+        val unsBg = Color.parseColor("#ECEFF1")
+        val selTx = Color.WHITE
+        val unsTx = Color.parseColor("#607D8B")
+        val pendientesSel = vista == "pendientes"
+        tabPendientes.setBackgroundColor(if (pendientesSel) selBg else unsBg)
+        tabPendientes.setTextColor(if (pendientesSel) selTx else unsTx)
+        tabTodas.setBackgroundColor(if (!pendientesSel) selBg else unsBg)
+        tabTodas.setTextColor(if (!pendientesSel) selTx else unsTx)
     }
 
     private fun mostrarError(msg: String) {

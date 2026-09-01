@@ -64,12 +64,12 @@ object FuncionesGenerales {
             try {
                 val outcome = withContext(Dispatchers.IO) {
                     RetrofitClient.init(context.applicationContext)
+                    val servidorOk = RetrofitClient.connectBlocking(context.applicationContext)
                     val target = RetrofitClient.baseUrl()
-                    Log.i("SyncDebug", "Iniciando sync → $target")
+                    Log.i("SyncDebug", "Iniciando sync → $target (conectado=$servidorOk)")
 
-                    val servidorOk = RetrofitClient.pingServer()
                     if (!servidorOk) {
-                        Log.e("SyncDebug", "Servidor NO alcanzable en $target")
+                        Log.e("SyncDebug", "Servidor NO alcanzable en ningún endpoint")
                         return@withContext SyncBatchOutcome(
                             anySuccess = false,
                             servidorOk = false,
@@ -125,7 +125,7 @@ object FuncionesGenerales {
                     !outcome.servidorOk -> {
                         Toast.makeText(
                             context,
-                            "Sin conexión al servidor (${RetrofitClient.baseUrl()}). Encienda php artisan serve; si usa USB ejecute: adb reverse tcp:8000 tcp:8000",
+                            "Sin conexión al servidor ITSOM. Se probaron: 181.225.65.82, 190.60.36.242, 10.208.5.53 y itsom.raulhenaor.com. Verifique red o WiFi de oficina.",
                             Toast.LENGTH_LONG
                         ).show()
                         onResult(false)
