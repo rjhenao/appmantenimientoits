@@ -62,7 +62,17 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
 
-        val updater = AppUpdater(this)
+        val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
+        val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
+
+        if (isLoggedIn) {
+            // Redirigir antes de updater/coroutines UI para evitar IllegalArgumentException
+            // (diálogo AppCompat / TextView tras finish).
+            startActivity(Intent(this, HomeActivity::class.java))
+            finish()
+            return
+        }
+
         val versionName = BuildConfig.VERSION_NAME
         val tVersion = findViewById<TextView>(R.id.tVersion)
         val tServerUrl = findViewById<TextView>(R.id.tServerUrl)
@@ -74,22 +84,16 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.IO) {
                 RetrofitClient.connectBlocking(applicationContext)
             }
+            if (isFinishing || isDestroyed) return@launch
             val url = RetrofitClient.baseUrl()
-            tServerUrl.text = if (url != "—") url else "Sin conexión al servidor"
+            tServerUrl.text = if (url != "—" && RetrofitClient.lastConnectOk) {
+                url
+            } else {
+                "Sin conexión al servidor"
+            }
         }
 
-        updater.checkForUpdate()
-
-        val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
-        val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
-
-        if (isLoggedIn) {
-            // Si ya ha iniciado sesión, redirigir directamente a HomeActivity
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
-            finish() // Cierra MainActivity para que no pueda volver atrás
-            return // Salir de onCreate para evitar la configuración de vistas innecesarias
-        }
+        AppUpdater(this).checkForUpdate()
 
 
         usernameInput = findViewById(R.id.username_input)
