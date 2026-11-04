@@ -36,6 +36,15 @@
             android:name=".iniciarPreoperacional"
             android:exported="false" />
         <activity
+            android:name=".MantenimientoFlotaActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EjecutarMantenimientoFlotaActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CorrectivoLibreFlotaActivity"
+            android:exported="false" />
+        <activity
             android:name=".HomeActivity"
             android:exported="false" />
         <activity

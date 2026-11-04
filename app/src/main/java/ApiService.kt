@@ -124,7 +124,16 @@ interface ApiService {
         val aVehiculo: List<UsuarioVehiculo>,
 
         @SerializedName("aUsuario")
-        val aUsuario: List<UsuarioVehiculo>
+        val aUsuario: List<UsuarioVehiculo>,
+
+        @SerializedName("aplica_kilometraje")
+        val aplica_kilometraje: Boolean? = null,
+
+        @SerializedName("aplica_horometro")
+        val aplica_horometro: Boolean? = null,
+
+        @SerializedName("ultimo_horometro")
+        val ultimo_horometro: Double? = null
     )
 
     // Catálogos para campos Sentido y Lado (evitar hardcode en la app)
@@ -497,7 +506,8 @@ interface ApiService {
         val roles: List<Int>?,
         @SerializedName("puede_inventario") val puedeInventario: Boolean?,
         @SerializedName("puede_ppie") val puedePpie: Boolean?,
-        @SerializedName("puede_compras_seguimiento") val puedeComprasSeguimiento: Boolean?
+        @SerializedName("puede_compras_seguimiento") val puedeComprasSeguimiento: Boolean?,
+        @SerializedName("puede_mantenimiento_flota") val puedeMantenimientoFlota: Boolean?
     )
 
     data class MobileUserInfo(
@@ -998,5 +1008,58 @@ interface ApiService {
 
     @POST("api/anularpreoperacional")
     fun anularPreoperacional(@Body body: AnularPreoperacionalRequest): Call<AnularPreoperacionalResponse>
+
+    data class FlotaActividad(
+        val id: Int,
+        val descripcion: String,
+        @SerializedName("requiere_foto") val requiereFoto: Boolean
+    )
+
+    data class FlotaPendiente(
+        val id: Int,
+        val placa: String?,
+        val nombre: String?,
+        val clase: String? = null,
+        val modo: String? = null,
+        @SerializedName("fecha_programada") val fechaProgramada: String? = null,
+        val situacion: String?,
+        @SerializedName("cada_km") val cadaKm: Int?,
+        @SerializedName("proximo_km") val proximoKm: Int?,
+        @SerializedName("lectura_km") val lecturaKm: Int?,
+        @SerializedName("cada_horas") val cadaHoras: Double?,
+        @SerializedName("proximo_horometro") val proximoHorometro: Double?,
+        @SerializedName("lectura_horometro") val lecturaHorometro: Double?,
+        val actividades: List<FlotaActividad>?,
+        @SerializedName("id_tipo") val idTipo: Int? = null,
+        @SerializedName("id_vehiculo") val idVehiculo: Int? = null
+    )
+
+    data class FlotaPendientesResponse(val items: List<FlotaPendiente>?)
+
+    data class FlotaLibreTipo(
+        val id: Int,
+        val nombre: String,
+        val actividades: List<FlotaActividad>?
+    )
+
+    data class FlotaPlaca(val id: Int, val placa: String)
+
+    data class FlotaLibreResponse(
+        val tipos: List<FlotaLibreTipo>?,
+        val vehiculos: List<FlotaPlaca>?
+    )
+
+    @GET("api/mantenimiento-flota/pendientes")
+    fun mantenimientoFlotaPendientes(@Query("id_usuario") idUsuario: Int): Call<FlotaPendientesResponse>
+
+    @GET("api/mantenimiento-flota/correctivo-libre")
+    fun mantenimientoFlotaCorrectivoLibre(@Query("id_usuario") idUsuario: Int): Call<FlotaLibreResponse>
+
+    @Multipart
+    @POST("api/mantenimiento-flota/ejecutar")
+    fun ejecutarMantenimientoFlota(
+        @Part("json") json: RequestBody,
+        @Part imagenes: List<MultipartBody.Part>
+    ): Call<Void>
 
 }

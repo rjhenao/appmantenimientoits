@@ -38,6 +38,7 @@
                 android:orientation="vertical" />
 
             <LinearLayout
+                android:id="@+id/bloqueKmInicial"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
@@ -63,6 +64,34 @@
                     android:inputType="number|numberSigned"
                     android:minLines="2" />
 
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/bloqueHorometroInicial"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="#F0F0F0"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Horómetro inicial"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/inputHorometroInicial"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:drawable/editbox_background"
+                    android:hint="Use coma. Ejemplo: 1250,5"
+                    android:inputType="numberDecimal"
+                    android:digits="0123456789,."
+                    android:minLines="1" />
             </LinearLayout>
 
             <LinearLayout

@@ -42,6 +42,11 @@
                     android:icon="@drawable/ic_nav_checklist"
                     android:title="@string/drawer_preoperacional" />
                 <item
+                    android:id="@+id/nav_mantenimiento_flota"
+                    android:icon="@drawable/ic_nav_build"
+                    android:title="Mantenimiento de flota"
+                    android:visible="false" />
+                <item
                     android:id="@+id/nav_combustible"
                     android:icon="@drawable/ic_nav_car"
                     android:title="@string/drawer_combustible" />

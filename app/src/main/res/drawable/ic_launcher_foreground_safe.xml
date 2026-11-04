@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Escala el isotipo dentro de la zona segura del adaptive icon.
+  Sin esto, la máscara circular recorta el círculo superior del logo.
+-->
+<!-- El PNG del foreground ya incluye zona segura (~22%); no volver a encoger. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@mipmap/ic_launcher_foreground"
+    android:insetLeft="0%"
+    android:insetTop="0%"
+    android:insetRight="0%"
+    android:insetBottom="0%" />

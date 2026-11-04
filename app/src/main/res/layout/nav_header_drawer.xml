@@ -24,10 +24,10 @@
         android:paddingBottom="14dp">
 
         <ImageView
-            android:layout_width="148dp"
-            android:layout_height="44dp"
+            android:layout_width="88dp"
+            android:layout_height="72dp"
             android:src="@drawable/logo_uvrp_white"
-            android:scaleType="fitStart"
+            android:scaleType="fitCenter"
             android:adjustViewBounds="true"
             android:contentDescription="@string/app_name" />
 

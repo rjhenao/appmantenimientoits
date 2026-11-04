@@ -29,6 +29,7 @@ import com.uvrp.itsmantenimientoapp.ExtrasActivity
 import com.uvrp.itsmantenimientoapp.PpieFormatosActivity
 import com.uvrp.itsmantenimientoapp.MeteoUfActivity
 import com.uvrp.itsmantenimientoapp.ComprasSeguimientoActivity
+import com.uvrp.itsmantenimientoapp.MantenimientoFlotaActivity
 
 object HeaderHelper {
 
@@ -87,18 +88,21 @@ object HeaderHelper {
         val mostrarInventario = tienePermisosITS && puedeInventario
         val puedePpie = sharedPreferences.getBoolean("puede_ppie", false)
         val puedeComprasSeguimiento = sharedPreferences.getBoolean("puede_compras_seguimiento", idRol == 1)
+        val puedeMantenimientoFlota = sharedPreferences.getBoolean("puede_mantenimiento_flota", false)
 
         menu.findItem(R.id.nav_its).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_correctivo).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_bitacoras).isVisible = tienePermisosMantenimiento
-        menu.findItem(R.id.nav_tickets).isVisible = tienePermisosITS
-        menu.findItem(R.id.nav_reporte_qr).isVisible = tienePermisosITS
+        // Tickets: cualquier usuario autenticado (el módulo ya existe; no restringir por rol ITS)
+        menu.findItem(R.id.nav_tickets).isVisible = true
+        menu.findItem(R.id.nav_reporte_qr).isVisible = true
         menu.findItem(R.id.nav_inv_cargar_stock).isVisible = mostrarInventario
         menu.findItem(R.id.nav_inv_salida).isVisible = mostrarInventario
         menu.findItem(R.id.nav_inv_consulta_ubicacion).isVisible = mostrarInventario
         menu.findItem(R.id.nav_extras).isVisible = tienePermisosITS
         menu.findItem(R.id.nav_ppie)?.isVisible = puedePpie
         menu.findItem(R.id.nav_compras)?.isVisible = puedeComprasSeguimiento
+        menu.findItem(R.id.nav_mantenimiento_flota)?.isVisible = puedeMantenimientoFlota
         menu.findItem(R.id.nav_meteo)?.isVisible = true
 
         // Ocultar sección Inventario completa si no aplica
@@ -129,6 +133,7 @@ object HeaderHelper {
                 R.id.nav_home -> navigateTo(activity, HomeActivity::class.java)
                 R.id.nav_correctivo -> navigateTo(activity, SeleccionEquipoActivity::class.java)
                 R.id.nav_preoperacional -> navigateTo(activity, iniciarPreoperacional::class.java)
+                R.id.nav_mantenimiento_flota -> navigateTo(activity, MantenimientoFlotaActivity::class.java)
                 R.id.nav_combustible -> navigateTo(activity, IniciarCombustibleActivity::class.java)
                 R.id.nav_bitacoras -> navigateTo(activity, BitacorasActivity::class.java)
                 R.id.nav_tickets -> navigateTo(activity, TicketsActivity::class.java)

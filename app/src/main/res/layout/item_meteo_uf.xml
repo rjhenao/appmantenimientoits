@@ -49,7 +49,7 @@
                 android:layout_marginEnd="4dp"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#0D47A1" />
+                android:textColor="#074D45" />
 
             <TextView
                 android:id="@+id/chipTemp"

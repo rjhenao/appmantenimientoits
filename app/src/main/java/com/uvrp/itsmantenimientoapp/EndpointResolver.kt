@@ -53,7 +53,10 @@ object EndpointResolver {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!forceRefresh) {
             val cached = prefs.getString(KEY_LAST_API, null)?.trim().orEmpty()
-            if (cached.isNotEmpty() && ping(cached)) {
+            if (cached.isNotEmpty() && isDevUrl(cached)) {
+                prefs.edit().remove(KEY_LAST_API).apply()
+                Log.i(TAG, "API cache de pruebas descartada → $cached")
+            } else if (cached.isNotEmpty() && ping(cached)) {
                 Log.i(TAG, "API cache OK → $cached")
                 return ensureTrailingSlash(cached)
             }
@@ -87,6 +90,9 @@ object EndpointResolver {
         }
         return null
     }
+
+    private fun isDevUrl(url: String): Boolean =
+        url.contains("10.208.83.") || url.contains(":8004")
 
     private fun ensureTrailingSlash(url: String): String =
         if (url.endsWith("/")) url else "$url/"

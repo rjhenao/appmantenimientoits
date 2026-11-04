@@ -55,6 +55,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         FirebaseApp.initializeApp(this)
+        // Popup "Prueba Peaje…" (Firebase In-App Messaging): deshabilitado
+        try {
+            com.google.firebase.inappmessaging.FirebaseInAppMessaging.getInstance()
+                .setMessagesSuppressed(true)
+        } catch (_: Exception) {
+        }
 
         val updater = AppUpdater(this)
         val versionName = BuildConfig.VERSION_NAME
@@ -150,6 +156,7 @@ class MainActivity : AppCompatActivity() {
                                         putBoolean("puede_inventario", body?.puedeInventario == true)
                                         putBoolean("puede_ppie", body?.puedePpie == true)
                                         putBoolean("puede_compras_seguimiento", body?.puedeComprasSeguimiento == true)
+                                        putBoolean("puede_mantenimiento_flota", body?.puedeMantenimientoFlota == true)
                                         apply()
                                     }
                                     InventarioOfflineSync.sincronizarCatalogo(this@MainActivity)

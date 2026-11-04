@@ -8,9 +8,13 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.InputType
+import android.text.method.DigitsKeyListener
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -54,7 +58,14 @@ class FinalizarPreoperacionalActivity : AppCompatActivity() {
         btnAgregarFoto = findViewById(R.id.btnAgregarFoto)
         btnIniciarPreoperacional = findViewById(R.id.btnIniciarPreoperacional)
 
+        val aplicaKm = intent.getBooleanExtra("aplicaKilometraje", true)
+        val aplicaHor = intent.getBooleanExtra("aplicaHorometro", false)
+        findViewById<LinearLayout>(R.id.bloqueKmFinal).visibility = if (aplicaKm) View.VISIBLE else View.GONE
+        findViewById<LinearLayout>(R.id.bloqueHorometroFinal).visibility = if (aplicaHor) View.VISIBLE else View.GONE
         val inputKmFinal = findViewById<EditText>(R.id.inputKmFinal)
+        val inputHorometroFinal = findViewById<EditText>(R.id.inputHorometroFinal)
+        inputHorometroFinal.keyListener = DigitsKeyListener.getInstance("0123456789,.")
+        inputHorometroFinal.setRawInputType(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
         val observacionFinal = findViewById<EditText>(R.id.inputObservacionFinal)
 
         setupRecyclerView()
@@ -73,22 +84,29 @@ class FinalizarPreoperacionalActivity : AppCompatActivity() {
             }
 
             val kmFinal = inputKmFinal.text.toString().trim()
+            val horometroFinal = inputHorometroFinal.text.toString().trim().replace(',', '.')
             val observacion = observacionFinal.text.toString().trim()
             val idVehi = intent.getIntExtra("idVehiculo", -1)
             val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
             val idUsuario = sharedPreferences.getInt("idUser", -1)
 
-            if (kmFinal.isEmpty()) {
+            if (aplicaKm && kmFinal.isEmpty()) {
                 Toast.makeText(this, "Debes ingresar el km final", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            if (aplicaHor && horometroFinal.isEmpty()) {
+                Toast.makeText(this, "Debe escribir el horómetro. Use coma. Ejemplo: 1250,5", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
 
+            val kmJson = if (kmFinal.isEmpty()) "0" else kmFinal
+            val horometroJson = if (aplicaHor) ",\n                    \"horometro_final\": $horometroFinal" else ""
             val jsonBody = """
                 {
                     "id_vehiculo": $idVehi,
                     "id_usuario": $idUsuario,
                     "fecha_finalizacion": "${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())}",
-                    "kmFinal": $kmFinal,
+                    "kmFinal": $kmJson$horometroJson,
                     "observacionFinal": "${observacion.replace("\"", "\\\"")}"
                 }
             """.trimIndent()
@@ -139,7 +157,21 @@ class FinalizarPreoperacionalActivity : AppCompatActivity() {
                     override fun onFailure(call: Call<Void>, t: Throwable) {
                         compressedFiles.forEach { it.delete() }
                         FirebaseCrashlytics.getInstance().recordException(t)
-                        Toast.makeText(this@FinalizarPreoperacionalActivity, "❌ Falló la conexión: ${t.message}", Toast.LENGTH_SHORT).show()
+                        val msg = when (t) {
+                            is java.net.UnknownHostException ->
+                                "Sin conexión a internet. Revise la red e intente de nuevo."
+                            is java.net.SocketTimeoutException ->
+                                "Conexión inestable o lenta. Intente de nuevo en un momento."
+                            is java.io.IOException ->
+                                "Error de conexión. Verifique que tenga internet estable."
+                            else ->
+                                "No se pudo conectar con el servidor. Verifique su conexión."
+                        }
+                        androidx.appcompat.app.AlertDialog.Builder(this@FinalizarPreoperacionalActivity)
+                            .setTitle("Sin conexión")
+                            .setMessage(msg)
+                            .setPositiveButton("Entendido", null)
+                            .show()
                     }
                 })
         }

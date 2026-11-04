@@ -11,7 +11,10 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
+import android.text.InputType
+import android.text.method.DigitsKeyListener
 import android.util.Log
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -64,6 +67,14 @@ class FormularioActividadActivity : AppCompatActivity() {
 
         idUsuario = sharedPreferences.getInt("idUser", -1)
 
+        val aplicaKm = intent.getBooleanExtra("aplicaKilometraje", true)
+        val aplicaHor = intent.getBooleanExtra("aplicaHorometro", false)
+        findViewById<LinearLayout>(R.id.bloqueKmInicial).visibility = if (aplicaKm) View.VISIBLE else View.GONE
+        findViewById<LinearLayout>(R.id.bloqueHorometroInicial).visibility = if (aplicaHor) View.VISIBLE else View.GONE
+        findViewById<EditText>(R.id.inputHorometroInicial).apply {
+            keyListener = DigitsKeyListener.getInstance("0123456789,.")
+            setRawInputType(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
+        }
         val inputKmInicial = findViewById<EditText>(R.id.inputKmInicial)
         inputKmInicial.setText(obtenerKilometraje())
 
@@ -574,7 +585,10 @@ class FormularioActividadActivity : AppCompatActivity() {
 
 
         // 📥 Datos individuales
+        val aplicaKm = intent.getBooleanExtra("aplicaKilometraje", true)
+        val aplicaHor = intent.getBooleanExtra("aplicaHorometro", false)
         val kmInicial = obtenerKilometraje()
+        val horometroInicial = findViewById<EditText>(R.id.inputHorometroInicial).text.toString().trim()
         val ObservacionInicial = obtenerObservacionInicial()
         val portaDocumento = obtenerSeleccionRadio("porta_documento")
         val portaLicencia = obtenerSeleccionRadio("porta_licencia")
@@ -582,12 +596,16 @@ class FormularioActividadActivity : AppCompatActivity() {
 
         Log.d("hdhdhd", kmInicial)
 
-        if (kmInicial.isEmpty()) {
+        if (aplicaKm && kmInicial.isEmpty()) {
             Toast.makeText(
                 this@FormularioActividadActivity,
                 "Debe escribir el Kilometraje",
                 Toast.LENGTH_SHORT
             ).show()
+            return
+        }
+        if (aplicaHor && horometroInicial.isEmpty()) {
+            Toast.makeText(this, "Debe escribir el horómetro. Use coma. Ejemplo: 1250,5", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -689,7 +707,8 @@ class FormularioActividadActivity : AppCompatActivity() {
         val jsonCompleto = JSONObject().apply {
             put("idVehiculo", idVehi) //
             put("id_usuario", idUsuario) //
-            put("km_inicial", kmInicial)
+            put("km_inicial", if (aplicaKm) kmInicial else "")
+            if (aplicaHor) put("horometro_inicial", horometroInicial.replace(',', '.'))
             put("porta_documento", portaDocumento)
             put("porta_licencia", portaLicencia)
             put("salud_conductor", saludConductor)

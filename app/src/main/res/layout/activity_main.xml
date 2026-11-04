@@ -37,22 +37,22 @@
                 android:gravity="center"
                 android:layout_marginBottom="48dp">
 
-                <!-- Logo UVRP nítido sobre tarjeta clara (contraste sobre fondo login) -->
+                <!-- Isotipo UVRP completo (sin texto); el card no debe recortar el círculo superior -->
                 <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="8dp"
-                    app:cardCornerRadius="20dp"
+                    android:layout_gravity="center_horizontal"
+                    app:cardCornerRadius="28dp"
                     app:cardElevation="10dp"
-                    app:cardBackgroundColor="@android:color/white">
+                    app:cardBackgroundColor="@android:color/white"
+                    app:cardUseCompatPadding="true">
 
                     <ImageView
-                        android:layout_width="match_parent"
-                        android:layout_height="112dp"
+                        android:layout_width="168dp"
+                        android:layout_height="168dp"
                         android:layout_gravity="center"
-                        android:paddingHorizontal="28dp"
-                        android:paddingVertical="20dp"
-                        android:src="@drawable/logo_uvrp"
+                        android:padding="28dp"
+                        android:src="@drawable/logo_uvrp_icon"
                         android:scaleType="fitCenter"
                         android:adjustViewBounds="true"
                         android:contentDescription="@string/app_name" />
