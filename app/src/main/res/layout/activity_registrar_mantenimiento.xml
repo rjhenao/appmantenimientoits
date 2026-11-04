@@ -647,8 +647,6 @@
         android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:menu="@menu/menu_drawer"
-        app:itemTextColor="@color/nav_item_text"
-        app:itemIconTint="@color/nav_item_icon" />
+        app:menu="@menu/menu_drawer" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

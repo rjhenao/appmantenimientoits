@@ -34,10 +34,14 @@ object InventarioOfflineSync {
             val u = body.unidades ?: emptyList()
             val p = body.productos ?: emptyList()
             val ub = body.ubicaciones ?: emptyList()
+            val ex = body.existencias ?: emptyList()
             val db = DatabaseHelper(context)
-            db.reemplazarCatalogoInventario(u, p, ub)
-            prefs.edit().putLong("inv_catalogo_sync_at", System.currentTimeMillis()).apply()
-            Log.i(TAG, "Catálogo inventario: unidades=${u.size} productos=${p.size} ubicaciones=${ub.size}")
+            db.reemplazarCatalogoInventario(u, p, ub, ex)
+            prefs.edit()
+                .putLong("inv_catalogo_sync_at", System.currentTimeMillis())
+                .putBoolean("inv_existencias_sync_ok", true)
+                .apply()
+            Log.i(TAG, "Catálogo inventario: unidades=${u.size} productos=${p.size} ubicaciones=${ub.size} existencias=${ex.size}")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error sync catalogo: ${e.message}", e)

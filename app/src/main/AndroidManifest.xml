@@ -36,6 +36,15 @@
             android:name=".iniciarPreoperacional"
             android:exported="false" />
         <activity
+            android:name=".MantenimientoFlotaActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EjecutarMantenimientoFlotaActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CorrectivoLibreFlotaActivity"
+            android:exported="false" />
+        <activity
             android:name=".HomeActivity"
             android:exported="false" />
         <activity
@@ -113,6 +122,12 @@
             android:name=".PpieDiligenciarActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ComprasSeguimientoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ComprasEcDetalleActivity"
+            android:exported="false" />
         <activity
             android:name=".MeteoUfActivity"
             android:exported="false" />

@@ -36,7 +36,7 @@
                         android:text="Estado de la vía"
                         android:textStyle="bold"
                         android:textSize="22sp"
-                        android:textColor="#0D47A1" />
+                        android:textColor="#074D45" />
 
                     <TextView
                         android:id="@+id/tvMeteoMeta"

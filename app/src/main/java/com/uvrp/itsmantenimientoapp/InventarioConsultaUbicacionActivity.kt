@@ -240,10 +240,13 @@ class InventarioConsultaUbicacionActivity : AppCompatActivity() {
                     resumen = construirResumenDesdeFilas(productos)
                 }
 
+                val tieneSnapshot = getSharedPreferences("Sesion", MODE_PRIVATE)
+                    .getBoolean("inv_existencias_sync_ok", false)
+
                 runOnUiThread {
                     btnConsultar.isEnabled = true
                     mostrarResultados(detalle, resumen, productos)
-                    if (!desdeRed && productos.isEmpty()) {
+                    if (!desdeRed && productos.isEmpty() && !tieneSnapshot) {
                         Toast.makeText(
                             this,
                             getString(R.string.inv_consulta_ubicacion_sin_datos_offline),

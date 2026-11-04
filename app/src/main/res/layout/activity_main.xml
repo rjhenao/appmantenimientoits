@@ -37,20 +37,25 @@
                 android:gravity="center"
                 android:layout_marginBottom="48dp">
 
-                <!-- Logo con sombra elegante -->
+                <!-- Isotipo UVRP completo (sin texto); el card no debe recortar el círculo superior -->
                 <com.google.android.material.card.MaterialCardView
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
-                    app:cardCornerRadius="60dp"
-                    app:cardElevation="12dp"
-                    app:cardBackgroundColor="@android:color/white">
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="10dp"
+                    app:cardBackgroundColor="@android:color/white"
+                    app:cardUseCompatPadding="true">
 
                     <ImageView
-                        android:layout_width="160dp"
-                        android:layout_height="120dp"
+                        android:layout_width="168dp"
+                        android:layout_height="168dp"
                         android:layout_gravity="center"
-                        android:src="@mipmap/ic_launcher_foreground"
-                        android:scaleType="centerCrop" />
+                        android:padding="28dp"
+                        android:src="@drawable/logo_uvrp_icon"
+                        android:scaleType="fitCenter"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="@string/app_name" />
                 </com.google.android.material.card.MaterialCardView>
 
                 <!-- Títulos -->
@@ -190,6 +195,17 @@
                     android:textColor="@color/login_version_text"
                     android:textSize="14sp"
                     android:alpha="0.7"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/tServerUrl"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textColor="@color/login_version_text"
+                    android:textSize="12sp"
+                    android:alpha="0.65"
+                    android:visibility="gone"
                     android:layout_marginBottom="8dp" />
 
                 <TextView

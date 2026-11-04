@@ -65,6 +65,11 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         RetrofitClient.init(applicationContext)
         setContentView(R.layout.activity_home)
+        try {
+            com.google.firebase.inappmessaging.FirebaseInAppMessaging.getInstance()
+                .setMessagesSuppressed(true)
+        } catch (_: Exception) {
+        }
 
         // ==== INICIALIZAR COMPONENTES Y HELPERS ====
         drawerLayout = findViewById(R.id.drawer_layout)
@@ -103,6 +108,8 @@ class HomeActivity : AppCompatActivity() {
         rvPpiePendientes = findViewById(R.id.rvPpiePendientes)
         btnSincronizarPpie = findViewById(R.id.btnSincronizarPpie)
         btnVerMeteo = findViewById(R.id.btnVerMeteo)
+        // Estado de la vía: disponible para cualquier usuario logueado
+        findViewById<View>(R.id.cardMeteoVia)?.visibility = View.VISIBLE
 
         cardExtrasPendiente = findViewById(R.id.cardExtrasPendiente)
         tvExtrasDescription = findViewById(R.id.tvExtrasDescription)

@@ -17,14 +17,14 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.uvrp.itsmantenimientoapp"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.uvrp.itsmantenimientoapp"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 34
-        versionName = "1.0.34"
+        targetSdk = 36
+        versionCode = 48
+        versionName = "1.0.48"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

@@ -1,7 +1,10 @@
 package com.uvrp.itsmantenimientoapp
 
 import ApiService.Vehiculo
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
 import android.widget.*
@@ -12,85 +15,37 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper // Asegúrate de importar tu helper
+import com.uvrp.itsmantenimientoapp.helpers.HeaderHelper
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class iniciarPreoperacional : AppCompatActivity() {
 
     private var idVehiculoSeleccionado: Int? = null
     private var placaa: String? = null
     private var vehiculoSeleccionado: Vehiculo? = null
-    private var idPreoperacionalAbierto: Int? = null
+    private var aplicaKilometraje: Boolean = true
+    private var aplicaHorometro: Boolean = false
+    private var vehiculosCargados = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_iniciar_preoperacional)
 
-        // 1. Llama al HeaderHelper para configurar el menú y la barra de herramientas
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
         val navView = findViewById<NavigationView>(R.id.nav_view)
         HeaderHelper.setupHeader(this, drawerLayout, navView)
 
-        // El resto de la lógica de tu actividad permanece igual
         val autoComplete = findViewById<AutoCompleteTextView>(R.id.autoCompletePlacas)
         val btnIniciar = findViewById<Button>(R.id.btnIniciarPreoperacional)
-        val btnAnular = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnAnularPreoperacional)
         val sharedPreferences = getSharedPreferences("Sesion", MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("idUser", -1)
-
-        btnAnular.setOnClickListener {
-            val idPreop = idPreoperacionalAbierto
-            if (idPreop == null || idUsuario == -1) {
-                Toast.makeText(this, "No hay preoperacional abierto para anular", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            AlertDialog.Builder(this)
-                .setTitle("Anular preoperacional")
-                .setMessage("Se anulará el preoperacional abierto (sin checklist iniciado). Esta acción no se puede deshacer. ¿Continuar?")
-                .setNegativeButton("No", null)
-                .setPositiveButton("Sí, anular") { _, _ ->
-                    RetrofitClient.instance.anularPreoperacional(
-                        ApiService.AnularPreoperacionalRequest(idPreop, idUsuario)
-                    ).enqueue(object : Callback<ApiService.AnularPreoperacionalResponse> {
-                        override fun onResponse(
-                            call: Call<ApiService.AnularPreoperacionalResponse>,
-                            response: Response<ApiService.AnularPreoperacionalResponse>
-                        ) {
-                            val body = response.body()
-                            if (response.isSuccessful && body?.success == true) {
-                                getSharedPreferences("PreoperacionalesIniciados", MODE_PRIVATE).edit().apply {
-                                    remove("idPreoperacional_$idUsuario")
-                                    remove("idVehiculo_$idUsuario")
-                                    remove("placa_$idUsuario")
-                                    remove("fechaInicio_$idUsuario")
-                                    apply()
-                                }
-                                idPreoperacionalAbierto = null
-                                btnAnular.visibility = android.view.View.GONE
-                                Toast.makeText(this@iniciarPreoperacional, "Preoperacional anulado", Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(
-                                    this@iniciarPreoperacional,
-                                    body?.message ?: "No se pudo anular",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
-
-                        override fun onFailure(call: Call<ApiService.AnularPreoperacionalResponse>, t: Throwable) {
-                            Toast.makeText(this@iniciarPreoperacional, "Error de red: ${t.message}", Toast.LENGTH_LONG).show()
-                        }
-                    })
-                }
-                .show()
-        }
-
-
-        // ... (todo tu código de Retrofit, listeners del botón, etc., se queda como está)
 
         if (idUsuario != -1) {
             RetrofitClient.instance.validarUsuario(idUsuario)
@@ -106,14 +61,20 @@ class iniciarPreoperacional : AppCompatActivity() {
 
                     override fun onFailure(call: Call<UsuarioValidadoResponse>, t: Throwable) {
                         Log.e("ValidarUsuario", "❌ Fallo de conexión: ${t.message}")
+                        findViewById<TextView>(R.id.textEstadoSesion).text = "Estado de sesión: sin conexión"
                     }
                 })
         }
 
         lifecycleScope.launch {
+            if (!hayConexion()) {
+                mostrarErrorConexion("No hay conexión a internet. Active datos o Wi‑Fi e intente de nuevo.")
+                return@launch
+            }
             try {
                 val vehiculos = RetrofitClient.instance.getVehiculos()
                 val placasList = vehiculos.map { it.placa }
+                vehiculosCargados = true
 
                 val adapter = object : ArrayAdapter<String>(
                     this@iniciarPreoperacional,
@@ -164,138 +125,156 @@ class iniciarPreoperacional : AppCompatActivity() {
                     vehiculoSeleccionado = vehiculos.firstOrNull { it.placa == placaSeleccionada }
                     placaa = vehiculoSeleccionado?.placa
                     idVehiculoSeleccionado = vehiculoSeleccionado?.id
-
-                    Log.d("AutoComplete", "Placa seleccionada: $placaa, ID: $idVehiculoSeleccionado")
                 }
 
             } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(this@iniciarPreoperacional, "Error al cargar vehículos", Toast.LENGTH_SHORT).show()
+                Log.e("Preoperacional", "Error al cargar vehículos", e)
+                mostrarErrorConexion(mensajeConexion(e))
             }
         }
 
         btnIniciar.setOnClickListener {
-            if (vehiculoSeleccionado != null) {
-                val idUsuario = sharedPreferences.getInt("idUser", -1)
-                if (idUsuario == -1) {
-                    Toast.makeText(this, "No se encontró el ID de usuario", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
+            if (!vehiculosCargados || vehiculoSeleccionado == null) {
+                if (!vehiculosCargados) {
+                    mostrarErrorConexion("Sin conexión o lista de vehículos no disponible. Revise la red e intente de nuevo.")
+                } else {
+                    Toast.makeText(this, "Seleccione un vehículo válido", Toast.LENGTH_SHORT).show()
                 }
-
-                btnIniciar.isEnabled = false
-                val progressDialog = AlertDialog.Builder(this)
-                    .setView(R.layout.dialog_loading)
-                    .setCancelable(false)
-                    .create()
-                progressDialog.show()
-
-                RetrofitClient.instance.validarVehiculoLicencia(idUsuario, vehiculoSeleccionado!!.id)
-                    .enqueue(object : Callback<ApiService.ValidarVehiculoResponse> {
-                        override fun onResponse(call: Call<ApiService.ValidarVehiculoResponse>, response: Response<ApiService.ValidarVehiculoResponse>) {
-                            progressDialog.dismiss()
-                            btnIniciar.isEnabled = true
-
-                            if (response.isSuccessful) {
-                                val data = response.body()
-                                val mensajes = mutableListOf<String>()
-                                var estadoEncontrado: Int? = null
-                                var esUsuarioActual = false
-
-                                data?.let {
-                                    if (it.vehiculo_con_preoperacional_abierto == true) {
-                                        it.aVehiculo?.firstOrNull()?.let { v ->
-                                            if (v.idUsuario != idUsuario) {
-                                                mensajes.add("El vehículo: ${v.placa} tiene preoperacional abierto por: ${v.nombre}")
-                                            } else {
-                                                estadoEncontrado = v.estado
-                                                esUsuarioActual = true
-                                            }
-                                        }
-                                    }
-
-                                    if (it.vehiculo_usuario_con_preoperacional_abierto == true) {
-                                        it.aUsuario?.firstOrNull()?.let { u ->
-                                            if (u.idVehiculo != vehiculoSeleccionado!!.id) {
-                                                mensajes.add("El usuario: ${u.nombre} tiene un preoperacional abierto con: ${u.placa}")
-                                            } else {
-                                                estadoEncontrado = u.estado
-                                                esUsuarioActual = true
-                                            }
-                                        }
-                                    }
-
-                                    if (it.licencia_vencida_estado == true) mensajes.add("¡La licencia está vencida!")
-                                    if (it.licencia_bloqueadas == true) mensajes.add("La licencia está bloqueada.")
-                                    if (it.licencia_vencida_fecha == true) mensajes.add("La licencia está vencida por fecha.")
-                                    if (it.v_full_amparo == true) mensajes.add("El full amparo está vencido.")
-                                    if (it.v_impuesto == true) mensajes.add("El impuesto está vencido.")
-                                    if (it.v_soat == true) mensajes.add("El SOAT está vencido.")
-                                    if (it.v_tecnomecanica == true) mensajes.add("La tecnomecánica está vencida.")
-                                    if (it.v_estado == true) mensajes.add("Hay un estado pendiente de revisión.")
-                                }
-
-                                if (mensajes.isNotEmpty()) {
-                                    AlertDialog.Builder(this@iniciarPreoperacional)
-                                        .setTitle("Advertencias")
-                                        .setMessage(mensajes.joinToString("\n"))
-                                        .setPositiveButton("Cerrar", null)
-                                        .show()
-                                    return
-                                }
-
-                                if (esUsuarioActual) {
-                                    when (estadoEncontrado) {
-                                        1 -> {
-                                            idPreoperacionalAbierto = data?.aVehiculo?.firstOrNull { it.idUsuario == idUsuario }?.idPreoperacional
-                                                ?: data?.aUsuario?.firstOrNull { it.idUsuario == idUsuario }?.idPreoperacional
-                                            btnAnular.visibility = if (idPreoperacionalAbierto != null) android.view.View.VISIBLE else android.view.View.GONE
-                                            AlertDialog.Builder(this@iniciarPreoperacional)
-                                                .setTitle("Preoperacional abierto")
-                                                .setMessage("Ya tiene un preoperacional abierto. Puede continuar el checklist o anularlo si lo abrió por error.")
-                                                .setPositiveButton("Continuar") { _, _ -> startFormulario() }
-                                                .setNeutralButton("Anular") { _, _ -> btnAnular.performClick() }
-                                                .setNegativeButton("Cerrar", null)
-                                                .show()
-                                        }
-                                        2 -> {
-                                            btnAnular.visibility = android.view.View.GONE
-                                            idPreoperacionalAbierto = null
-                                            startFinalizar()
-                                        }
-                                        else -> {
-                                            btnAnular.visibility = android.view.View.GONE
-                                            abrirPreoperacional(idUsuario)
-                                        }
-                                    }
-                                } else {
-                                    btnAnular.visibility = android.view.View.GONE
-                                    abrirPreoperacional(idUsuario)
-                                }
-
-                            } else {
-                                Toast.makeText(this@iniciarPreoperacional, "Error de validación", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-
-                        override fun onFailure(call: Call<ApiService.ValidarVehiculoResponse>, t: Throwable) {
-                            progressDialog.dismiss()
-                            btnIniciar.isEnabled = true
-                            Toast.makeText(this@iniciarPreoperacional, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
-                            FirebaseCrashlytics.getInstance().apply {
-                                log("📡 Error en validarVehiculoLicencia")
-                                setCustomKey("UsuarioID", idUsuario)
-                                setCustomKey("VehiculoID", vehiculoSeleccionado?.id ?: -1)
-                                recordException(t)
-                            }
-                        }
-                    })
-            } else {
-                Toast.makeText(this, "Seleccione un vehículo válido", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+            if (!hayConexion()) {
+                mostrarErrorConexion("No hay conexión a internet. Active datos o Wi‑Fi e intente de nuevo.")
+                return@setOnClickListener
+            }
+
+            val uid = sharedPreferences.getInt("idUser", -1)
+            if (uid == -1) {
+                Toast.makeText(this, "No se encontró el ID de usuario", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            btnIniciar.isEnabled = false
+            val progressDialog = AlertDialog.Builder(this)
+                .setView(R.layout.dialog_loading)
+                .setCancelable(false)
+                .create()
+            progressDialog.show()
+
+            RetrofitClient.instance.validarVehiculoLicencia(uid, vehiculoSeleccionado!!.id)
+                .enqueue(object : Callback<ApiService.ValidarVehiculoResponse> {
+                    override fun onResponse(call: Call<ApiService.ValidarVehiculoResponse>, response: Response<ApiService.ValidarVehiculoResponse>) {
+                        progressDialog.dismiss()
+                        btnIniciar.isEnabled = true
+
+                        if (response.isSuccessful) {
+                            val data = response.body()
+                            val mensajes = mutableListOf<String>()
+                            var estadoEncontrado: Int? = null
+                            var esUsuarioActual = false
+
+                            data?.let {
+                                aplicaKilometraje = it.aplica_kilometraje != false
+                                aplicaHorometro = it.aplica_horometro == true
+                                if (it.vehiculo_con_preoperacional_abierto == true) {
+                                    it.aVehiculo?.firstOrNull()?.let { v ->
+                                        if (v.idUsuario != uid) {
+                                            mensajes.add("El vehículo: ${v.placa} tiene preoperacional abierto por: ${v.nombre}")
+                                        } else {
+                                            estadoEncontrado = v.estado
+                                            esUsuarioActual = true
+                                        }
+                                    }
+                                }
+
+                                if (it.vehiculo_usuario_con_preoperacional_abierto == true) {
+                                    it.aUsuario?.firstOrNull()?.let { u ->
+                                        if (u.idVehiculo != vehiculoSeleccionado!!.id) {
+                                            mensajes.add("El usuario: ${u.nombre} tiene un preoperacional abierto con: ${u.placa}")
+                                        } else {
+                                            estadoEncontrado = u.estado
+                                            esUsuarioActual = true
+                                        }
+                                    }
+                                }
+
+                                if (it.licencia_vencida_estado == true) mensajes.add("¡La licencia está vencida!")
+                                if (it.licencia_bloqueadas == true) mensajes.add("La licencia está bloqueada.")
+                                if (it.licencia_vencida_fecha == true) mensajes.add("La licencia está vencida por fecha.")
+                                if (it.v_full_amparo == true) mensajes.add("El full amparo está vencido.")
+                                if (it.v_impuesto == true) mensajes.add("El impuesto está vencido.")
+                                if (it.v_soat == true) mensajes.add("El SOAT está vencido.")
+                                if (it.v_tecnomecanica == true) mensajes.add("La tecnomecánica está vencida.")
+                                if (it.v_estado == true) mensajes.add("Hay un estado pendiente de revisión.")
+                            }
+
+                            if (mensajes.isNotEmpty()) {
+                                AlertDialog.Builder(this@iniciarPreoperacional)
+                                    .setTitle("Advertencias")
+                                    .setMessage(mensajes.joinToString("\n"))
+                                    .setPositiveButton("Cerrar", null)
+                                    .show()
+                                return
+                            }
+
+                            if (esUsuarioActual) {
+                                when (estadoEncontrado) {
+                                    1 -> startFormulario()
+                                    2 -> startFinalizar()
+                                    else -> confirmarAbrirPreoperacional(uid)
+                                }
+                            } else {
+                                confirmarAbrirPreoperacional(uid)
+                            }
+
+                        } else {
+                            Toast.makeText(this@iniciarPreoperacional, "No se pudo validar el vehículo. Intente de nuevo.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<ApiService.ValidarVehiculoResponse>, t: Throwable) {
+                        progressDialog.dismiss()
+                        btnIniciar.isEnabled = true
+                        mostrarErrorConexion(mensajeConexion(t))
+                        FirebaseCrashlytics.getInstance().apply {
+                            log("Error en validarVehiculoLicencia (sin red)")
+                            setCustomKey("UsuarioID", uid)
+                            setCustomKey("VehiculoID", vehiculoSeleccionado?.id ?: -1)
+                            recordException(t)
+                        }
+                    }
+                })
         }
     }
 
-    // 2. Agrega esta función para que el icono de hamburguesa funcione
+    private fun hayConexion(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun mensajeConexion(t: Throwable?): String {
+        return when (t) {
+            is UnknownHostException ->
+                "Sin conexión a internet o el servidor no responde. Revise la red e intente de nuevo."
+            is SocketTimeoutException ->
+                "La conexión es inestable o tardó demasiado. Intente de nuevo en un momento."
+            is IOException ->
+                "Error de conexión. Verifique que tenga internet estable e intente de nuevo."
+            else ->
+                "No se pudo conectar con el servidor. Verifique su conexión a internet."
+        }
+    }
+
+    private fun mostrarErrorConexion(mensaje: String) {
+        if (isFinishing || isDestroyed) return
+        AlertDialog.Builder(this)
+            .setTitle("Sin conexión")
+            .setMessage(mensaje)
+            .setPositiveButton("Entendido", null)
+            .show()
+    }
+
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         if (HeaderHelper.onOptionsItemSelected(item)) {
             return true
@@ -303,10 +282,21 @@ class iniciarPreoperacional : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
+    private fun confirmarAbrirPreoperacional(idUsuario: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Abrir preoperacional")
+            .setMessage("¿Está seguro de abrir el preoperacional para este vehículo?")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Sí, abrir") { _, _ -> abrirPreoperacional(idUsuario) }
+            .show()
+    }
+
     private fun startFormulario() {
         val intent = Intent(this, FormularioActividadActivity::class.java)
         intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
         intent.putExtra("placaa", placaa!!)
+        intent.putExtra("aplicaKilometraje", aplicaKilometraje)
+        intent.putExtra("aplicaHorometro", aplicaHorometro)
         startActivity(intent)
     }
 
@@ -314,6 +304,8 @@ class iniciarPreoperacional : AppCompatActivity() {
         val intent = Intent(this, FinalizarPreoperacionalActivity::class.java)
         intent.putExtra("idVehiculo", idVehiculoSeleccionado!!)
         intent.putExtra("placaa", placaa!!)
+        intent.putExtra("aplicaKilometraje", aplicaKilometraje)
+        intent.putExtra("aplicaHorometro", aplicaHorometro)
         startActivity(intent)
     }
 
@@ -325,7 +317,6 @@ class iniciarPreoperacional : AppCompatActivity() {
                     if (response.isSuccessful) {
                         val body = response.body()
                         if (body != null && body.success && body.idPreoperacional != null) {
-                            // Guardar id_preoperacional en SharedPreferences para validación offline de combustible
                             val prefs = getSharedPreferences("PreoperacionalesIniciados", MODE_PRIVATE)
                             prefs.edit().apply {
                                 putInt("idPreoperacional_$idUsuario", body.idPreoperacional!!)
@@ -334,7 +325,7 @@ class iniciarPreoperacional : AppCompatActivity() {
                                 putLong("fechaInicio_$idUsuario", System.currentTimeMillis())
                                 apply()
                             }
-                            Log.d("Preoperacional", "✅ Preoperacional guardado en SharedPreferences: ID=${body.idPreoperacional}, Usuario=$idUsuario")
+                            Log.d("Preoperacional", "✅ Preoperacional guardado: ID=${body.idPreoperacional}")
                         }
                         startFormulario()
                     } else {
@@ -347,13 +338,8 @@ class iniciarPreoperacional : AppCompatActivity() {
                 }
 
                 override fun onFailure(call: Call<ApiService.PreoperacionalResponse>, t: Throwable) {
-                    AlertDialog.Builder(this@iniciarPreoperacional)
-                        .setTitle("Error de red")
-                        .setMessage("No se pudo conectar con el servidor.\n${t.localizedMessage}")
-                        .setPositiveButton("Cerrar", null)
-                        .show()
+                    mostrarErrorConexion(mensajeConexion(t))
                 }
             })
     }
 }
-

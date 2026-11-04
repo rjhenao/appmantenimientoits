@@ -1,8 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
-
+<resources>
     <style name="Theme.ItsMantenimiento" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/azul_corporativo</item>
+        <item name="navigationViewStyle">@style/Widget.Its.NavigationView</item>
     </style>
 
+    <style name="Widget.Its.NavigationView" parent="Widget.Material3.NavigationView">
+        <item name="android:background">@color/white</item>
+        <item name="itemBackground">@drawable/nav_item_background</item>
+        <item name="itemIconTint">@color/nav_drawer_item_icon</item>
+        <item name="itemTextColor">@color/nav_drawer_item_text</item>
+        <item name="itemTextAppearance">@style/TextAppearance.Its.NavItem</item>
+        <item name="itemIconSize">20dp</item>
+        <item name="itemIconPadding">14dp</item>
+        <item name="itemHorizontalPadding">12dp</item>
+        <item name="itemVerticalPadding">2dp</item>
+        <item name="itemShapeInsetStart">8dp</item>
+        <item name="itemShapeInsetEnd">8dp</item>
+        <item name="itemShapeInsetTop">1dp</item>
+        <item name="itemShapeInsetBottom">1dp</item>
+        <item name="dividerInsetStart">16dp</item>
+        <item name="dividerInsetEnd">16dp</item>
+        <item name="android:maxWidth">288dp</item>
+    </style>
+
+    <style name="TextAppearance.Its.NavItem" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textSize">13.5sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
 </resources>
